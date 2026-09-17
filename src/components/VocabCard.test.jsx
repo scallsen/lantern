@@ -32,4 +32,15 @@ describe('VocabCard furigana', () => {
     expect(rubies(faces(false).front)).toBe(0)
     expect(rubies(faces(true).front)).toBeGreaterThan(0)
   })
+
+  // Regression: a word whose kana doesn't actually match its kanji (bad data —
+  // typically a mistyped custom word list entry) made buildFurigana return
+  // null, which RubyText then crashed on (`null.map`), blanking the whole
+  // drill with no way to recover since nothing wraps it in an error boundary.
+  it('renders without crashing when the reading cannot be matched to the kanji', () => {
+    const mismatched = { id: 'w2', kanji: '経験', kana: 'ぜんぜんちがう', english: 'experience', listKey: 'x' }
+    expect(() => renderToStaticMarkup(
+      <VocabCard word={mismatched} flipped={false} onFlip={() => {}} animate={false} reviewMode="kanji-front" showFurigana showTranslation showSentence={false} showKanjiMeaning={false} pixelFont={false} />
+    )).not.toThrow()
+  })
 })
