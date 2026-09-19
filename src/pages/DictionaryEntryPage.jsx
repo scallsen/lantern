@@ -69,18 +69,19 @@ async function fetchSentences(id) {
   return data ?? []
 }
 
-// Resolves a Vocab Drill word's listKey to a human label: "Source — Sublist"
-// for hierarchical sources, or just the source label for flat ones.
-function labelForListKey(listKey) {
+// Resolves a Vocab Drill word's listKey to its source label and, for a
+// hierarchical source, the specific chapter within it (null for a flat one —
+// there's nothing more specific to show).
+function listKeyParts(listKey) {
   for (const source of WORD_SOURCES) {
     if (!source.lists) {
-      if (source.id === listKey) return source.label
+      if (source.id === listKey) return { source: source.label, chapter: null }
       continue
     }
     const sublist = source.lists.find(l => l.id === listKey)
-    if (sublist) return `${source.label} — ${sublist.label}`
+    if (sublist) return { source: source.label, chapter: sublist.label }
   }
-  return listKey
+  return { source: listKey, chapter: null }
 }
 
 const LANG_NAMES = { eng: 'English', fre: 'French', ger: 'German', deu: 'German', por: 'Portuguese', ita: 'Italian', spa: 'Spanish', chi: 'Chinese', zho: 'Chinese', kor: 'Korean', nld: 'Dutch', rus: 'Russian', ara: 'Arabic', per: 'Persian', hin: 'Hindi' }
@@ -179,7 +180,7 @@ function deckRowContent({ label, meta }) {
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, width: '100%' }}>
       <span style={{ fontSize: FS_BASE, color: TEXT, fontFamily: FONT, letterSpacing: TRACKING }}>{label}</span>
       {meta && (
-        <span style={{ fontSize: FS_BADGE, color: TEXT_MUTED, fontFamily: FONT, letterSpacing: TRACKING, flexShrink: 0 }}>{meta}</span>
+        <span style={{ fontSize: FS_BASE, color: TEXT_MUTED, fontFamily: FONT, letterSpacing: TRACKING, flexShrink: 0 }}>{meta}</span>
       )}
     </div>
   )
@@ -274,7 +275,7 @@ export default function DictionaryEntryPage({ entryId }) {
     if (!entry) return []
     const listKeys = new Set(WORD_DATA.filter(w => w.jmdictId === entry.id).map(w => w.listKey))
     for (const row of customListMatches) listKeys.add(row.list_key)
-    return [...listKeys].map(listKey => ({ listKey, label: labelForListKey(listKey) }))
+    return [...listKeys].map(listKey => ({ listKey, ...listKeyParts(listKey) }))
   }, [entry, customListMatches])
 
   const srsMatches = useMemo(() => {
@@ -304,9 +305,18 @@ export default function DictionaryEntryPage({ entryId }) {
 
   // Word list rows carry listKey, not href: they open WordListModal in place
   // (see navigate.onClick below) rather than navigating to #/vocab, so
-  // looking up a word never leaves the dictionary.
+  // looking up a word never leaves the dictionary. The row shows the source
+  // on the left and the specific chapter (if any) right-aligned as meta; the
+  // modal itself still opens titled with both, since the row's own label
+  // alone would be ambiguous for a source with several chapters.
   const wordListRows = useMemo(
-    () => vocabDrillMatches.map(({ listKey, label }) => ({ id: `vocab-${listKey}`, label, listKey })),
+    () => vocabDrillMatches.map(({ listKey, source, chapter }) => ({
+      id: `vocab-${listKey}`,
+      label: source,
+      meta: chapter,
+      listKey,
+      modalLabel: chapter ? `${source} — ${chapter}` : source,
+    })),
     [vocabDrillMatches],
   )
 
@@ -396,7 +406,7 @@ export default function DictionaryEntryPage({ entryId }) {
                     columns={DECK_ROW_COLUMNS}
                     rows={wordListRows}
                     rowKey={row => row.id}
-                    navigate={{ onClick: row => setWordListChapter({ listKey: row.listKey, label: row.label }) }}
+                    navigate={{ onClick: row => setWordListChapter({ listKey: row.listKey, label: row.modalLabel }) }}
                     padding="10px 14px"
                     maxWidth={600}
                   />
