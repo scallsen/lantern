@@ -445,6 +445,7 @@ visitor: moving 5,277 of these words out took 1.1 MB of JSON off the bundle.
 | `supabase/migrations/*_add_custom_words.sql` | Table + RLS. `user_id` cascades from `auth.users`, so `delete-account` needs no change |
 | `supabase/migrations/*_custom_word_counts.sql` | `custom_word_counts()` — per-chapter counts for the picker, so drawing 36 tiles doesn't fetch 5,277 rows |
 | `scripts/upload-custom-words.mjs` | Moves lists from the repo into an account. Idempotent; keyed `(user_id, id)` |
+| `scripts/backfill-custom-words-jmdict.mjs` | Matches `custom_words` rows missing `jmdictId` against `dictionary`, across every account (service role). `backfill-vocab-jmdict.mjs`'s own `TARGETS` are the local files these words used to be — once a list moves here, that script silently stops reaching it (its `existsSync` guard just skips the missing path), so this is the one thing that still backfills a personal word's link. Fills only what's missing; never clears an existing match |
 | `src/hooks/useCustomWords.js` | `useCustomWordCounts()` for the picker, `useCustomWords(listKeys)` for the chapters actually selected |
 
 A source in `WORD_SOURCES` marked `personal: true` has no words in the bundle.
