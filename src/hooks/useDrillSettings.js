@@ -64,8 +64,16 @@ function readBool(key, fallback) {
 // The old shape, read only when the new keys are absent. Audio was one
 // `audio-enabled` master plus (in SRS) autoplay-front/back; the source was a
 // single picker that mixed the two recordings with the browser voice.
+//
+// Gated on the master key actually existing in storage — a fresh install has
+// none of these keys, and readBool's `true` fallback (the old settings' own
+// default) must not be mistaken for "an old install with audio enabled".
+// Without this a brand-new SRS install resolved frontAudio to true, since
+// every readBool call along the way silently defaulted to true.
 function migrateAudio(prefix) {
-  const enabled = readBool(`${prefix}-audio-enabled`, true)
+  const enabledKey = `${prefix}-audio-enabled`
+  if (safeLocalStorageGet(enabledKey) === null) return {}
+  const enabled = readBool(enabledKey, true)
   if (prefix === 'srs') {
     const autoplay = readBool('srs-autoplay-audio', true)
     return {
