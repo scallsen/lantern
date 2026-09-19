@@ -302,21 +302,19 @@ export default function DictionaryEntryPage({ entryId }) {
     return matches
   }, [entry, user, rawSrsProgress, shownForm, allForms])
 
-  const showDecksSection = vocabDrillMatches.length > 0 || !!user
+  // Word list rows carry listKey, not href: they open WordListModal in place
+  // (see navigate.onClick below) rather than navigating to #/vocab, so
+  // looking up a word never leaves the dictionary.
+  const wordListRows = useMemo(
+    () => vocabDrillMatches.map(({ listKey, label }) => ({ id: `vocab-${listKey}`, label, listKey })),
+    [vocabDrillMatches],
+  )
 
-  // Vocab Drill matches carry listKey, not href: they open WordListModal
-  // in place (see navigate.onClick below) rather than navigating to
-  // #/vocab, so looking up a word never leaves the dictionary. SRS matches
-  // stay real links — there's no in-page equivalent for those yet.
+  // SRS matches stay real links — there's no in-page equivalent for those yet.
   const deckRows = useMemo(() => {
-    const rows = vocabDrillMatches.map(({ listKey, label }) => ({ id: `vocab-${listKey}`, label, listKey, meta: 'Vocabulary' }))
-    if (user) {
-      for (const m of srsMatches) {
-        rows.push({ id: m.cardId, label: m.deckName, href: '#/vocab-srs', meta: SRS_STATE_LABELS[m.state] ?? m.state })
-      }
-    }
-    return rows
-  }, [vocabDrillMatches, user, srsMatches])
+    if (!user) return []
+    return srsMatches.map(m => ({ id: m.cardId, label: m.deckName, href: '#/vocab-srs', meta: SRS_STATE_LABELS[m.state] ?? m.state }))
+  }, [user, srsMatches])
 
   const bundledChapterWords = useMemo(
     () => (wordListChapter ? WORD_DATA.filter(w => w.listKey === wordListChapter.listKey) : []),
@@ -390,25 +388,36 @@ export default function DictionaryEntryPage({ entryId }) {
                 )}
               </Card>
 
+              {/* Word lists */}
+              {wordListRows.length > 0 && (
+                <>
+                  <SectionHeader title="Word Lists" marginTop={28} />
+                  <DataList
+                    columns={DECK_ROW_COLUMNS}
+                    rows={wordListRows}
+                    rowKey={row => row.id}
+                    navigate={{ onClick: row => setWordListChapter({ listKey: row.listKey, label: row.label }) }}
+                    padding="10px 14px"
+                    maxWidth={600}
+                  />
+                </>
+              )}
+
               {/* Your decks */}
-              {showDecksSection && (
+              {user && (
                 <>
                   <SectionHeader title="Your Decks" marginTop={28} />
-                  {deckRows.length > 0 && (
+                  {deckRows.length > 0 ? (
                     <DataList
                       columns={DECK_ROW_COLUMNS}
                       rows={deckRows}
                       rowKey={row => row.id}
-                      navigate={{
-                        href: row => row.href,
-                        onClick: row => { if (row.listKey) setWordListChapter({ listKey: row.listKey, label: row.label }) },
-                      }}
+                      navigate={{ href: row => row.href }}
                       padding="10px 14px"
                       maxWidth={600}
                     />
-                  )}
-                  {user && srsMatches.length === 0 && (
-                    <div style={{ fontSize: FS_CAPTION, color: TEXT_MUTED, fontFamily: FONT, letterSpacing: TRACKING, opacity: 0.6, padding: '2px 2px', marginTop: deckRows.length > 0 ? 8 : 0 }}>
+                  ) : (
+                    <div style={{ fontSize: FS_CAPTION, color: TEXT_MUTED, fontFamily: FONT, letterSpacing: TRACKING, opacity: 0.6, padding: '2px 2px' }}>
                       Not in any of your review decks yet.
                     </div>
                   )}
