@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase.js'
 import { FONT, TRACKING, TEXT, TEXT_MUTED, FS_BASE, FS_BADGE, FS_CAPTION, FS_ENTRY_HEADING, FS_ENTRY_ALT, KANJI_FONT, BRAND, DANGER } from '../data/theme.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useProgress } from '../hooks/useProgress.js'
+import { useCustomWords } from '../hooks/useCustomWords.js'
 import { migrateProgress } from '../modules/vocab-srs/migrate.js'
 import { resolveCard, cardStateLabel } from '../modules/vocab-srs/srs.js'
 import { WORD_DATA } from '../data/wordData.js'
@@ -211,6 +212,10 @@ export default function DictionaryEntryPage({ entryId }) {
 
   const { user } = useAuth()
   const { data: rawSrsProgress } = useProgress('vocab-srs')
+  // Personal word lists (custom_words) aren't in the WORD_DATA bundle — they
+  // live in the signed-in user's own account — so matching against them needs
+  // its own query, keyed on this entry's id rather than a listKey.
+  const [customListMatches, setCustomListMatches] = useState([])
 
   useEffect(() => {
     let cancelled = false
@@ -239,19 +244,54 @@ export default function DictionaryEntryPage({ entryId }) {
     return () => { cancelled = true }
   }, [entryId])
 
+  useEffect(() => {
+    let cancelled = false
+    setCustomListMatches([])
+    if (!entryId || !user || !supabase) return
+    supabase.from('custom_words').select('list_key')
+      .eq('payload->>jmdictId', entryId)
+      .then(({ data, error }) => {
+        if (cancelled) return
+        if (error) { console.warn(`[DictionaryEntryPage] custom word lookup failed: ${error.message}`); return }
+        setCustomListMatches(data ?? [])
+      })
+    return () => { cancelled = true }
+  }, [entryId, user])
+
+  const allForms = useMemo(() => entry
+    ? [...new Set([
+        ...(entry.kanji_forms ?? []),
+        ...(entry.kana_forms ?? []),
+      ])]
+    : [], [entry])
+
+  const shownForm = entry ? displayFormOf(entry) : null
+  // The headword is shown above, so it is not repeated here — but the spelling
+  // it displaces (其れから for それから) is a genuine alternate form and stays.
+  const altForms = allForms.filter(f => f !== shownForm)
+
   const vocabDrillMatches = useMemo(() => {
     if (!entry) return []
     const listKeys = new Set(WORD_DATA.filter(w => w.jmdictId === entry.id).map(w => w.listKey))
+    for (const row of customListMatches) listKeys.add(row.list_key)
     return [...listKeys].map(listKey => ({ listKey, label: labelForListKey(listKey) }))
-  }, [entry])
+  }, [entry, customListMatches])
 
   const srsMatches = useMemo(() => {
     if (!entry || !user) return []
     const progress = migrateProgress(rawSrsProgress)
+    // A card only carries jmdictId when its source word had one at the moment
+    // the card was created (Anki imports never get one; a bundled/personal
+    // word's own match can also arrive after the card already exists) — so a
+    // card with none is matched by its displayed form against this entry's
+    // forms instead, the same fallback unsentWordsOf already uses elsewhere.
+    const forms = new Set([shownForm, ...allForms].filter(Boolean))
     const matches = []
     for (const card of Object.values(progress.cards)) {
       const resolved = resolveCard(card)
-      if (resolved.jmdictId !== entry.id) continue
+      const matchedById = resolved.jmdictId === entry.id
+      const matchedByForm = !resolved.jmdictId && forms.has(resolved.front)
+      if (!matchedById && !matchedByForm) continue
       matches.push({
         cardId: card.id,
         deckName: progress.decks[card.deckId]?.name ?? card.deckId,
@@ -260,7 +300,7 @@ export default function DictionaryEntryPage({ entryId }) {
       })
     }
     return matches
-  }, [entry, user, rawSrsProgress])
+  }, [entry, user, rawSrsProgress, shownForm, allForms])
 
   const showDecksSection = vocabDrillMatches.length > 0 || !!user
 
@@ -278,26 +318,21 @@ export default function DictionaryEntryPage({ entryId }) {
     return rows
   }, [vocabDrillMatches, user, srsMatches])
 
+  const bundledChapterWords = useMemo(
+    () => (wordListChapter ? WORD_DATA.filter(w => w.listKey === wordListChapter.listKey) : []),
+    [wordListChapter],
+  )
+  // Falls back to the signed-in user's own custom_words when the chapter
+  // isn't one of the bundled lists — see the vocabDrillMatches comment above.
+  const { words: customChapterWords } = useCustomWords(
+    wordListChapter && bundledChapterWords.length === 0 ? [wordListChapter.listKey] : []
+  )
+
   const wordListGroups = useMemo(() => {
     if (!wordListChapter) return []
-    return [{
-      id: wordListChapter.listKey,
-      label: wordListChapter.label,
-      words: WORD_DATA.filter(w => w.listKey === wordListChapter.listKey),
-    }]
-  }, [wordListChapter])
-
-  const allForms = entry
-    ? [...new Set([
-        ...(entry.kanji_forms ?? []),
-        ...(entry.kana_forms ?? []),
-      ])]
-    : []
-
-  const shownForm = entry ? displayFormOf(entry) : null
-  // The headword is shown above, so it is not repeated here — but the spelling
-  // it displaces (其れから for それから) is a genuine alternate form and stays.
-  const altForms = allForms.filter(f => f !== shownForm)
+    const words = bundledChapterWords.length > 0 ? bundledChapterWords : customChapterWords
+    return [{ id: wordListChapter.listKey, label: wordListChapter.label, words }]
+  }, [wordListChapter, bundledChapterWords, customChapterWords])
 
   return (
     <ModuleThemeProvider accent={DICTIONARY_ACCENT}>
