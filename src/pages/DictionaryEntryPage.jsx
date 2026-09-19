@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase.js'
 import { FONT, TRACKING, TEXT, TEXT_MUTED, FS_BASE, FS_BADGE, FS_CAPTION, FS_ENTRY_HEADING, FS_ENTRY_ALT, KANJI_FONT, BRAND, DANGER } from '../data/theme.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useProgress } from '../hooks/useProgress.js'
+import { useCustomWords } from '../hooks/useCustomWords.js'
 import { migrateProgress } from '../modules/vocab-srs/migrate.js'
 import { resolveCard, cardStateLabel } from '../modules/vocab-srs/srs.js'
 import { WORD_DATA } from '../data/wordData.js'
@@ -68,18 +69,19 @@ async function fetchSentences(id) {
   return data ?? []
 }
 
-// Resolves a Vocab Drill word's listKey to a human label: "Source — Sublist"
-// for hierarchical sources, or just the source label for flat ones.
-function labelForListKey(listKey) {
+// Resolves a Vocab Drill word's listKey to its source label and, for a
+// hierarchical source, the specific chapter within it (null for a flat one —
+// there's nothing more specific to show).
+function listKeyParts(listKey) {
   for (const source of WORD_SOURCES) {
     if (!source.lists) {
-      if (source.id === listKey) return source.label
+      if (source.id === listKey) return { source: source.label, chapter: null }
       continue
     }
     const sublist = source.lists.find(l => l.id === listKey)
-    if (sublist) return `${source.label} — ${sublist.label}`
+    if (sublist) return { source: source.label, chapter: sublist.label }
   }
-  return listKey
+  return { source: listKey, chapter: null }
 }
 
 const LANG_NAMES = { eng: 'English', fre: 'French', ger: 'German', deu: 'German', por: 'Portuguese', ita: 'Italian', spa: 'Spanish', chi: 'Chinese', zho: 'Chinese', kor: 'Korean', nld: 'Dutch', rus: 'Russian', ara: 'Arabic', per: 'Persian', hin: 'Hindi' }
@@ -178,7 +180,7 @@ function deckRowContent({ label, meta }) {
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, width: '100%' }}>
       <span style={{ fontSize: FS_BASE, color: TEXT, fontFamily: FONT, letterSpacing: TRACKING }}>{label}</span>
       {meta && (
-        <span style={{ fontSize: FS_BADGE, color: TEXT_MUTED, fontFamily: FONT, letterSpacing: TRACKING, flexShrink: 0 }}>{meta}</span>
+        <span style={{ fontSize: FS_BASE, color: TEXT_MUTED, fontFamily: FONT, letterSpacing: TRACKING, flexShrink: 0 }}>{meta}</span>
       )}
     </div>
   )
@@ -211,6 +213,10 @@ export default function DictionaryEntryPage({ entryId }) {
 
   const { user } = useAuth()
   const { data: rawSrsProgress } = useProgress('vocab-srs')
+  // Personal word lists (custom_words) aren't in the WORD_DATA bundle — they
+  // live in the signed-in user's own account — so matching against them needs
+  // its own query, keyed on this entry's id rather than a listKey.
+  const [customListMatches, setCustomListMatches] = useState([])
 
   useEffect(() => {
     let cancelled = false
@@ -239,19 +245,54 @@ export default function DictionaryEntryPage({ entryId }) {
     return () => { cancelled = true }
   }, [entryId])
 
+  useEffect(() => {
+    let cancelled = false
+    setCustomListMatches([])
+    if (!entryId || !user || !supabase) return
+    supabase.from('custom_words').select('list_key')
+      .eq('payload->>jmdictId', entryId)
+      .then(({ data, error }) => {
+        if (cancelled) return
+        if (error) { console.warn(`[DictionaryEntryPage] custom word lookup failed: ${error.message}`); return }
+        setCustomListMatches(data ?? [])
+      })
+    return () => { cancelled = true }
+  }, [entryId, user])
+
+  const allForms = useMemo(() => entry
+    ? [...new Set([
+        ...(entry.kanji_forms ?? []),
+        ...(entry.kana_forms ?? []),
+      ])]
+    : [], [entry])
+
+  const shownForm = entry ? displayFormOf(entry) : null
+  // The headword is shown above, so it is not repeated here — but the spelling
+  // it displaces (其れから for それから) is a genuine alternate form and stays.
+  const altForms = allForms.filter(f => f !== shownForm)
+
   const vocabDrillMatches = useMemo(() => {
     if (!entry) return []
     const listKeys = new Set(WORD_DATA.filter(w => w.jmdictId === entry.id).map(w => w.listKey))
-    return [...listKeys].map(listKey => ({ listKey, label: labelForListKey(listKey) }))
-  }, [entry])
+    for (const row of customListMatches) listKeys.add(row.list_key)
+    return [...listKeys].map(listKey => ({ listKey, ...listKeyParts(listKey) }))
+  }, [entry, customListMatches])
 
   const srsMatches = useMemo(() => {
     if (!entry || !user) return []
     const progress = migrateProgress(rawSrsProgress)
+    // A card only carries jmdictId when its source word had one at the moment
+    // the card was created (Anki imports never get one; a bundled/personal
+    // word's own match can also arrive after the card already exists) — so a
+    // card with none is matched by its displayed form against this entry's
+    // forms instead, the same fallback unsentWordsOf already uses elsewhere.
+    const forms = new Set([shownForm, ...allForms].filter(Boolean))
     const matches = []
     for (const card of Object.values(progress.cards)) {
       const resolved = resolveCard(card)
-      if (resolved.jmdictId !== entry.id) continue
+      const matchedById = resolved.jmdictId === entry.id
+      const matchedByForm = !resolved.jmdictId && forms.has(resolved.front)
+      if (!matchedById && !matchedByForm) continue
       matches.push({
         cardId: card.id,
         deckName: progress.decks[card.deckId]?.name ?? card.deckId,
@@ -260,44 +301,46 @@ export default function DictionaryEntryPage({ entryId }) {
       })
     }
     return matches
-  }, [entry, user, rawSrsProgress])
+  }, [entry, user, rawSrsProgress, shownForm, allForms])
 
-  const showDecksSection = vocabDrillMatches.length > 0 || !!user
+  // Word list rows carry listKey, not href: they open WordListModal in place
+  // (see navigate.onClick below) rather than navigating to #/vocab, so
+  // looking up a word never leaves the dictionary. The row shows the source
+  // on the left and the specific chapter (if any) right-aligned as meta; the
+  // modal itself still opens titled with both, since the row's own label
+  // alone would be ambiguous for a source with several chapters.
+  const wordListRows = useMemo(
+    () => vocabDrillMatches.map(({ listKey, source, chapter }) => ({
+      id: `vocab-${listKey}`,
+      label: source,
+      meta: chapter,
+      listKey,
+      modalLabel: chapter ? `${source} — ${chapter}` : source,
+    })),
+    [vocabDrillMatches],
+  )
 
-  // Vocab Drill matches carry listKey, not href: they open WordListModal
-  // in place (see navigate.onClick below) rather than navigating to
-  // #/vocab, so looking up a word never leaves the dictionary. SRS matches
-  // stay real links — there's no in-page equivalent for those yet.
+  // SRS matches stay real links — there's no in-page equivalent for those yet.
   const deckRows = useMemo(() => {
-    const rows = vocabDrillMatches.map(({ listKey, label }) => ({ id: `vocab-${listKey}`, label, listKey, meta: 'Vocabulary' }))
-    if (user) {
-      for (const m of srsMatches) {
-        rows.push({ id: m.cardId, label: m.deckName, href: '#/vocab-srs', meta: SRS_STATE_LABELS[m.state] ?? m.state })
-      }
-    }
-    return rows
-  }, [vocabDrillMatches, user, srsMatches])
+    if (!user) return []
+    return srsMatches.map(m => ({ id: m.cardId, label: m.deckName, href: '#/vocab-srs', meta: SRS_STATE_LABELS[m.state] ?? m.state }))
+  }, [user, srsMatches])
+
+  const bundledChapterWords = useMemo(
+    () => (wordListChapter ? WORD_DATA.filter(w => w.listKey === wordListChapter.listKey) : []),
+    [wordListChapter],
+  )
+  // Falls back to the signed-in user's own custom_words when the chapter
+  // isn't one of the bundled lists — see the vocabDrillMatches comment above.
+  const { words: customChapterWords } = useCustomWords(
+    wordListChapter && bundledChapterWords.length === 0 ? [wordListChapter.listKey] : []
+  )
 
   const wordListGroups = useMemo(() => {
     if (!wordListChapter) return []
-    return [{
-      id: wordListChapter.listKey,
-      label: wordListChapter.label,
-      words: WORD_DATA.filter(w => w.listKey === wordListChapter.listKey),
-    }]
-  }, [wordListChapter])
-
-  const allForms = entry
-    ? [...new Set([
-        ...(entry.kanji_forms ?? []),
-        ...(entry.kana_forms ?? []),
-      ])]
-    : []
-
-  const shownForm = entry ? displayFormOf(entry) : null
-  // The headword is shown above, so it is not repeated here — but the spelling
-  // it displaces (其れから for それから) is a genuine alternate form and stays.
-  const altForms = allForms.filter(f => f !== shownForm)
+    const words = bundledChapterWords.length > 0 ? bundledChapterWords : customChapterWords
+    return [{ id: wordListChapter.listKey, label: wordListChapter.label, words }]
+  }, [wordListChapter, bundledChapterWords, customChapterWords])
 
   return (
     <ModuleThemeProvider accent={DICTIONARY_ACCENT}>
@@ -355,25 +398,36 @@ export default function DictionaryEntryPage({ entryId }) {
                 )}
               </Card>
 
+              {/* Word lists */}
+              {wordListRows.length > 0 && (
+                <>
+                  <SectionHeader title="Word Lists" marginTop={28} />
+                  <DataList
+                    columns={DECK_ROW_COLUMNS}
+                    rows={wordListRows}
+                    rowKey={row => row.id}
+                    navigate={{ onClick: row => setWordListChapter({ listKey: row.listKey, label: row.modalLabel }) }}
+                    padding="10px 14px"
+                    maxWidth={600}
+                  />
+                </>
+              )}
+
               {/* Your decks */}
-              {showDecksSection && (
+              {user && (
                 <>
                   <SectionHeader title="Your Decks" marginTop={28} />
-                  {deckRows.length > 0 && (
+                  {deckRows.length > 0 ? (
                     <DataList
                       columns={DECK_ROW_COLUMNS}
                       rows={deckRows}
                       rowKey={row => row.id}
-                      navigate={{
-                        href: row => row.href,
-                        onClick: row => { if (row.listKey) setWordListChapter({ listKey: row.listKey, label: row.label }) },
-                      }}
+                      navigate={{ href: row => row.href }}
                       padding="10px 14px"
                       maxWidth={600}
                     />
-                  )}
-                  {user && srsMatches.length === 0 && (
-                    <div style={{ fontSize: FS_CAPTION, color: TEXT_MUTED, fontFamily: FONT, letterSpacing: TRACKING, opacity: 0.6, padding: '2px 2px', marginTop: deckRows.length > 0 ? 8 : 0 }}>
+                  ) : (
+                    <div style={{ fontSize: FS_CAPTION, color: TEXT_MUTED, fontFamily: FONT, letterSpacing: TRACKING, opacity: 0.6, padding: '2px 2px' }}>
                       Not in any of your review decks yet.
                     </div>
                   )}
