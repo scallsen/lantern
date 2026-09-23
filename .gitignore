@@ -7,3 +7,6 @@ verify-tmp.js
 .claude/worktrees/
 .claude/settings.local.json
 supabase/.temp/
+
+*storybook.log
+storybook-static
