@@ -25,7 +25,7 @@ export function Chip({ label, active, onClick, size = 'sm', accent: accentOverri
   // this problem and shouldn't be touched.
   const textColor = accent === BRAND ? BRAND_TEXT : accent
   // Tint/border darkened from 0x22/0x55 to 0x30/0x60 (13% → 19% background)
-  // after a live-review pass at #/dev/accent-polish — label colour untouched,
+  // after a live-review pass at AccentPolishLabPage (archive/design-labs) — label colour untouched,
   // this was purely "darker chip bg, same text" against several structural
   // alternatives (filled solid, no-border, bold outline, indicator dot,
   // underline) that were all rejected outright.

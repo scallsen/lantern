@@ -53,7 +53,7 @@ export const CAP = '#C2C3C7'    // metal caps + hanging loop — PICO-8 6
 // real PICO-8 palette colours (10 yellow, 9 orange, 4 brown) — same
 // discipline BRAND itself follows (PICO-8 8). Used where an ordinal "how far
 // along" ramp needs more range than grey alone — today, just
-// SEGMENT_COLORS below. Explored at #/dev/segment-colors against a
+// SEGMENT_COLORS below. Explored at SegmentColorLabPage (archive/design-labs) against a
 // brand-forward (all-red) ramp, a cool blue ramp, and single-hue-only EMBER
 // and GLOW ramps before landing on this three-step blend.
 //

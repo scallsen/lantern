@@ -517,7 +517,7 @@ function DoneScreen({
 //
 // The book-featured landing screen for #/vocab once a textbook is chosen —
 // this book, its progress, and its chapter list, rather than a bare source
-// picker. Ported from the #/dev/textbook-flow concept bench: cropped cover,
+// picker. Ported from the TextbookFlowLabPage concept bench (archive/design-labs): cropped cover,
 // the segmented primary (redo lives in its chevron menu), and a gate dialog
 // before advancing past a chapter with words still unsent to the SRS.
 
