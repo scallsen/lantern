@@ -45,8 +45,7 @@ function availableBooks(wordCountFor) {
 //
 // Layout is the split browser: a list of books next to (or, on a phone,
 // under) the selected book's cover, description and where to buy it. The
-// alternatives that were tried and rejected are in the bench at
-// #/dev/textbook-picker.
+// alternatives that were tried and rejected are in TextbookPickerLabPage (archive/design-labs).
 //
 // Selection lives here rather than in the browser because on mobile the
 // confirm button is Modal's `footer` — outside the body's scroll, so it
@@ -125,7 +124,7 @@ export function ConfirmButton({ selected, currentId, onChoose, withTitle = false
  * percentage child falls back to auto) and the body scrolled instead. Sticky
  * needs no definite height and no magic numbers.
  */
-export function TextbookBrowser({
+function TextbookBrowser({
   currentId, selectedId, onSelectedChange, onChoose, wordCountFor,
   stacked = false, showConfirm = true,
 }) {

@@ -12,19 +12,6 @@ import PrivacyPage from './pages/PrivacyPage.jsx'
 import DictionaryPage from './pages/DictionaryPage.jsx'
 import DictionaryEntryPage from './pages/DictionaryEntryPage.jsx'
 import AnimeVocabModule from './modules/anime-vocab/AnimeVocabModule.jsx'
-import ToastLabPage from './pages/ToastLabPage.jsx'
-import StyleGuideLabPage from './pages/StyleGuideLabPage.jsx'
-import SettingsLabPage from './pages/SettingsLabPage.jsx'
-import HomeCardsLabPage from './pages/HomeCardsLabPage.jsx'
-import TextbookPickerLabPage from './pages/TextbookPickerLabPage.jsx'
-import HomeFlowLabPage from './pages/HomeFlowLabPage.jsx'
-import TextbookFlowLabPage from './pages/TextbookFlowLabPage.jsx'
-import TrackedStatLabPage from './pages/TrackedStatLabPage.jsx'
-import CoverRotationLabPage from './pages/CoverRotationLabPage.jsx'
-import SecondaryButtonLabPage from './pages/SecondaryButtonLabPage.jsx'
-import DrillFlipLabPage from './pages/DrillFlipLabPage.jsx'
-import SegmentColorLabPage from './pages/SegmentColorLabPage.jsx'
-import AccentPolishLabPage from './pages/AccentPolishLabPage.jsx'
 
 function getRoute() {
   // Strip any query string (e.g. '/vocab-srs/browse?deck=x&manage=1') before
@@ -64,32 +51,5 @@ export default function App() {
   if (route.startsWith('/dictionary/entry/')) return <DictionaryEntryPage entryId={route.slice('/dictionary/entry/'.length)} />
   if (route === '/anime-vocab') return <AnimeVocabModule />
   if (route.startsWith('/anime-vocab/')) return <AnimeVocabModule initialMediaId={route.slice('/anime-vocab/'.length)} />
-  // Temporary dev-only comparison harness for the SRS deck-picker UX, not linked from the dashboard
-  // Temporary dev-only comparison harness for the add-confirmation toast UX, not linked from the dashboard
-  if (route === '/dev/toast-lab') return <ToastLabPage />
-  // Living style guide for shared components (DataList, and whatever joins it next), not linked from the dashboard
-  if (route === '/dev/style-guide') return <StyleGuideLabPage />
-  // Exploration of alternative drill-settings sidebar layouts, not linked from the dashboard
-  if (route === '/dev/settings-lab') return <SettingsLabPage />
-  // Dev-only harness for the home page's two primary cards in every state, not linked from the dashboard
-  if (route === '/dev/home-cards') return <HomeCardsLabPage />
-  // Dev-only bench for change-textbook layout options, not linked from the dashboard
-  if (route === '/dev/textbook-picker') return <TextbookPickerLabPage />
-  // Dev-only bench comparing three shapes for the learn → remember loop (home cards, Vocab/SRS indexes), not linked from the dashboard
-  if (route === '/dev/home-flow') return <HomeFlowLabPage />
-  // Round two of the above for concept B: every open question as a switch on one mock, not linked from the dashboard
-  if (route === '/dev/textbook-flow') return <TextbookFlowLabPage />
-  // Layout options for the future shared per-module "tracked" stat component, not linked from the dashboard
-  if (route === '/dev/tracked-stat') return <TrackedStatLabPage />
-  // Rotating cover-art options for the empty Practice card's top-right square, not linked from the dashboard
-  if (route === '/dev/cover-rotation') return <CoverRotationLabPage />
-  // Comparison of primary+secondary action pairings (PrimaryCard's ActionsRow, mobile stacking), not linked from the dashboard
-  if (route === '/dev/secondary-button-lab') return <SecondaryButtonLabPage />
-  // Dev-only comparison harness for the Review card's flip-position fix and the keyboard-hint options, not linked from the dashboard
-  if (route === '/dev/drill-flip-lab') return <DrillFlipLabPage />
-  // Colour exploration for SEGMENT_COLORS (DistributionBar), not linked from the dashboard
-  if (route === '/dev/segment-colors') return <SegmentColorLabPage />
-  // Accent-red text legibility before/after + loading pulse variants, not linked from the dashboard
-  if (route === '/dev/accent-polish') return <AccentPolishLabPage />
   return <DashboardPage />
 }

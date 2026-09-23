@@ -64,8 +64,8 @@ const IS_CARD = { 'bottom-bar': false, 'bottom-card': true, 'top-bar': false, 't
 
 // A single reusable confirmation toast — "Added N words to X", with an
 // optional inline action (e.g. Undo) — auto-dismissing after `duration`.
-// `variant` picks where and how wide it renders; see ToastLabPage for a
-// side-by-side comparison of all four before wiring one in for real.
+// `variant` picks where and how wide it renders; the Toast stories in
+// Storybook show all four.
 export default function Toast({ open, message, actionLabel, onAction, onDismiss, duration = 5000, variant = 'bottom-card' }) {
   const [closing, setClosing] = useState(false)
   const dismissTimerRef = useRef(null)

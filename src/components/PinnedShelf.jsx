@@ -13,7 +13,7 @@ const TILE_WIDTH = 140
  * the page further away than pinning a 2nd one did.
  *
  * Deliberately not the same component as a "recently read/viewed" history
- * list (see CLAUDE.md's Style Guide section, settled decision #8): this one
+ * list (settled decision #20 in CLAUDE.md): this one
  * is a small set the user explicitly adds to and removes from; a history is
  * an unbounded, auto-populated trail nobody curates. They can share this
  * shelf's bounded-scroll shape later without sharing its remove affordance.

@@ -56,6 +56,14 @@ function frontTextStyle(scale) {
 // Both faces annotate the same way; only whether they do it differs.
 function RubyText({ displayForm, reading, jaFont }) {
   const parts = buildFurigana(displayForm, reading)
+  // buildFurigana returns null not just for a missing reading but whenever the
+  // kana doesn't actually match the kanji's structure (bad word data — e.g. a
+  // mismatched custom word list entry). Fall back to plain text instead of
+  // crashing the whole drill on `parts.map`.
+  if (!parts) {
+    console.warn(`[VocabCard] buildFurigana couldn't match reading "${reading}" to "${displayForm}" — rendering without furigana`)
+    return <Japanese>{displayForm}</Japanese>
+  }
   return (
     <Japanese>
       {parts.map((part, i) => part.type === 'kanji' ? (

@@ -7,7 +7,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 const EXIT_MS = 550
 
 // One rotation timer, shared by every consumer that mounts this hook — the
-// lab page at #/dev/cover-rotation runs four of these side by side (one per
+// CoverRotationLabPage (archive/design-labs) runs four of these side by side (one per
 // animation variant) to compare them without their timers drifting out of
 // sync with each other.
 export function useCoverRotation(count, intervalMs) {
