@@ -93,7 +93,7 @@ export default function TextbookPickerLabPage() {
         height: '100%', display: 'flex', flexDirection: 'column',
         background: BG, fontFamily: FONT, letterSpacing: TRACKING, color: TEXT,
       }}>
-        <PageHeader crumbs={[{ label: 'Lantern', href: '#/' }, { label: 'Dev', href: '#/dev' }, { label: 'Textbook picker' }]} />
+        <PageHeader crumbs={[{ label: 'Design labs', href: '#/' }, { label: 'Textbook picker' }]} />
 
         <main style={{ flex: 1, overflowY: 'auto', padding: SPACE_24 }}>
           <div style={{ maxWidth: 1100, margin: '0 auto' }}>

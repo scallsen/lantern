@@ -168,7 +168,7 @@ function RetiredRow({ item }) {
 export default function SegmentColorLabPage() {
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: '#1E1E1E', fontFamily: FONT, letterSpacing: TRACKING, color: TEXT }}>
-      <PageHeader crumbs={[{ label: 'Lantern', href: '#/' }, { label: 'Dev', href: '#/dev' }, { label: 'Deck-state colour exploration' }]} />
+      <PageHeader crumbs={[{ label: 'Design labs', href: '#/' }, { label: 'Deck-state colour exploration' }]} />
       <main style={{ flex: 1, overflowY: 'auto', padding: '28px 24px 60px' }}>
         <div style={{ maxWidth: 1000, margin: '0 auto' }}>
           <div style={{ fontSize: FS_CONTENT_HEADING, marginBottom: 8 }}>Deck-state distribution colour — the amber directions</div>

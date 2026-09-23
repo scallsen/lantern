@@ -104,7 +104,7 @@ export default function TrackedStatLabPage() {
       height: '100%', display: 'flex', flexDirection: 'column',
       background: BG, fontFamily: FONT, letterSpacing: TRACKING, color: TEXT,
     }}>
-      <PageHeader crumbs={[{ label: 'Lantern', href: '#/' }, { label: 'Dev', href: '#/dev' }, { label: 'Tracked stat' }]} />
+      <PageHeader crumbs={[{ label: 'Design labs', href: '#/' }, { label: 'Tracked stat' }]} />
 
       <main style={{ flex: 1, overflowY: 'auto', padding: SPACE_24 }}>
         <div style={{ maxWidth: 1000, margin: '0 auto' }}>

@@ -1,5 +1,5 @@
 {
-  "name": "japanese-study",
+  "name": "lantern-design-labs",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -7,29 +7,18 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview",
-    "test": "vitest run"
+    "preview": "vite preview"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.107.0",
-    "@xyflow/react": "^12.11.0",
-    "dagre": "^0.8.5",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "ts-fsrs": "^5.4.1",
-    "wanakana": "^5.3.1"
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
-    "@anthropic-ai/sdk": "^0.104.1",
     "@vitejs/plugin-react": "^4.2.1",
-    "esbuild": "^0.28.0",
     "eslint": "^8.57.0",
     "eslint-plugin-react": "^7.34.1",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.6",
-    "kuromoji": "^0.1.2",
-    "playwright": "^1.60.0",
-    "vite": "^5.2.0",
-    "vitest": "^4.1.8"
+    "vite": "^5.2.0"
   }
 }

@@ -1,22 +1,7 @@
 import { useState, useEffect } from 'react'
-import DashboardPage from './pages/DashboardPage.jsx'
-import VocabPage from './pages/VocabPage.jsx'
-import VocabSrsModule from './modules/vocab-srs/VocabSrsModule.jsx'
-import VocabSrsBrowsePage from './modules/vocab-srs/VocabSrsBrowsePage.jsx'
-import ImmersionModule from './modules/immersion/ImmersionModule.jsx'
-import GrammarMapModule from './modules/grammar-map/GrammarMapModule.jsx'
-import StoryModule from './modules/story/StoryModule.jsx'
-import StoryReviewPage from './modules/story/StoryReviewPage.jsx'
-import AccountPage from './pages/AccountPage.jsx'
-import PrivacyPage from './pages/PrivacyPage.jsx'
-import DictionaryPage from './pages/DictionaryPage.jsx'
-import DictionaryEntryPage from './pages/DictionaryEntryPage.jsx'
-import AnimeVocabModule from './modules/anime-vocab/AnimeVocabModule.jsx'
 import DevIndexPage from './pages/DevIndexPage.jsx'
 import ToastLabPage from './pages/ToastLabPage.jsx'
-import StyleGuideLabPage from './pages/StyleGuideLabPage.jsx'
 import SettingsLabPage from './pages/SettingsLabPage.jsx'
-import HomeCardsLabPage from './pages/HomeCardsLabPage.jsx'
 import TextbookPickerLabPage from './pages/TextbookPickerLabPage.jsx'
 import HomeFlowLabPage from './pages/HomeFlowLabPage.jsx'
 import TextbookFlowLabPage from './pages/TextbookFlowLabPage.jsx'
@@ -27,10 +12,23 @@ import DrillFlipLabPage from './pages/DrillFlipLabPage.jsx'
 import SegmentColorLabPage from './pages/SegmentColorLabPage.jsx'
 import AccentPolishLabPage from './pages/AccentPolishLabPage.jsx'
 
+// The archive of retired design explorations. The index is the home page;
+// each lab keeps the #/dev/* path it had while it lived in the app.
+const LABS = {
+  '/dev/toast-lab': ToastLabPage,
+  '/dev/settings-lab': SettingsLabPage,
+  '/dev/textbook-picker': TextbookPickerLabPage,
+  '/dev/home-flow': HomeFlowLabPage,
+  '/dev/textbook-flow': TextbookFlowLabPage,
+  '/dev/tracked-stat': TrackedStatLabPage,
+  '/dev/cover-rotation': CoverRotationLabPage,
+  '/dev/secondary-button-lab': SecondaryButtonLabPage,
+  '/dev/drill-flip-lab': DrillFlipLabPage,
+  '/dev/segment-colors': SegmentColorLabPage,
+  '/dev/accent-polish': AccentPolishLabPage,
+}
+
 function getRoute() {
-  // Strip any query string (e.g. '/vocab-srs/browse?deck=x&manage=1') before
-  // matching — routes below compare on path only; pages that need the query
-  // read window.location.hash directly.
   return window.location.hash.slice(1).split('?')[0] || '/'
 }
 
@@ -51,48 +49,6 @@ export default function App() {
     return () => window.removeEventListener('hashchange', handler)
   }, [])
 
-  if (route === '/') return <DashboardPage />
-  if (route === '/vocab') return <VocabPage />
-  if (route === '/vocab-srs') return <VocabSrsModule />
-  if (route === '/vocab-srs/browse') return <VocabSrsBrowsePage />
-  if (route === '/immersion') return <ImmersionModule />
-  if (route === '/grammar-map') return <GrammarMapModule />
-  if (route === '/story') return <StoryModule />
-  if (route.startsWith('/story/')) return <StoryReviewPage storyId={route.slice('/story/'.length)} />
-  if (route === '/account') return <AccountPage />
-  if (route === '/privacy') return <PrivacyPage />
-  if (route === '/dictionary') return <DictionaryPage />
-  if (route.startsWith('/dictionary/entry/')) return <DictionaryEntryPage entryId={route.slice('/dictionary/entry/'.length)} />
-  if (route === '/anime-vocab') return <AnimeVocabModule />
-  if (route.startsWith('/anime-vocab/')) return <AnimeVocabModule initialMediaId={route.slice('/anime-vocab/'.length)} />
-  // Landing page listing every '/dev/*' lab page below, not linked from the dashboard
-  if (route === '/dev') return <DevIndexPage />
-  // Temporary dev-only comparison harness for the SRS deck-picker UX, not linked from the dashboard
-  // Temporary dev-only comparison harness for the add-confirmation toast UX, not linked from the dashboard
-  if (route === '/dev/toast-lab') return <ToastLabPage />
-  // Living style guide for shared components (DataList, and whatever joins it next), not linked from the dashboard
-  if (route === '/dev/style-guide') return <StyleGuideLabPage />
-  // Exploration of alternative drill-settings sidebar layouts, not linked from the dashboard
-  if (route === '/dev/settings-lab') return <SettingsLabPage />
-  // Dev-only harness for the home page's two primary cards in every state, not linked from the dashboard
-  if (route === '/dev/home-cards') return <HomeCardsLabPage />
-  // Dev-only bench for change-textbook layout options, not linked from the dashboard
-  if (route === '/dev/textbook-picker') return <TextbookPickerLabPage />
-  // Dev-only bench comparing three shapes for the learn → remember loop (home cards, Vocab/SRS indexes), not linked from the dashboard
-  if (route === '/dev/home-flow') return <HomeFlowLabPage />
-  // Round two of the above for concept B: every open question as a switch on one mock, not linked from the dashboard
-  if (route === '/dev/textbook-flow') return <TextbookFlowLabPage />
-  // Layout options for the future shared per-module "tracked" stat component, not linked from the dashboard
-  if (route === '/dev/tracked-stat') return <TrackedStatLabPage />
-  // Rotating cover-art options for the empty Practice card's top-right square, not linked from the dashboard
-  if (route === '/dev/cover-rotation') return <CoverRotationLabPage />
-  // Comparison of primary+secondary action pairings (PrimaryCard's ActionsRow, mobile stacking), not linked from the dashboard
-  if (route === '/dev/secondary-button-lab') return <SecondaryButtonLabPage />
-  // Dev-only comparison harness for the Review card's flip-position fix and the keyboard-hint options, not linked from the dashboard
-  if (route === '/dev/drill-flip-lab') return <DrillFlipLabPage />
-  // Colour exploration for SEGMENT_COLORS (DistributionBar), not linked from the dashboard
-  if (route === '/dev/segment-colors') return <SegmentColorLabPage />
-  // Accent-red text legibility before/after + loading pulse variants, not linked from the dashboard
-  if (route === '/dev/accent-polish') return <AccentPolishLabPage />
-  return <DashboardPage />
+  const Lab = LABS[route]
+  return Lab ? <Lab /> : <DevIndexPage />
 }

@@ -19,7 +19,7 @@ import { ModuleThemeProvider, useAccent } from '../context/ModuleThemeContext.js
 import { useIsMobile } from '../hooks/useIsMobile.js'
 import { resolveTextbookState } from '../lib/textbookProgress.js'
 import { cardFormOf } from '../lib/displayForm.js'
-import { useDictionaryEntries } from '../hooks/useDictionaryEntries.js'
+import DICTIONARY_SNAPSHOT from '../data/dictionarySnapshot.json'
 import { cardGloss } from '../utils/dictionaryEntryLookup.js'
 import { getTextbook, COVER_GUTTER_FRACTION } from '../data/textbooks.js'
 import { WORD_DATA } from '../data/wordData.js'
@@ -228,7 +228,7 @@ export default function TextbookFlowLabPage() {
       height: '100%', display: 'flex', flexDirection: 'column',
       background: BG, fontFamily: FONT, letterSpacing: TRACKING, color: TEXT,
     }}>
-      <PageHeader crumbs={[{ label: 'Lantern', href: '#/' }, { label: 'Dev', href: '#/dev' }, { label: 'Home flow', href: '#/dev/home-flow' }, { label: 'Textbook page' }]} />
+      <PageHeader crumbs={[{ label: 'Design labs', href: '#/' }, { label: 'Home flow', href: '#/dev/home-flow' }, { label: 'Textbook page' }]} />
 
       <main style={{ flex: 1, overflowY: 'auto', padding: isMobile ? SPACE_16 : SPACE_24 }}>
         <div style={{ maxWidth: 1160, margin: '0 auto' }}>
@@ -641,8 +641,9 @@ function PreviewScreen({ mock }) {
   const notIn = words.filter(w => !inSrs.has(w.id))
 
   // Genki words carry only a jmdictId; form, reading and gloss come from
-  // the dictionary, exactly as the drill resolves them.
-  const { entries } = useDictionaryEntries(words.map(w => w.jmdictId))
+  // the dictionary, exactly as the drill resolves them — here from a frozen
+  // snapshot, so this archive needs no database connection.
+  const entries = DICTIONARY_SNAPSHOT
   const formOf = w => cardFormOf(w, entries[w.jmdictId]).form ?? '…'
   const readingOf = w => cardFormOf(w, entries[w.jmdictId]).reading ?? null
   const glossOf = w => {

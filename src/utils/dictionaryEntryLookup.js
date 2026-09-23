@@ -1,58 +1,10 @@
-import { supabase } from '../lib/supabase.js'
 import { displayFormOf } from '../lib/displayForm.js'
 
 export { displayFormOf }
 
-const cache = new Map()
-const attempted = new Set()
-
-// `misc0` is only sense 0's misc array, not the whole `senses` blob — it costs
-// a few bytes per row and carries the `uk` flag `displayFormOf` needs. The full
-// blob is deliberately absent: measured over 200 common entries it takes a row
-// from 294 to 488 bytes, and every consumer of this lookup would pay that —
-// including the anime episode browser, which resolves hundreds of ids at once —
-// for something only the handful of cards that name a sense read. Those go
-// through fetchSenseGlosses below instead.
-const SELECT = 'id, primary_form, preferred_form, kana_forms, gloss_en, pos, common, jlpt_level, jlpt_level_inferred, misc0:senses->0->misc'
-
-// Returns { [jmdictId]: row|null } for every id already resolved (found or not).
-export async function fetchDictionaryEntries(ids) {
-  const unique = [...new Set(ids)].filter(Boolean)
-  const missing = unique.filter(id => !attempted.has(id))
-  if (missing.length > 0 && supabase) {
-    const { data } = await supabase.from('dictionary').select(SELECT).in('id', missing)
-    missing.forEach(id => attempted.add(id))
-    if (data) for (const row of data) cache.set(row.id, row)
-  }
-  const result = {}
-  for (const id of unique) {
-    if (attempted.has(id)) result[id] = cache.get(id) ?? null
-  }
-  return result
-}
-
-const senseCache = new Map()
-const senseAttempted = new Set()
-
-// Returns { [jmdictId]: gloss[][] } — the gloss list of each sense, for ids a
-// word points a sense at. Separate from fetchDictionaryEntries on purpose (see
-// SELECT above): ~87 of the 1,861 bundled words name a sense, so this fetches a
-// few rows per drill rather than fattening every dictionary lookup in the app.
-export async function fetchSenseGlosses(ids) {
-  const unique = [...new Set(ids)].filter(Boolean)
-  const missing = unique.filter(id => !senseAttempted.has(id))
-  if (missing.length > 0 && supabase) {
-    const { data } = await supabase.from('dictionary').select('id, senses').in('id', missing)
-    missing.forEach(id => senseAttempted.add(id))
-    if (data) for (const row of data) senseCache.set(row.id, (row.senses ?? []).map(s => s?.gloss ?? []))
-  }
-  const result = {}
-  for (const id of unique) {
-    if (senseAttempted.has(id)) result[id] = senseCache.get(id) ?? null
-  }
-  return result
-}
-
+// Archive copy: the live Supabase lookups are gone. The labs on this branch
+// read a frozen snapshot (src/data/dictionarySnapshot.json) instead, so only
+// the pure formatting helpers remain.
 
 // Concise definition text for card display — first couple of gloss segments,
 // further capped by character count so a handful of long senses (e.g. 枚数's
