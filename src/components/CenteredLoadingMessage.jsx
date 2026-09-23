@@ -11,7 +11,7 @@ import { FONT, TRACKING, TEXT_MUTED, FS_BASE, LANTERN_ON, LANTERN_SIZES } from '
 // each one. A single lit sprite breathing in opacity + a synced soft glow
 // (`.lantern-pulse`, global.css) — not a crossfade with the off sprite, see
 // the class's own comment for why. Explored against the original hard
-// on/off flicker at #/dev/accent-polish before landing here.
+// on/off flicker at AccentPolishLabPage (archive/design-labs) before landing here.
 export default function CenteredLoadingMessage({ text }) {
   return (
     <div style={{ textAlign: 'center', padding: '48px 0', color: TEXT_MUTED, fontFamily: FONT, fontSize: FS_BASE, letterSpacing: TRACKING }}>

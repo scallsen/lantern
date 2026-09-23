@@ -9,7 +9,7 @@ import { FONT, TRACKING, TEXT_MUTED, FS_CAPTION, SPACE_4, SPACE_8, SEGMENT_COLOR
  * order, zero-count segments dropped. Colours come from SEGMENT_COLORS by
  * key by default, so callers pass data, not styling; `colors` is an
  * override for comparing candidate palettes against the real component
- * (see #/dev/segment-colors) — production call sites never pass it.
+ * (see SegmentColorLabPage on archive/design-labs) — production call sites never pass it.
  */
 export default function DistributionBar({ segments, showLegend = true, colors = SEGMENT_COLORS }) {
   const visible = segments.filter(s => s.count > 0)

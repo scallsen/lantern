@@ -53,7 +53,7 @@ export const CAP = '#C2C3C7'    // metal caps + hanging loop — PICO-8 6
 // real PICO-8 palette colours (10 yellow, 9 orange, 4 brown) — same
 // discipline BRAND itself follows (PICO-8 8). Used where an ordinal "how far
 // along" ramp needs more range than grey alone — today, just
-// SEGMENT_COLORS below. Explored at #/dev/segment-colors against a
+// SEGMENT_COLORS below. Explored at SegmentColorLabPage (archive/design-labs) against a
 // brand-forward (all-red) ramp, a cool blue ramp, and single-hue-only EMBER
 // and GLOW ramps before landing on this three-step blend.
 //
@@ -152,10 +152,9 @@ export const CONTENT_READING = 760   // long-form Japanese prose + furigana (Sto
 // card+button widget, not prose/list content), GrammarMapModule's full-bleed
 // canvas, and 820 — the home-screen/dashboard width shared by VocabSrsModule's
 // Reviews home and VocabPage's TextbookHomeScreen, already consistent between
-// its real call sites (and rehearsed at the same value across the in-progress
-// TextbookFlowLabPage/HomeFlowLabPage redesign) — a legitimate 4th bucket
-// candidate, just not part of this pass. The /dev/* lab pages' own
-// preview-column widths (700 etc.) are internal tooling, not app content.
+// its real call sites (and rehearsed at the same value in the
+// TextbookFlowLabPage/HomeFlowLabPage explorations on archive/design-labs) —
+// a legitimate 4th bucket candidate, just not part of this pass.
 
 // Semantic tones (Tailwind-derived light tints for dark text — see the
 // DRILL_COLORS note below for why the drill palette is NOT these). Badge and

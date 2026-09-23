@@ -30,6 +30,14 @@ describe('initialDrillSettings', () => {
     expect(initialDrillSettings('vocab')).toEqual(DRILL_SETTINGS_DEFAULTS)
   })
 
+  // Regression: migrateAudio's readBool fallbacks (the old settings' own
+  // defaults) were reached even with zero stored keys, resolving a brand-new
+  // SRS install's frontAudio to true instead of falling through to
+  // DRILL_SETTINGS_DEFAULTS.
+  it('falls back to the defaults for a fresh SRS install too', () => {
+    expect(initialDrillSettings('srs')).toEqual(DRILL_SETTINGS_DEFAULTS)
+  })
+
   // Spelled out rather than compared to the constant: these are a product
   // decision (front gives nothing away, back explains itself, interface keeps
   // only the feedback that responds to an answer), so a change to any of them

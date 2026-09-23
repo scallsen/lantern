@@ -16,9 +16,9 @@ import {
 
 // The home page's two big cards, plus SegmentedPrimary/ActionsRow/
 // chapterPrimaryAction, which the vocab training page's own header reuses —
-// they live here rather than inside DashboardPage so the dev lab at
-// #/dev/home-cards can render every state side by side against the exact
-// same components the real page uses, and so both pages show the same
+// they live here rather than inside DashboardPage so the Storybook stories
+// (NewCard/ReviewCard/HomeCardPairs) can render every state against the
+// exact same components the real page uses, and so both pages show the same
 // primary action for the chapter under the tracker.
 
 
@@ -149,7 +149,7 @@ export function TextbookCover({ icon, accent, onChangeTextbook }) {
 // other cover art occupies (TextbookCover), instead of a
 // full-width marquee, so the card's shape never changes across states.
 // Explored side by side with fade/slide/flip alternatives at
-// #/dev/cover-rotation before picking this one ("pop in and replace").
+// CoverRotationLabPage (archive/design-labs) before picking this one ("pop in and replace").
 const ROTATING_COVERS = TEXTBOOKS.filter(book => book.icon && !book.personal)
 const COVER_ROTATE_MS = 2600
 
