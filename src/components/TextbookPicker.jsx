@@ -124,7 +124,7 @@ export function ConfirmButton({ selected, currentId, onChoose, withTitle = false
  * percentage child falls back to auto) and the body scrolled instead. Sticky
  * needs no definite height and no magic numbers.
  */
-export function TextbookBrowser({
+function TextbookBrowser({
   currentId, selectedId, onSelectedChange, onChoose, wordCountFor,
   stacked = false, showConfirm = true,
 }) {
