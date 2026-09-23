@@ -12,6 +12,7 @@ import PrivacyPage from './pages/PrivacyPage.jsx'
 import DictionaryPage from './pages/DictionaryPage.jsx'
 import DictionaryEntryPage from './pages/DictionaryEntryPage.jsx'
 import AnimeVocabModule from './modules/anime-vocab/AnimeVocabModule.jsx'
+import DevIndexPage from './pages/DevIndexPage.jsx'
 import ToastLabPage from './pages/ToastLabPage.jsx'
 import StyleGuideLabPage from './pages/StyleGuideLabPage.jsx'
 import SettingsLabPage from './pages/SettingsLabPage.jsx'
@@ -64,6 +65,8 @@ export default function App() {
   if (route.startsWith('/dictionary/entry/')) return <DictionaryEntryPage entryId={route.slice('/dictionary/entry/'.length)} />
   if (route === '/anime-vocab') return <AnimeVocabModule />
   if (route.startsWith('/anime-vocab/')) return <AnimeVocabModule initialMediaId={route.slice('/anime-vocab/'.length)} />
+  // Landing page listing every '/dev/*' lab page below, not linked from the dashboard
+  if (route === '/dev') return <DevIndexPage />
   // Temporary dev-only comparison harness for the SRS deck-picker UX, not linked from the dashboard
   // Temporary dev-only comparison harness for the add-confirmation toast UX, not linked from the dashboard
   if (route === '/dev/toast-lab') return <ToastLabPage />

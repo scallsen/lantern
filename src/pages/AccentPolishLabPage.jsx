@@ -364,7 +364,7 @@ function PulseSection() {
 export default function AccentPolishLabPage() {
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: '#1E1E1E', fontFamily: FONT, letterSpacing: TRACKING, color: TEXT }}>
-      <PageHeader crumbs={[{ label: 'Lantern', href: '#/' }, { label: 'Accent polish' }]} />
+      <PageHeader crumbs={[{ label: 'Lantern', href: '#/' }, { label: 'Dev', href: '#/dev' }, { label: 'Accent polish' }]} />
       <main style={{ flex: 1, overflowY: 'auto', padding: '28px 24px 60px' }}>
         <div style={{ maxWidth: 1000, margin: '0 auto' }}>
           <div style={{ fontSize: FS_CONTENT_HEADING, marginBottom: 28 }}>Accent polish — readability, chip style &amp; loading pulse</div>

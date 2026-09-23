@@ -1139,7 +1139,7 @@ export default function StyleGuideLabPage() {
 
   return (
     <div style={{ width: '100vw', height: '100dvh', background: BG, fontFamily: FONT, letterSpacing: TRACKING, display: 'flex', flexDirection: 'column', color: TEXT, overflow: 'hidden' }}>
-      <PageHeader crumbs={[{ label: 'Lantern', href: '#/' }, { label: 'Style guide' }]} />
+      <PageHeader crumbs={[{ label: 'Lantern', href: '#/' }, { label: 'Dev', href: '#/dev' }, { label: 'Style guide' }]} />
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
         <nav style={{ width: 220, flexShrink: 0, borderRight: `1px solid ${BORDER}`, overflowY: 'auto', padding: '20px 12px' }}>
           {NAV.map(section => (

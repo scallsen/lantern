@@ -228,7 +228,7 @@ export default function TextbookFlowLabPage() {
       height: '100%', display: 'flex', flexDirection: 'column',
       background: BG, fontFamily: FONT, letterSpacing: TRACKING, color: TEXT,
     }}>
-      <PageHeader crumbs={[{ label: 'Lantern', href: '#/' }, { label: 'Home flow', href: '#/dev/home-flow' }, { label: 'Textbook page' }]} />
+      <PageHeader crumbs={[{ label: 'Lantern', href: '#/' }, { label: 'Dev', href: '#/dev' }, { label: 'Home flow', href: '#/dev/home-flow' }, { label: 'Textbook page' }]} />
 
       <main style={{ flex: 1, overflowY: 'auto', padding: isMobile ? SPACE_16 : SPACE_24 }}>
         <div style={{ maxWidth: 1160, margin: '0 auto' }}>
