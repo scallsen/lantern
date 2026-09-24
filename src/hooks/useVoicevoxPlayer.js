@@ -26,7 +26,13 @@ export function useVoicevoxPlayer() {
     let entry = cache.get(url)
     if (!entry) {
       entry = fetch(url)
-        .then(res => res.arrayBuffer())
+        .then(res => {
+          // A missing clip returns a JSON error body with 200-ish framing from
+          // some CDNs; without this it reaches decodeAudioData and fails there,
+          // which reads as a decode bug rather than "no audio for this word".
+          if (!res.ok) throw new Error(`audio ${res.status}`)
+          return res.arrayBuffer()
+        })
         .then(async data => (await getCtx(ctxRef)).decodeAudioData(data))
       cache.set(url, entry)
     }
@@ -52,19 +58,27 @@ export function useVoicevoxPlayer() {
     }
   }
 
-  async function play(url) {
+  // Resolves true when something was actually played, so a caller can fall back
+  // to speech synthesis. It used to swallow every failure, which meant a word
+  // whose clip was missing played nothing at all rather than falling back.
+  // `onEnded` (e.g. SRS's word-then-sentence sequencing) fires once this clip
+  // finishes on its own — guarded by the same token check so a later
+  // play()/stop() that superseded this one doesn't also fire a stale chain.
+  async function play(url, { onEnded } = {}) {
     stop()
     const token = tokenRef.current
     try {
       const [ctx, buffer] = await Promise.all([getCtx(ctxRef), loadBuffer(url)])
-      if (token !== tokenRef.current) return // superseded by a newer play()/stop() while loading
+      if (token !== tokenRef.current) return true // superseded by a newer play()/stop(); not a failure
       const source = ctx.createBufferSource()
       source.buffer = buffer
       source.connect(ctx.destination)
+      if (onEnded) source.onended = () => { if (token === tokenRef.current) onEnded() }
       source.start()
       sourceRef.current = source
+      return true
     } catch {
-      // network/decode failure — nothing to play
+      return false
     }
   }
 

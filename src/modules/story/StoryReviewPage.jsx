@@ -1,14 +1,15 @@
 import { useState, useMemo, useEffect } from 'react'
 import PageHeader from '../../components/PageHeader.jsx'
 import AuthSlot from '../../components/AuthSlot.jsx'
+import CenteredLoadingMessage from '../../components/CenteredLoadingMessage.jsx'
 import { TokenizedBody, WordPopup } from '../../components/JapaneseReader.jsx'
 import { NewspaperLayout, ChatLayout, DiaryLayout, InterviewLayout, LetterLayout, PostcardLayout } from './StoryLayouts.jsx'
 import Button from '../../components/Button.jsx'
+import Japanese from '../../components/Japanese.jsx'
 import ToggleButton from '../../components/ToggleButton.jsx'
 import { BG } from './storyUI.jsx'
 import { buildVocabMap } from '../../utils/vocabMap.js'
-import { FONT, TRACKING, TEXT, TEXT_MUTED, FS_ARTICLE_BODY, FS_HEADING, FS_CONTENT_HEADING } from '../../data/theme.js'
-import { MODULES } from '../../data/modules.js'
+import { FONT, TRACKING, TEXT, TEXT_MUTED, FS_ARTICLE_BODY, FS_HEADING, FS_CONTENT_HEADING, BRAND, CONTENT_READING } from '../../data/theme.js'
 import { ModuleThemeProvider } from '../../context/ModuleThemeContext.jsx'
 // Cross-module write: creates cards in vocab-srs progress namespace (same pattern as ImmersionReader)
 import { createCard } from '../vocab-srs/srs.js'
@@ -19,7 +20,7 @@ import { supabase } from '../../lib/supabase.js'
 import { lookupVocabulary } from './lookupVocabulary.js'
 import { useIsMobile } from '../../hooks/useIsMobile.js'
 
-const STORY_ACCENT = MODULES.find(m => m.id === 'story').accent
+const STORY_ACCENT = BRAND
 
 const FORMAT_LAYOUTS = {
   news: NewspaperLayout,
@@ -126,7 +127,7 @@ function StoryReview({ storyId }) {
   }
 
   const crumbs = [
-    { label: 'Japanese Study', href: '#/' },
+    { label: 'Lantern', href: '#/' },
     { label: 'Story generator', href: '#/story' },
     { label: 'Review story' },
   ]
@@ -135,9 +136,13 @@ function StoryReview({ storyId }) {
     return (
       <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: BG, color: TEXT, fontFamily: FONT, letterSpacing: TRACKING }}>
         <PageHeader crumbs={crumbs} rightSlot={<AuthSlot />} />
-        <div style={{ maxWidth: 760, margin: '0 auto', padding: '24px 20px', fontSize: FS_HEADING, color: TEXT_MUTED }}>
-          {storyLoading ? 'Loading…' : storyError || 'Story not found.'}
-        </div>
+        {storyLoading ? (
+          <CenteredLoadingMessage text="Loading" />
+        ) : (
+          <div style={{ maxWidth: CONTENT_READING, margin: '0 auto', padding: '24px 20px', fontSize: FS_HEADING, color: TEXT_MUTED }}>
+            {storyError || 'Story not found.'}
+          </div>
+        )}
       </div>
     )
   }
@@ -161,11 +166,11 @@ function StoryReview({ storyId }) {
       )}
 
       <PageHeader crumbs={crumbs} rightSlot={<AuthSlot />} />
-      <div style={{ flex: 1, overflowY: 'auto' }} onScroll={() => setPopup(null)}>
-        <div style={{ maxWidth: 760, margin: '0 auto', padding: isMobile ? '18px 14px 70px' : '24px 20px 80px' }}>
+      <div style={{ flex: 1, overflowY: 'auto', scrollbarGutter: 'stable both-edges' }} onScroll={() => setPopup(null)}>
+        <div style={{ maxWidth: CONTENT_READING, margin: '0 auto', padding: isMobile ? '18px 14px 70px' : '24px 20px 80px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
             {!Layout && (
-              <h2 style={{ fontSize: FS_CONTENT_HEADING, fontWeight: 'normal', lineHeight: 1.5, margin: 0, flex: '1 1 200px' }}>{story.title}</h2>
+              <Japanese as="h2" style={{ fontSize: FS_CONTENT_HEADING, fontWeight: 'normal', lineHeight: 1.5, margin: 0, flex: '1 1 200px' }}>{story.title}</Japanese>
             )}
             <div style={{ display: 'flex', gap: 10, marginLeft: 'auto' }}>
               {hasTokens && (

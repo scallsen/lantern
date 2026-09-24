@@ -8,13 +8,10 @@ import GrammarMapModule from './modules/grammar-map/GrammarMapModule.jsx'
 import StoryModule from './modules/story/StoryModule.jsx'
 import StoryReviewPage from './modules/story/StoryReviewPage.jsx'
 import AccountPage from './pages/AccountPage.jsx'
+import PrivacyPage from './pages/PrivacyPage.jsx'
 import DictionaryPage from './pages/DictionaryPage.jsx'
 import DictionaryEntryPage from './pages/DictionaryEntryPage.jsx'
 import AnimeVocabModule from './modules/anime-vocab/AnimeVocabModule.jsx'
-import ToastLabPage from './pages/ToastLabPage.jsx'
-import StyleGuideLabPage from './pages/StyleGuideLabPage.jsx'
-import HomeCardsLabPage from './pages/HomeCardsLabPage.jsx'
-import TextbookPickerLabPage from './pages/TextbookPickerLabPage.jsx'
 
 function getRoute() {
   // Strip any query string (e.g. '/vocab-srs/browse?deck=x&manage=1') before
@@ -49,18 +46,10 @@ export default function App() {
   if (route === '/story') return <StoryModule />
   if (route.startsWith('/story/')) return <StoryReviewPage storyId={route.slice('/story/'.length)} />
   if (route === '/account') return <AccountPage />
+  if (route === '/privacy') return <PrivacyPage />
   if (route === '/dictionary') return <DictionaryPage />
   if (route.startsWith('/dictionary/entry/')) return <DictionaryEntryPage entryId={route.slice('/dictionary/entry/'.length)} />
   if (route === '/anime-vocab') return <AnimeVocabModule />
   if (route.startsWith('/anime-vocab/')) return <AnimeVocabModule initialMediaId={route.slice('/anime-vocab/'.length)} />
-  // Temporary dev-only comparison harness for the SRS deck-picker UX, not linked from the dashboard
-  // Temporary dev-only comparison harness for the add-confirmation toast UX, not linked from the dashboard
-  if (route === '/dev/toast-lab') return <ToastLabPage />
-  // Living style guide for shared components (DataList, and whatever joins it next), not linked from the dashboard
-  if (route === '/dev/style-guide') return <StyleGuideLabPage />
-  // Dev-only harness for the home page's two primary cards in every state, not linked from the dashboard
-  if (route === '/dev/home-cards') return <HomeCardsLabPage />
-  // Dev-only bench for change-textbook layout options, not linked from the dashboard
-  if (route === '/dev/textbook-picker') return <TextbookPickerLabPage />
   return <DashboardPage />
 }

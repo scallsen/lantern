@@ -4,7 +4,7 @@ import SelectAllCheckbox from './SelectAllCheckbox.jsx'
 import NumberField from './NumberField.jsx'
 import Button from './Button.jsx'
 import TextInput from './TextInput.jsx'
-import { FONT, TRACKING, TEXT, TEXT_MUTED, FS_BASE, FS_CAPTION, SPACE_4, SPACE_8, SPACE_12, SPACE_16 } from '../data/theme.js'
+import { FONT, TRACKING, TEXT, TEXT_MUTED, FS_BASE, FS_CAPTION, SPACE_4, SPACE_8, SPACE_12, SPACE_16, CONTENT_STANDARD } from '../data/theme.js'
 import { useAccent } from '../context/ModuleThemeContext.jsx'
 
 const SURFACE = '#2A2A2A'
@@ -27,6 +27,7 @@ function Cell({ column, row, editable, onFieldChange }) {
         onChange={e => onFieldChange(row, column.key, e.target.value)}
         onClick={e => e.stopPropagation()}
         placeholder={typeof column.placeholder === 'function' ? column.placeholder(row) : column.placeholder}
+        lang={column.lang}
         style={{
           ...cellStyle(column),
           background: 'rgba(255,255,255,0.06)',
@@ -43,6 +44,8 @@ function Cell({ column, row, editable, onFieldChange }) {
 
   return (
     <div
+      lang={column.lang}
+      translate={column.lang === 'ja' ? 'no' : undefined}
       style={{
         ...cellStyle(column),
         display: 'flex',
@@ -309,7 +312,7 @@ export default function DataList({
   emptyMessage = 'Nothing here yet.',
   gap = SPACE_12,
   padding = '10px 14px', // matches SelectableRow's own default — the two must stay visually consistent
-  maxWidth = 640,
+  maxWidth = CONTENT_STANDARD,
   rowState,
 }) {
   const selected = selection?.selected ?? new Set()
@@ -324,7 +327,7 @@ export default function DataList({
             <TextInput
               value={search.value}
               onChange={search.onChange}
-              placeholder={search.placeholder ?? 'Search...'}
+              placeholder={search.placeholder ?? 'Search'}
               variant="bare"
             />
           </div>

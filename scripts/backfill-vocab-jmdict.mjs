@@ -1,15 +1,13 @@
 #!/usr/bin/env node
 /**
  * Backfills a `jmdictId` field onto every Vocab Drill word (src/data/words/*.json)
- * and bundled SRS deck entry (keigo.json) by matching it against
- * the Supabase `dictionary` table. This is the linkage that lets the app treat
- * `dictionary` as the source of truth for definitions/readings.
+ * by matching it against the Supabase `dictionary` table. This is the linkage
+ * that lets the app treat `dictionary` as the source of truth for
+ * definitions/readings.
  *
  * Matching requires the candidate dictionary row's kana_forms to include the
  * word's own reading whenever we have one to check — a primary_form hit with no
  * reading match is left UNMATCHED rather than risking a wrong-homograph link.
- * keigo.json has no separate kana field (front is already the spoken form), so
- * its matches skip reading verification — spot-check those in the report.
  *
  * Run: node --env-file=.env scripts/backfill-vocab-jmdict.mjs
  * Writes unmatched entries to backfill-vocab-jmdict-report.json for manual
@@ -21,7 +19,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js'
-import { readFileSync, writeFileSync } from 'fs'
+import { readFileSync, writeFileSync, existsSync } from 'fs'
 import { resolveJmdictMatches, matchKey } from '../src/lib/dictionaryLookup.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL
@@ -39,17 +37,21 @@ const TARGETS = [
   { path: 'src/data/words/nsm_n3_i4_vocab.json', formField: 'kanji', kanaField: 'kana' },
   { path: 'src/data/words/nsm_n3_i5_vocab.json', formField: 'kanji', kanaField: 'kana' },
   { path: 'src/data/words/nsm_n2_a1_vocab.json', formField: 'kanji', kanaField: 'kana' },
-  { path: 'src/modules/vocab-srs/decks/keigo.json', formField: 'front', kanaField: null },
 ]
+
+// The course word lists moved to per-account storage, so these paths may
+// no longer exist. Skip what is absent rather than failing to start.
+const TARGETS_PRESENT = TARGETS.filter(x => existsSync(x.path))
+if (TARGETS_PRESENT.length < TARGETS.length) {
+  console.warn(`Skipping ${TARGETS.length - TARGETS_PRESENT.length} word list(s) that are no longer in this repo`)
+}
 
 async function processTarget(target, report) {
   console.log(`\nProcessing ${target.path}`)
   const entries = JSON.parse(readFileSync(target.path, 'utf8'))
 
   // When there's no separate reading field, the form itself is already kana
-  // (see CLAUDE.md's "use kana if no kanji form" convention). keigo.json has no
-  // reading concept at all (kanaField: null), so its matches skip reading
-  // verification entirely.
+  // (see CLAUDE.md's "use kana if no kanji form" convention).
   const words = entries.map(e => ({
     form: e[target.formField],
     kana: target.kanaField ? (e[target.kanaField] ?? e[target.formField]) : null,
@@ -80,7 +82,7 @@ async function processTarget(target, report) {
 
 async function main() {
   const report = []
-  for (const target of TARGETS) {
+  for (const target of TARGETS_PRESENT) {
     await processTarget(target, report)
   }
 

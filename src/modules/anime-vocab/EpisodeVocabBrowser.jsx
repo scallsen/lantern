@@ -2,10 +2,10 @@ import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../../lib/supabase.js'
 import { syncEpisodeVocab } from './api.js'
 import { useDictionaryEntries } from '../../hooks/useDictionaryEntries.js'
-import { briefGloss } from '../../utils/dictionaryEntryLookup.js'
 import { useProgress } from '../../hooks/useProgress.js'
 import { migrateProgress } from '../vocab-srs/migrate.js'
 import { buildJmdictIdCardIndex, resolveStatus } from './srsStatusResolver.js'
+import { isDictReady, buildEpisodeVocabRow, buildDrillWords } from './episodeVocabRows.js'
 import Button from '../../components/Button.jsx'
 import DataList from '../../components/DataList.jsx'
 import ActionBar from '../../components/ActionBar.jsx'
@@ -14,7 +14,7 @@ import { Chip, default as ChipSelector } from '../../components/Chip.jsx'
 import FilterCard, { FilterRow } from '../../components/FilterCard.jsx'
 import CenteredLoadingMessage from '../../components/CenteredLoadingMessage.jsx'
 import { useDelayedLoading } from '../../hooks/useDelayedLoading.js'
-import { FONT, TRACKING, TEXT, TEXT_MUTED, FS_BASE, FS_BADGE, FS_LIST_TITLE, KANJI_FONT } from '../../data/theme.js'
+import { FONT, TRACKING, TEXT, TEXT_MUTED, FS_BASE, FS_BADGE, FS_LIST_TITLE, KANJI_FONT, CONTENT_STANDARD } from '../../data/theme.js'
 import { useAccent } from '../../context/ModuleThemeContext.jsx'
 
 const DEFAULT_WORD_LIMIT = 20
@@ -26,22 +26,14 @@ const DEFAULT_WORD_LIMIT = 20
 // alone, since those start looking like genuinely useful/notable vocabulary.
 const GENERIC_RANK_THRESHOLD = 200
 
-// Community-estimated JLPT levels (no official list exists — see
-// scripts/import-jlpt-vocab.mjs), so a word with no jlpt_level match is left
-// in rather than assumed easy — the level filter only ever removes words we
-// have positive (if approximate) data for.
-const JLPT_LEVEL_ORDER = { N5: 1, N4: 2, N3: 3, N2: 4, N1: 5 }
-// "any" isn't a threshold point (it means "disable the filter"), so it's a
-// standalone Chip beside the 4-option ChipSelector rather than a 5th option
-// — passing it as an option would either misrender (thresholdIndex -1 shows
-// nothing active, not "everything") or, worse, light every chip if it ever
-// matched index 0.
-const JLPT_CHIP_OPTIONS = [
-  { value: 'N4', label: 'N4' },
-  { value: 'N3', label: 'N3' },
-  { value: 'N2', label: 'N2' },
-  { value: 'N1', label: 'N1' },
-]
+// Community-estimated JLPT levels — no official list exists, see
+// scripts/import-jlpt-vocab.mjs. Free multi-select, not a cumulative
+// threshold: levels are buckets you pick out of, not a range you scan down
+// from, and a threshold made N5 unselectable (it just meant "any"). Same
+// "Any" + multi-ChipSelector shape as MediaSearch's Difficulty row, down to
+// its click semantics — see toggleJlptLevel.
+const ALL_JLPT_LEVELS = ['N5', 'N4', 'N3', 'N2', 'N1']
+const JLPT_CHIP_OPTIONS = ALL_JLPT_LEVELS.map(level => ({ value: level, label: level }))
 
 const STATUS_LABEL = { new: 'New', learning: 'Learning', young: 'Young', mature: 'Mature', relearning: 'Relearning', 'not-in-deck': null }
 const STATUS_COLOR = { new: TEXT_MUTED, learning: '#fbbf24', young: '#60a5fa', mature: '#4ade80', relearning: '#f87171' }
@@ -51,8 +43,8 @@ const STATUS_COLOR = { new: TEXT_MUTED, learning: '#fbbf24', young: '#60a5fa', m
 // (accent/success/warning/danger/neutral), and this 4-color status palette
 // isn't reused elsewhere, so it doesn't earn a place in Badge's fixed set.
 const WORD_COLUMNS = [
-  { key: 'displayForm', width: 90, fontFamily: KANJI_FONT, fontSize: FS_LIST_TITLE, render: row => row.displayForm },
-  { key: 'reading', width: 70, fontFamily: KANJI_FONT, tone: 'muted', render: row => (row.reading && row.reading !== row.displayForm ? row.reading : '') },
+  { key: 'displayForm', width: 90, fontFamily: KANJI_FONT, fontSize: FS_LIST_TITLE, lang: 'ja', render: row => row.displayForm },
+  { key: 'reading', width: 70, fontFamily: KANJI_FONT, tone: 'muted', lang: 'ja', render: row => (row.reading && row.reading !== row.displayForm ? row.reading : '') },
   { key: 'gloss', flex: 1, tone: 'muted', render: row => row.gloss ?? (row.jmdict_id ? '' : '(no dictionary match)') },
   {
     key: 'badges', width: 160,
@@ -91,7 +83,7 @@ export default function EpisodeVocabBrowser({ media, episode, onStartDrill, onLo
   const [includeGrammar, setIncludeGrammar] = useState(false)
   const [includeNames, setIncludeNames] = useState(false)
   const [includeGeneric, setIncludeGeneric] = useState(false)
-  const [minJlptLevel, setMinJlptLevel] = useState('any')
+  const [jlptLevels, setJlptLevels] = useState(() => new Set(ALL_JLPT_LEVELS))
   const [includeKnown, setIncludeKnown] = useState(true)
   const [lookupQuery, setLookupQuery] = useState('')
   const [selected, setSelected] = useState(new Set())
@@ -106,6 +98,11 @@ export default function EpisodeVocabBrowser({ media, episode, onStartDrill, onLo
 
   const jmdictIds = useMemo(() => occurrences.map(o => o.jmdict_id).filter(Boolean), [occurrences])
   const { entries: dictEntries } = useDictionaryEntries(jmdictIds, true)
+  // Every jmdict_id must have resolved before a drill can start — rows built
+  // from a not-yet-loaded dictEntry fall back to raw Jiten surface_form/no
+  // gloss (see episodeVocabRows.js), and Start Drill snapshots `rows` at
+  // click time with no re-resolution once the drill is running.
+  const dictReady = isDictReady(jmdictIds, dictEntries)
 
   useEffect(() => {
     let cancelled = false
@@ -132,19 +129,9 @@ export default function EpisodeVocabBrowser({ media, episode, onStartDrill, onLo
     return () => { cancelled = true }
   }, [episode.id, episode.synced_at])
 
-  const rows = useMemo(() => occurrences.map(o => {
-    const dictEntry = o.jmdict_id ? dictEntries[o.jmdict_id] : null
-    const status = resolveStatus(o.jmdict_id, cardIndex)
-    return {
-      ...o,
-      displayForm: dictEntry?.primary_form ?? o.surface_form,
-      reading: dictEntry?.kana_forms?.[0] ?? null,
-      gloss: briefGloss(dictEntry),
-      jlptLevel: dictEntry?.jlpt_level ?? null,
-      jlptLevelInferred: dictEntry?.jlpt_level_inferred ?? false,
-      status,
-    }
-  }), [occurrences, dictEntries, cardIndex])
+  const rows = useMemo(() => occurrences.map(o =>
+    buildEpisodeVocabRow(o, o.jmdict_id ? dictEntries[o.jmdict_id] : null, resolveStatus(o.jmdict_id, cardIndex))
+  ), [occurrences, dictEntries, cardIndex])
 
   const candidateRows = useMemo(() => rows.filter(r => r.jmdict_id), [rows])
   const grammarCount = useMemo(() => candidateRows.filter(r => r.is_grammar).length, [candidateRows])
@@ -179,15 +166,30 @@ export default function EpisodeVocabBrowser({ media, episode, onStartDrill, onLo
     setIncludeKnown(next.has('known'))
   }
 
+  // Mirrors MediaSearch's toggleDifficulty: clicking a level while "Any" is
+  // active starts a fresh single-level selection rather than dropping to a
+  // confusing 4-of-5 state, and emptying the set snaps back to "Any" instead
+  // of leaving a selection that would match nothing.
+  function toggleJlptLevel(level) {
+    setJlptLevels(prev => {
+      if (prev.size === ALL_JLPT_LEVELS.length) return new Set([level])
+      const next = new Set(prev)
+      if (next.has(level)) next.delete(level); else next.add(level)
+      return next.size === 0 ? new Set(ALL_JLPT_LEVELS) : next
+    })
+  }
+
+  const isAnyJlptLevel = jlptLevels.size === ALL_JLPT_LEVELS.length
+
   const eligible = useMemo(() =>
     candidateRows
       .filter(r => includeGrammar || !r.is_grammar)
       .filter(r => includeNames || !r.is_name)
       .filter(r => includeGeneric || r.global_frequency_rank == null || r.global_frequency_rank > GENERIC_RANK_THRESHOLD)
-      .filter(r => minJlptLevel === 'any' || r.jlptLevel == null || JLPT_LEVEL_ORDER[r.jlptLevel] >= JLPT_LEVEL_ORDER[minJlptLevel])
+      .filter(r => isAnyJlptLevel || (r.jlptLevel != null && jlptLevels.has(r.jlptLevel)))
       .filter(r => includeKnown || (r.status !== 'young' && r.status !== 'mature'))
       .sort((a, b) => (a.frequency_rank ?? 0) - (b.frequency_rank ?? 0)),
-    [candidateRows, includeGrammar, includeNames, includeGeneric, minJlptLevel, includeKnown]
+    [candidateRows, includeGrammar, includeNames, includeGeneric, jlptLevels, isAnyJlptLevel, includeKnown]
   )
 
   // Auto-select the top DEFAULT_WORD_LIMIT eligible words whenever filters
@@ -215,22 +217,13 @@ export default function EpisodeVocabBrowser({ media, episode, onStartDrill, onLo
   }
 
   function handleStartDrill() {
-    const words = rows
-      .filter(r => selected.has(r.id))
-      .map(r => ({
-        id: `anime-vocab-${r.id}`,
-        kanji: r.displayForm,
-        kana: r.reading ?? r.displayForm,
-        english: r.gloss ?? '',
-        sentence: null,
-        jmdictId: r.jmdict_id,
-      }))
+    const words = buildDrillWords(rows, selected)
     if (words.length) onStartDrill(words)
   }
 
   if (loading) {
     return (
-      <div style={{ maxWidth: 640, margin: '0 auto' }}>
+      <div style={{ maxWidth: CONTENT_STANDARD, margin: '0 auto' }}>
         {showLoadingMessage && (
           <CenteredLoadingMessage text={syncing ? 'Syncing details from Jiten' : 'Loading episode vocabulary'} />
         )}
@@ -239,14 +232,14 @@ export default function EpisodeVocabBrowser({ media, episode, onStartDrill, onLo
   }
   if (error) {
     return (
-      <div style={{ maxWidth: 640, margin: '0 auto', fontSize: FS_BASE, color: '#f87171', fontFamily: FONT, letterSpacing: TRACKING }}>
+      <div style={{ maxWidth: CONTENT_STANDARD, margin: '0 auto', fontSize: FS_BASE, color: '#f87171', fontFamily: FONT, letterSpacing: TRACKING }}>
         {error}
       </div>
     )
   }
 
   return (
-    <div style={{ maxWidth: 640, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ maxWidth: CONTENT_STANDARD, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div>
         <div style={{ fontSize: FS_LIST_TITLE + 4, color: TEXT, fontFamily: FONT, letterSpacing: TRACKING, marginBottom: 4 }}>
           {media.title} — {episode.title || `Episode ${episode.episode_number}`}
@@ -258,14 +251,19 @@ export default function EpisodeVocabBrowser({ media, episode, onStartDrill, onLo
 
       <FilterCard>
         <FilterRow key="jlpt" label="JLPT level">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <Chip label="Any level" active={minJlptLevel === 'any'} onClick={() => setMinJlptLevel('any')} />
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            <Chip label="Any level" active={isAnyJlptLevel} onClick={() => setJlptLevels(new Set(ALL_JLPT_LEVELS))} />
             <ChipSelector
               options={JLPT_CHIP_OPTIONS}
-              value={minJlptLevel}
-              onChange={setMinJlptLevel}
-              mode="threshold"
-              thresholdDirection="forward"
+              value={jlptLevels}
+              onChange={next => {
+                // Same set-diff recovery as the Difficulty row: multi mode
+                // toggles the clicked option against the current set, which
+                // can't express toggleJlptLevel's "from Any, start fresh".
+                const clicked = [...next].find(v => !jlptLevels.has(v)) ?? [...jlptLevels].find(v => !next.has(v))
+                toggleJlptLevel(clicked)
+              }}
+              mode="multi"
             />
           </div>
         </FilterRow>
@@ -278,7 +276,7 @@ export default function EpisodeVocabBrowser({ media, episode, onStartDrill, onLo
         columns={WORD_COLUMNS}
         rows={displayedRows}
         selection={{ selected, onToggle: toggleRow, bulkHeader: { selectFirst: true } }}
-        search={{ value: lookupQuery, onChange: setLookupQuery, placeholder: 'Look up a word from this episode...' }}
+        search={{ value: lookupQuery, onChange: setLookupQuery, placeholder: 'Search episode words' }}
         emptyMessage={
           lookupQuery.trim()
             ? <>No match in this episode — try <a href="#/dictionary" style={{ color: ACCENT }}>the full dictionary search</a>.</>
@@ -288,8 +286,8 @@ export default function EpisodeVocabBrowser({ media, episode, onStartDrill, onLo
       />
 
       <ActionBar>
-        <Button variant="primary" size="xl" onClick={handleStartDrill} disabled={selected.size === 0}>
-          Start Drill ({selected.size})
+        <Button variant="primary" size="xl" onClick={handleStartDrill} disabled={selected.size === 0 || !dictReady}>
+          {dictReady ? `Start Drill (${selected.size})` : 'Loading definitions…'}
         </Button>
       </ActionBar>
     </div>

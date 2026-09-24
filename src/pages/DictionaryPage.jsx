@@ -6,7 +6,7 @@ import TopProgressBar from '../components/TopProgressBar.jsx'
 import CenteredLoadingMessage from '../components/CenteredLoadingMessage.jsx'
 import { useDelayedLoading } from '../hooks/useDelayedLoading.js'
 import { supabase } from '../lib/supabase.js'
-import { FONT, TRACKING, TEXT, TEXT_MUTED, FS_BASE, FS_CAPTION, FS_ENTRY_WORD, FS_CONTENT_HEADING, KANJI_FONT } from '../data/theme.js'
+import { FONT, TRACKING, TEXT, TEXT_MUTED, FS_BASE, FS_CAPTION, FS_ENTRY_WORD, FS_CONTENT_HEADING, KANJI_FONT, BRAND, DANGER, CONTENT_STANDARD } from '../data/theme.js'
 import AttributionFooter from '../components/AttributionFooter.jsx'
 import Badge from '../components/Badge.jsx'
 import Card from '../components/Card.jsx'
@@ -14,13 +14,14 @@ import TextInput from '../components/TextInput.jsx'
 import Checkbox from '../components/Checkbox.jsx'
 import Button from '../components/Button.jsx'
 import DataList from '../components/DataList.jsx'
-import { MODULES } from '../data/modules.js'
 import { ModuleThemeProvider, useAccent } from '../context/ModuleThemeContext.jsx'
 import SectionHeader from '../components/SectionHeader.jsx'
+import Japanese from '../components/Japanese.jsx'
 import { KanjiBreakdownEntry } from './dictionaryShared.jsx'
+import { displayFormOf } from '../lib/displayForm.js'
 
 const BG = '#1E1E1E'
-const DICTIONARY_ACCENT = MODULES.find(m => m.id === 'dictionary').accent
+const DICTIONARY_ACCENT = BRAND
 
 const PAGE_SIZE = 20
 
@@ -134,7 +135,7 @@ async function doSearch(term, offset, commonOnly) {
   const buildBase = () => {
     let q = supabase
       .from('dictionary')
-      .select('id, primary_form, kana_forms, gloss_en, pos, common')
+      .select('id, primary_form, preferred_form, kana_forms, gloss_en, pos, common, misc0:senses->0->misc')
       .order('common', { ascending: false })
     if (commonOnly) q = q.eq('common', true)
     return q
@@ -258,9 +259,9 @@ function KanjiSection({ entries, hasWords }) {
                     borderRight: '1px solid rgba(255,255,255,0.05)',
                   }}
                 >
-                  <span style={{ fontSize: FS_CONTENT_HEADING, color: TEXT, fontFamily: KANJI_FONT, letterSpacing: 0 }}>
+                  <Japanese as="span" style={{ fontSize: FS_CONTENT_HEADING, color: TEXT, fontFamily: KANJI_FONT, letterSpacing: 0 }}>
                     {entry.literal}
-                  </span>
+                  </Japanese>
                 </div>
               ))}
             </div>
@@ -298,17 +299,18 @@ function KanjiSection({ entries, hasWords }) {
 // Content-only — DataList's Cell wraps this; the row's own <a> and
 // hover/divider treatment come from DataList itself (navigate.href below).
 function entryRowContent(entry) {
+  const shown = displayFormOf(entry)
   const kana = entry.kana_forms?.[0]
-  const showKana = kana && kana !== entry.primary_form
+  const showKana = kana && kana !== shown
   const posLabel = shortPos(Array.isArray(entry.pos) ? entry.pos[0] : null)
   const meaning = entry.gloss_en?.split('; ').slice(0, 3).join('; ') ?? ''
 
   return (
     <div style={{ width: '100%' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 5 }}>
-        <span style={{ fontSize: FS_ENTRY_WORD, color: TEXT, fontFamily: KANJI_FONT, letterSpacing: 0 }}>{entry.primary_form}</span>
+        <Japanese as="span" style={{ fontSize: FS_ENTRY_WORD, color: TEXT, fontFamily: KANJI_FONT, letterSpacing: 0 }}>{shown}</Japanese>
         {showKana && (
-          <span style={{ fontSize: FS_BASE, color: TEXT_MUTED, fontFamily: KANJI_FONT, letterSpacing: 0 }}>{kana}</span>
+          <Japanese as="span" style={{ fontSize: FS_BASE, color: TEXT_MUTED, fontFamily: KANJI_FONT, letterSpacing: 0 }}>{kana}</Japanese>
         )}
         {entry.common && <Badge variant="text" tone="accent">common</Badge>}
       </div>
@@ -440,18 +442,18 @@ export default function DictionaryPage() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: BG }}>
       <PageHeader
         crumbs={[
-          { label: 'Japanese Study', href: '#/' },
+          { label: 'Lantern', href: '#/' },
           { label: 'Dictionary' },
         ]}
         rightSlot={<AuthSlot />}
       >
         <TopProgressBar loading={showLoadingMessage} color={ACCENT} />
       </PageHeader>
-      <div ref={scrollRef} onScroll={handleScroll} style={{ flex: 1, overflowY: 'auto', padding: '24px 16px 48px', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ maxWidth: 600, margin: '0 auto', width: '100%', flex: 1, display: 'flex', flexDirection: 'column' }}>
+      <div ref={scrollRef} onScroll={handleScroll} style={{ flex: 1, overflowY: 'auto', scrollbarGutter: 'stable both-edges', padding: '24px 16px 48px', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ maxWidth: CONTENT_STANDARD, margin: '0 auto', width: '100%', flex: 1, display: 'flex', flexDirection: 'column' }}>
         <div style={{ flex: 1 }}>
           <TextInput
-            placeholder="Search Japanese or English..."
+            placeholder="Search Japanese or English"
             value={query}
             onChange={setQuery}
             size="lg"
@@ -490,7 +492,7 @@ export default function DictionaryPage() {
           )}
 
           {!loading && error && (
-            <div style={{ textAlign: 'center', padding: '48px 0', color: '#E05A4E', fontFamily: FONT, fontSize: FS_BASE, letterSpacing: TRACKING }}>
+            <div style={{ textAlign: 'center', padding: '48px 0', color: DANGER, fontFamily: FONT, fontSize: FS_BASE, letterSpacing: TRACKING }}>
               {error}
             </div>
           )}
@@ -524,7 +526,6 @@ export default function DictionaryPage() {
                 rowKey={entry => entry.id}
                 navigate={{ href: entry => `#/dictionary/entry/${entry.id}` }}
                 padding="12px 16px"
-                maxWidth={600}
               />
 
               {hasMore && (

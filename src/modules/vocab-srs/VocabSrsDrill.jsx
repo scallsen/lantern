@@ -1,16 +1,19 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import FlipCard from '../../FlipCard.jsx'
+import Japanese from '../../components/Japanese.jsx'
 import PageHeader from '../../components/PageHeader.jsx'
 import { SidebarHeaderToggle } from '../../components/SettingsSidebar.jsx'
 import Button from '../../components/Button.jsx'
+import DrillHUD from '../../components/DrillHUD.jsx'
 import DrillButtonRow, { DrillButton } from '../../components/DrillButton.jsx'
-import { FONT, TRACKING, TEXT, TEXT_MUTED, FS_BASE, FS_DISPLAY_HEADING, FS_STAT_VALUE, FS_CAPTION, WARNING, DRILL_COLORS } from '../../data/theme.js'
+import { FONT, TRACKING, TEXT, TEXT_MUTED, FS_BASE, FS_DISPLAY_HEADING, FS_STAT_VALUE, FS_CAPTION, WARNING, DRILL_COLORS, LANTERN_ON, LANTERN_SIZES } from '../../data/theme.js'
 import { useAccent } from '../../context/ModuleThemeContext.jsx'
-import { Rating, State, previewIntervals } from './srs.js'
-import { answerCard, undoLastAnswer, isComplete, getSessionStats, getCurrentCard, getWaitMs } from './session.js'
+import { Rating } from './srs.js'
+import { answerCard, undoLastAnswer, isComplete, getSessionStats, getCurrentCard } from './session.js'
 import { useTTS } from '../../hooks/useTTS.js'
 import { useSFX } from '../../hooks/useSFX.js'
 import { useGamepad } from '../../hooks/useGamepad.js'
+import { useVoicevoxPlayer } from '../../hooks/useVoicevoxPlayer.js'
 import { useKanjiMeanings } from '../../hooks/useKanjiMeanings.js'
 import { getVoicevoxAudioUrl, speakerIdFromAudioSource } from '../../utils/voicevoxAudio.js'
 import { kanjiCharsOf } from '../../utils/kanjiMeaningLookup.js'
@@ -21,7 +24,6 @@ import AttributionFooter from '../../components/AttributionFooter.jsx'
 import { getMainTextScale, getSecondaryTextScale, cqw } from '../../utils/cardTextFit.js'
 
 const CARD_BG = '#E8E4DE'
-const RELEARN_STEP_LABEL = '10m'
 // Advance timings mirror VocabPage's verdict handler: the answered card slides/fades out
 // via FlipCard.css's cardExit* keyframes, then the next card's own content mounts fresh
 // (no 3D flip-back) via cardEnter — a single continuous motion instead of un-flipping the
@@ -39,27 +41,6 @@ function getAudioUrl(filename) {
   return filename && AUDIO_BASE ? `${AUDIO_BASE}/${filename}` : null
 }
 
-function formatInterval(dueDate, now = new Date()) {
-  const ms = dueDate - now
-  if (ms < 60000) return '< 1m'
-  const mins = Math.round(ms / 60000)
-  if (mins < 60) return `${mins}m`
-  const hours = Math.round(ms / 3600000)
-  if (hours < 24) return `${hours}h`
-  const days = Math.round(ms / 86400000)
-  if (days < 30) return `${days}d`
-  const weeks = Math.round(days / 7)
-  if (weeks < 9) return `${weeks}w`
-  return `${Math.round(days / 30)}mo`
-}
-
-function formatCountdown(ms) {
-  const totalSecs = Math.ceil(ms / 1000)
-  const mins = Math.floor(totalSecs / 60)
-  const secs = totalSecs % 60
-  return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`
-}
-
 function formatTime(secs) {
   const m = Math.floor(secs / 60)
   const s = secs % 60
@@ -75,7 +56,7 @@ function KanjiMeaningBar({ chars, meanings, jaFont, scale }) {
           padding: '1.8cqw 1cqw', gap: 2,
           borderLeft: i > 0 ? '1px solid rgba(0,0,0,0.1)' : 'none',
         }}>
-          <span style={{ fontFamily: jaFont, fontSize: cqw(5, scale), color: '#333' }}>{ch}</span>
+          <Japanese as="span" style={{ fontFamily: jaFont, fontSize: cqw(5, scale), color: '#333' }}>{ch}</Japanese>
           <div style={{
             fontFamily: FONT, fontSize: cqw(2.6, scale), color: '#777', textAlign: 'center',
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%',
@@ -132,7 +113,7 @@ function SrsCardFace({ text, kana, isBack, backText, jmdictId, sentence, sentenc
         padding: '0 20px',
       }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{
+          <Japanese as="div" style={{
             fontFamily: cardFont,
             fontSize: cqw(isBack ? 10 : 12.63, mainScale),
             color: '#222',
@@ -141,16 +122,16 @@ function SrsCardFace({ text, kana, isBack, backText, jmdictId, sentence, sentenc
             textShadow: '2px 2px 0 rgba(0,0,0,0.25)',
           }}>
             {text}
-          </div>
+          </Japanese>
           {showReading && (
-            <div style={{
+            <Japanese as="div" style={{
               fontFamily: cardFont,
               fontSize: cqw(5.26, mainScale),
               color: '#666',
               marginTop: 4,
             }}>
               {kana}
-            </div>
+            </Japanese>
           )}
         </div>
         {isBack && resolvedBackText && showTranslation && (
@@ -166,14 +147,14 @@ function SrsCardFace({ text, kana, isBack, backText, jmdictId, sentence, sentenc
         )}
         {isBack && resolvedSentence && showSentence && (
           <div style={{ textAlign: 'center' }}>
-            <div style={{
+            <Japanese as="div" style={{
               fontFamily: cardFont,
               fontSize: cqw(4.2, secondaryScale),
               color: '#666',
               lineHeight: 1.5,
             }}>
               {resolvedSentence}
-            </div>
+            </Japanese>
             {resolvedSentenceEnglish && (
               <div style={{
                 fontFamily: cardFont,
@@ -194,9 +175,22 @@ function SrsCardFace({ text, kana, isBack, backText, jmdictId, sentence, sentenc
   )
 }
 
+// brand/BRAND.md §4: "Session complete | three lamp-on at 48px in a row,
+// then the existing stats." Static — the lantern doesn't animate here.
+function DoneLanterns() {
+  return (
+    <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 12 }}>
+      {[0, 1, 2].map(i => (
+        <img key={i} src={LANTERN_ON} alt="" width={LANTERN_SIZES.card} height={LANTERN_SIZES.card} style={{ display: 'block', imageRendering: 'pixelated' }} />
+      ))}
+    </div>
+  )
+}
+
 function DoneScreen({ stats, onDone }) {
   return (
     <div style={{ textAlign: 'center', fontFamily: FONT, letterSpacing: TRACKING }}>
+      <DoneLanterns />
       <div style={{ color: TEXT, fontSize: FS_DISPLAY_HEADING, marginBottom: 16 }}>Session complete</div>
       <div style={{ display: 'flex', gap: 20, justifyContent: 'center', marginBottom: 16 }}>
         <div>
@@ -227,12 +221,12 @@ function DoneScreen({ stats, onDone }) {
 export default function VocabSrsDrill({
   initialCards, initialSession, onCardSave, onDone,
   showTranslation = true, showFurigana = true, showSentence = true, sentenceSource = 'custom', showKanjiMeaning = false,
-  pixelFont = true, showVisualEffects = true,
+  pixelFont = true, showVisualEffects = true, showStreak = false,
   audioEnabled = true, autoplayFront = true, autoplayBack = true,
   audioSource = 'voicevox-2', sfxEnabled = true, ttsVoice = '',
   showHardEasy = true, leechThreshold = 8,
   isMobile = false, onShowOptions,
-  crumbs = [{ label: 'Japanese Study', href: '#/' }],
+  crumbs = [{ label: 'Lantern', href: '#/' }],
 }) {
   const [session, setSession] = useState(initialSession)
   const [localCards, setLocalCards] = useState(initialCards)
@@ -252,14 +246,19 @@ export default function VocabSrsDrill({
 
   const tts = useTTS(ttsVoice)
   const sfx = useSFX()
+  const voicevox = useVoicevoxPlayer()
 
   // Priority: real recorded audio (imported Anki decks) > generated Voicevox audio > browser TTS.
   function resolveAudioUrl(card) {
     if (!card) return { word: null, sentence: null }
     if (card.wordAudio) return { word: getAudioUrl(card.wordAudio), sentence: getAudioUrl(card.sentenceAudio) }
+    // Generated clips are keyed by what is spoken, so a card derives its own
+    // URL from its reading and needs no record of which clips exist. A card
+    // whose clip has not been generated 404s and falls back to TTS.
     const speakerId = speakerIdFromAudioSource(audioSource)
-    if (speakerId && card.voicevoxVoices?.includes(speakerId)) {
-      return { word: getVoicevoxAudioUrl(speakerId, card.voicevoxId ?? card.id), sentence: null }
+    if (speakerId) {
+      const reading = card.kana ?? card.front
+      return { word: getVoicevoxAudioUrl(speakerId, reading), sentence: null }
     }
     return { word: null, sentence: null }
   }
@@ -270,60 +269,29 @@ export default function VocabSrsDrill({
   const transitioningRef = useRef(false)
   useEffect(() => { transitioningRef.current = transitioning }, [transitioning])
 
-  const audioCurrentRef = useRef(null)
-  const audioPreloadRef = useRef({ audio: null, filename: null })
-
-  // These two take resolved URLs directly (not filenames) so they work for both
+  // Web Audio API playback (via the shared useVoicevoxPlayer hook), not
+  // HTMLMediaElement.play() — the latter re-checks the browser's
+  // autoplay/user-activation policy on every call, and a gamepad button press
+  // never grants user activation per spec, so play() intermittently rejected
+  // and silently fell back to TTS even when the Voicevox clip existed (the
+  // same bug VocabPage's useVoicevoxPlayer.js was built to fix; this module
+  // just hadn't been migrated to it). The old pause()-on-supersede approach
+  // also raced: pausing an in-flight <audio> before its 'playing' event fired
+  // aborted its play() promise and looked exactly like a failed clip, which
+  // is why undoing/re-showing a card intermittently played TTS too — the
+  // hook's token-based cancellation treats a superseded in-flight play as
+  // "not a failure" instead.
+  // These take resolved URLs directly (not filenames) so they work for both
   // the imported-audio bucket (via getAudioUrl) and the voicevox bucket (via getVoicevoxAudioUrl).
-  const playAudioRef = useRef()
-  playAudioRef.current = (url) => {
-    if (!url) return
-    if (audioCurrentRef.current) {
-      audioCurrentRef.current.onended = null
-      audioCurrentRef.current.pause()
-    }
-    if (audioPreloadRef.current.filename === url && audioPreloadRef.current.audio) {
-      audioCurrentRef.current = audioPreloadRef.current.audio
-      audioPreloadRef.current = { audio: null, filename: null }
-    } else {
-      audioCurrentRef.current = new Audio(url)
-    }
-    audioCurrentRef.current.play().catch(() => {})
-  }
 
-  // Plays wordUrl, then sentenceUrl when word finishes.
-  const playSequenceRef = useRef()
-  playSequenceRef.current = (wordUrl, sentenceUrl) => {
-    if (!wordUrl) return
-    if (audioCurrentRef.current) {
-      audioCurrentRef.current.onended = null
-      audioCurrentRef.current.pause()
-    }
-    let wordAudio
-    if (audioPreloadRef.current.filename === wordUrl && audioPreloadRef.current.audio) {
-      wordAudio = audioPreloadRef.current.audio
-      audioPreloadRef.current = { audio: null, filename: null }
-    } else {
-      wordAudio = new Audio(wordUrl)
-    }
-    audioCurrentRef.current = wordAudio
-    if (sentenceUrl) {
-      wordAudio.onended = () => {
-        const sentAudio = new Audio(sentenceUrl)
-        audioCurrentRef.current = sentAudio
-        sentAudio.play().catch(() => {})
-      }
-    }
-    wordAudio.play().catch(() => {})
-  }
-
-  const stopAudioRef = useRef()
-  stopAudioRef.current = () => {
-    if (audioCurrentRef.current) {
-      audioCurrentRef.current.onended = null
-      audioCurrentRef.current.pause()
-      audioCurrentRef.current = null
-    }
+  // The clip first, the backup voice when there is no clip or it fails to
+  // load. `sequence` also plays the sentence clip after the word one.
+  async function speakCard(card, urls, { sequence } = {}) {
+    if (!card) return
+    if (!urls.word) { voicevox.stop(); tts.speak(card.kana ?? card.front ?? ''); return }
+    const chainSentence = sequence && urls.sentence ? () => voicevox.play(urls.sentence) : undefined
+    const played = await voicevox.play(urls.word, { onEnded: chainSentence })
+    if (!played) tts.speak(card.kana ?? card.front ?? '')
   }
 
   const sessionRef = useRef(session)
@@ -338,7 +306,7 @@ export default function VocabSrsDrill({
     if (!currentCard) return
     if (sfxEnabled) sfx.play(rating === Rating.Again ? 'flip_card_wrong' : 'flip_card_correct')
     tts.cancel()
-    stopAudioRef.current()
+    voicevox.stop()
     seenRef.current.add(currentCard.id)
     const { session: newSession, updatedCard, isLeech } = answerCard(
       sessionRef.current, currentCard, rating, { leechThreshold }
@@ -352,7 +320,7 @@ export default function VocabSrsDrill({
       setLocalCards(updatedCards)
       setSession(newSession)
       setFlipped(false)
-      onCardSave(updatedCards)
+      onCardSave(updatedCards, rating === Rating.Again ? 0 : 1)
       if (isLeech) {
         setLeechNotice(currentCard.front)
         setTimeout(() => setLeechNotice(null), 4000)
@@ -368,12 +336,7 @@ export default function VocabSrsDrill({
     if (sfxEnabled) sfx.play('flip_card')
     const currentCard = getCurrentCard(sessionRef.current)
     if (audioEnabled && autoplayBack && currentCard) {
-      const urls = resolveAudioUrl(currentCard)
-      if (urls.word) {
-        playSequenceRef.current(urls.word, urls.sentence)
-      } else if (audioSource === 'browser') {
-        tts.speak(currentCard.front ?? '')
-      }
+      speakCard(currentCard, resolveAudioUrl(currentCard), { sequence: true })
     }
     setFlipped(true)
   }
@@ -383,7 +346,7 @@ export default function VocabSrsDrill({
     if (transitioningRef.current) return
     const { session: prevSession, revertedCard } = undoLastAnswer(sessionRef.current)
     if (prevSession === sessionRef.current) return
-    stopAudioRef.current()
+    voicevox.stop()
     setTransitioning(true)
     setExitDir('undo')
     const exitDelay = showVisualEffects ? UNDO_EXIT_MS : 0
@@ -393,7 +356,12 @@ export default function VocabSrsDrill({
         seenRef.current.delete(revertedCard.id)
         const revertedCards = localCardsRef.current.map(c => c.id === revertedCard.id ? revertedCard : c)
         setLocalCards(revertedCards)
-        onCardSave(revertedCards)
+        // Undo can only revert the most recent answer, so a goodCount drop
+        // between the two sessions means that answer was Again (uncounted) —
+        // wasReviewed here means the opposite, that it was counted and must
+        // now be un-counted.
+        const wasReviewed = prevSession.goodCount < sessionRef.current.goodCount
+        onCardSave(revertedCards, wasReviewed ? -1 : 0)
       }
       setSession(prevSession)
       setFlipped(false)
@@ -407,16 +375,7 @@ export default function VocabSrsDrill({
   handleReplayRef.current = () => {
     const currentCard = getCurrentCard(sessionRef.current)
     if (!currentCard || !audioEnabled) return
-    const urls = resolveAudioUrl(currentCard)
-    if (urls.word) {
-      if (flippedRef.current) {
-        playSequenceRef.current(urls.word, urls.sentence)
-      } else {
-        playAudioRef.current(urls.word)
-      }
-    } else if (audioSource === 'browser') {
-      tts.speak(currentCard.front ?? '')
-    }
+    speakCard(currentCard, resolveAudioUrl(currentCard), { sequence: flippedRef.current })
   }
 
   useGamepad({
@@ -464,32 +423,24 @@ export default function VocabSrsDrill({
   }, [showHardEasy])
 
   // Must be before the isComplete early return — hooks cannot be called conditionally.
-  // previewIntervals uses enable_fuzz so re-calling every tick re-rolls the fuzz; memoize per card ID.
   const currentCardForMemo = getCurrentCard(session)
-  const intervals = useMemo(
-    () => currentCardForMemo ? previewIntervals(currentCardForMemo) : null,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [currentCardForMemo?.id]
-  )
 
   // Preload the current card's word audio as soon as the card appears.
   useEffect(() => {
     const url = resolveAudioUrl(currentCardForMemo).word
-    if (!url || audioPreloadRef.current.filename === url) return
-    const audio = new Audio(url)
-    audio.preload = 'auto'
-    audioPreloadRef.current = { audio, filename: url }
+    voicevox.trimPreload(url ? [url] : [])
+    if (url) voicevox.preload(url)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentCardForMemo?.id, audioSource])
 
   // Auto-play word audio on the front when a new card appears.
   useEffect(() => {
     if (!audioEnabled || !autoplayFront) return
-    const url = resolveAudioUrl(currentCardForMemo).word
-    if (!url) return
-    stopAudioRef.current()
+    const urls = resolveAudioUrl(currentCardForMemo)
+    voicevox.stop()
     const t = setTimeout(() => {
-      if (!flippedRef.current) playAudioRef.current(url)
+      if (flippedRef.current) return
+      speakCard(currentCardForMemo, urls)
     }, 50)
     return () => clearTimeout(t)
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -526,7 +477,7 @@ export default function VocabSrsDrill({
           rightSlot={isMobile && onShowOptions && <SidebarHeaderToggle onClick={onShowOptions} />}
         />
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <DoneScreen stats={stats} onDone={() => onDone(localCards, stats.goodCount)} />
+          <DoneScreen stats={stats} onDone={() => onDone(localCards)} />
         </div>
         <AttributionFooter sources={footerSources} />
       </div>
@@ -534,23 +485,13 @@ export default function VocabSrsDrill({
   }
 
   const currentCard = getCurrentCard(session)
-  const currentAudioUrls = resolveAudioUrl(currentCard)
   const stats = getSessionStats(session)
   const progressPct = stats.total > 0 ? (stats.goodCount / stats.total) * 100 : 0
-  const isWaiting = !currentCard && stats.remaining > 0
-  const waitMs = isWaiting ? getWaitMs(session) : 0
 
-  const againInterval = currentCard && currentCard.state !== State.New ? RELEARN_STEP_LABEL : null
-
-  const rightSlot = (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-      <span style={{ fontSize: FS_BASE, color: TEXT_MUTED }}>
-        {stats.goodCount} / {stats.total}
-        {stats.waitingCount > 0 && <span style={{ marginLeft: 6, color: WARNING }}>{stats.waitingCount} waiting</span>}
-      </span>
-      {isMobile && onShowOptions && <SidebarHeaderToggle onClick={onShowOptions} />}
-    </div>
-  )
+  // Correct/troubled/remaining are tracked by DrillHUD below the card
+  // (see the isComplete early return above for the same pattern) — the
+  // header carries only the mobile settings toggle, not a second counter.
+  const rightSlot = isMobile && onShowOptions && <SidebarHeaderToggle onClick={onShowOptions} />
 
   const isRequeue = currentCard && seenRef.current.has(currentCard.id)
 
@@ -612,23 +553,22 @@ export default function VocabSrsDrill({
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 16,
         padding: '16px',
         overflow: 'hidden',
       }}>
 
-        {isWaiting ? (
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: FS_BASE, color: TEXT, marginBottom: 8 }}>Relearning</div>
-            <div style={{ fontSize: FS_BASE, color: TEXT_MUTED, marginBottom: 4 }}>
-              Next card in {formatCountdown(waitMs)}
-            </div>
-            <div style={{ fontSize: FS_CAPTION, color: 'rgba(255,255,255,0.2)' }}>
-              {stats.waitingCount} card{stats.waitingCount !== 1 ? 's' : ''} waiting
-            </div>
-          </div>
-        ) : (
-          <>
+        <DrillHUD
+          streak={stats.streak}
+          bestStreak={stats.bestStreak}
+          correct={stats.correctCount}
+          troubled={stats.troubledCount}
+          remaining={stats.remaining}
+          canUndo={stats.canUndo}
+          onUndo={() => handleUndoRef.current()}
+          showStreak={showStreak}
+          showVisualEffects={showVisualEffects}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
             <div key={currentCard.id} className={cardClass} style={{ position: 'relative' }}>
               <div style={{
                 width: 'min(380px, calc(100vw - 32px), calc(var(--card-max-h, 9999px) * 380 / 280))',
@@ -647,12 +587,7 @@ export default function VocabSrsDrill({
                     if (next) {
                       if (sfxEnabled) sfx.play('flip_card')
                       if (audioEnabled && autoplayBack && currentCard) {
-                        const urls = resolveAudioUrl(currentCard)
-                        if (urls.word) {
-                          playSequenceRef.current(urls.word, urls.sentence)
-                        } else if (audioSource === 'browser') {
-                          tts.speak(currentCard.front)
-                        }
+                        speakCard(currentCard, resolveAudioUrl(currentCard), { sequence: true })
                       }
                     }
                   }}
@@ -672,23 +607,13 @@ export default function VocabSrsDrill({
               )}
             </div>
 
-            {audioEnabled && currentCard && currentAudioUrls.word && flipped && (
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-                <Button variant="ghost-muted" size="sm" onClick={() => playAudioRef.current(currentAudioUrls.word)}>▶ Word</Button>
-                {currentAudioUrls.sentence && (
-                  <Button variant="ghost-muted" size="sm" onClick={() => playAudioRef.current(currentAudioUrls.sentence)}>▶ Sentence</Button>
-                )}
-              </div>
-            )}
-
             {!flipped ? (
               <DrillButtonRow placeholder="Space or tap to flip" />
             ) : (
               <DrillButtonRow>
                 <DrillButton
                   label="Again"
-                  hint="1"
-                  sublabel={againInterval ?? (intervals ? formatInterval(intervals[Rating.Again]) : null)}
+                  hint={isMobile ? null : '1'}
                   color={DRILL_COLORS.again}
                   onClick={() => handleAnswerRef.current(Rating.Again)}
                   disabled={transitioning}
@@ -696,8 +621,7 @@ export default function VocabSrsDrill({
                 {showHardEasy && (
                   <DrillButton
                     label="Hard"
-                    hint="2"
-                    sublabel={intervals ? formatInterval(intervals[Rating.Hard]) : null}
+                    hint={isMobile ? null : '2'}
                     color={DRILL_COLORS.hard}
                     onClick={() => handleAnswerRef.current(Rating.Hard)}
                     disabled={transitioning}
@@ -705,8 +629,7 @@ export default function VocabSrsDrill({
                 )}
                 <DrillButton
                   label="Good"
-                  hint={showHardEasy ? '3' : '2'}
-                  sublabel={intervals ? formatInterval(intervals[Rating.Good]) : null}
+                  hint={isMobile ? null : (showHardEasy ? '3' : '2')}
                   color={DRILL_COLORS.good}
                   onClick={() => handleAnswerRef.current(Rating.Good)}
                   disabled={transitioning}
@@ -714,8 +637,7 @@ export default function VocabSrsDrill({
                 {showHardEasy && (
                   <DrillButton
                     label="Easy"
-                    hint="4"
-                    sublabel={intervals ? formatInterval(intervals[Rating.Easy]) : null}
+                    hint={isMobile ? null : '4'}
                     color={DRILL_COLORS.easy}
                     onClick={() => handleAnswerRef.current(Rating.Easy)}
                     disabled={transitioning}
@@ -723,15 +645,8 @@ export default function VocabSrsDrill({
                 )}
               </DrillButtonRow>
             )}
-            {stats.canUndo && (
-              <Button variant="ghost-muted" size="sm" onClick={() => handleUndoRef.current()} disabled={transitioning}>Undo [Z]</Button>
-            )}
-          </>
-        )}
-
-        <div style={{ fontSize: FS_CAPTION, color: 'rgba(255,255,255,0.2)' }}>
-          {stats.remaining} remaining
-        </div>
+          </div>
+        </DrillHUD>
 
       </div>
       <AttributionFooter sources={footerSources} />

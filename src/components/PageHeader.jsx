@@ -1,9 +1,25 @@
 import { useState, useEffect } from 'react'
-import { FONT, TRACKING, BORDER, FS_NAV } from '../data/theme.js'
+import { FONT, TRACKING, BORDER, FS_NAV, LANTERN_ON, LANTERN_SIZES } from '../data/theme.js'
 
 const NARROW_BP = 540
 
-export default function PageHeader({ crumbs = [], rightSlot, noBorder, children }) {
+// The nav lockup (brand/BRAND.md §1, §4): lamp-on at 24px + the wordmark,
+// left-aligned, on the home crumb only. Static — never animates here.
+// The small sprite's own canvas is square (its viewBox crop only applies to
+// the HERO pair, see LANTERN_ASPECT's comment), so a plain square size fits.
+function LanternMark() {
+  return (
+    <img
+      src={LANTERN_ON}
+      alt=""
+      width={LANTERN_SIZES.nav}
+      height={LANTERN_SIZES.nav}
+      style={{ display: 'block', imageRendering: 'pixelated', flexShrink: 0 }}
+    />
+  )
+}
+
+export default function PageHeader({ crumbs = [], rightSlot, subtitle, noBorder, children }) {
   const [hoveredIdx, setHoveredIdx] = useState(null)
   const [narrow, setNarrow] = useState(() => window.innerWidth < NARROW_BP)
 
@@ -62,6 +78,9 @@ export default function PageHeader({ crumbs = [], rightSlot, noBorder, children 
   } else {
     crumbNodes = crumbs.flatMap((crumb, i) => {
       const isClickable = !!crumb.href || !!crumb.onClick
+      const isHome = i === 0
+      const label = isHome ? <><LanternMark />{crumb.label}</> : crumb.label
+      const lockupStyle = isHome ? { display: 'inline-flex', alignItems: 'center', gap: 6 } : null
       const items = []
       if (i > 0) items.push(sep(`sep-${i}`))
       items.push(
@@ -72,9 +91,9 @@ export default function PageHeader({ crumbs = [], rightSlot, noBorder, children 
               href={crumb.href}
               onMouseEnter={() => setHoveredIdx(i)}
               onMouseLeave={() => setHoveredIdx(null)}
-              style={crumbStyle(hoveredIdx === i)}
+              style={{ ...crumbStyle(hoveredIdx === i), ...lockupStyle }}
             >
-              {crumb.label}
+              {label}
             </a>
           ) : (
             <span
@@ -82,14 +101,14 @@ export default function PageHeader({ crumbs = [], rightSlot, noBorder, children 
               onClick={crumb.onClick}
               onMouseEnter={() => setHoveredIdx(i)}
               onMouseLeave={() => setHoveredIdx(null)}
-              style={crumbStyle(hoveredIdx === i)}
+              style={{ ...crumbStyle(hoveredIdx === i), ...lockupStyle }}
             >
-              {crumb.label}
+              {label}
             </span>
           )
         ) : (
-          <span key={`crumb-${i}`} style={{ color: 'rgba(255,255,255,0.85)', fontSize: FS_NAV }}>
-            {crumb.label}
+          <span key={`crumb-${i}`} style={{ color: 'rgba(255,255,255,0.85)', fontSize: FS_NAV, ...lockupStyle }}>
+            {label}
           </span>
         )
       )
@@ -104,6 +123,7 @@ export default function PageHeader({ crumbs = [], rightSlot, noBorder, children 
       borderBottom: noBorder ? undefined : `1px solid ${BORDER}`,
       flexShrink: 0,
       paddingTop: 'env(safe-area-inset-top)',
+      position: 'relative',
     }}>
       <div style={{
         display: 'flex',
@@ -114,9 +134,27 @@ export default function PageHeader({ crumbs = [], rightSlot, noBorder, children 
         letterSpacing: TRACKING,
       }}>
         {crumbNodes}
+        {/* Inline, next to the crumb rather than a separate row — callers
+            decide when to hide it (e.g. on mobile) by passing null. */}
+        {subtitle && (
+          <span style={{
+            color: 'rgba(255,255,255,0.35)', fontSize: FS_NAV, marginLeft: 14,
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0, flexShrink: 1,
+          }}>
+            {subtitle}
+          </span>
+        )}
         {rightSlot && <div style={{ marginLeft: 'auto' }}>{rightSlot}</div>}
       </div>
-      {children}
+      {/* Absolute rather than in flow: the slot holds a loading bar that
+          comes and goes, and in flow it pushed the page down 3px while
+          loading and snapped it back up when done. bottom: 0 sits it just
+          above the border line, where it used to render, not across it. */}
+      {children && (
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}>
+          {children}
+        </div>
+      )}
     </header>
   )
 }

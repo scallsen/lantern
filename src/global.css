@@ -96,6 +96,25 @@ button, input, select, textarea {
   filter: brightness(0.92);
 }
 
+/* Primary overrides btn-tint's brightness filter with a real colour swap —
+   BRAND (#FF004D) is already near its max visual "hotness", so brightening
+   it further barely registers; BRAND_DEEP (#D80041) is an unmistakably
+   different, darker red. !important because Button sets `background: accent`
+   inline, which otherwise outranks this class outright (same gotcha as
+   .btn-neutral/.chip--off/.track-toggle). */
+.btn-primary:hover:not(:disabled) {
+  filter: none;
+  background: #D80041 !important;
+}
+
+/* brand/BRAND.md names BRAND_DEEP for both hover and pressed — active
+   darkens that same colour further via filter rather than inventing a
+   third, undefined shade. */
+.btn-primary:active:not(:disabled) {
+  filter: brightness(0.85);
+  background: #D80041 !important;
+}
+
 .btn-neutral:hover:not(:disabled) {
   background: rgba(255,255,255,0.10) !important;
 }
@@ -113,6 +132,21 @@ button, input, select, textarea {
 .btn-ghost-muted:hover:not(:disabled) {
   background: rgba(248,113,113,0.15) !important;
   color: #f87171 !important;
+}
+
+/* Quiet — bordered-but-transparent secondary, e.g. NewCard's "View all" /
+   ReviewCard's "Manage decks". Its border is what gives a fullWidth mobile
+   instance a resting edge (see Button.jsx), so hover only deepens that
+   border and is gated to devices with a real pointer; a background fill only
+   ever appears on :active, so a touch tap gets a press-flash rather than a
+   :hover fill that touch can leave stuck. */
+@media (hover: hover) {
+  .btn-quiet:hover:not(:disabled) {
+    border-color: rgba(255,255,255,0.28) !important;
+  }
+}
+.btn-quiet:active:not(:disabled) {
+  background: rgba(255,255,255,0.06) !important;
 }
 
 /* Chip — active chips carry a per-module accent tint set inline, so hover
@@ -236,21 +270,6 @@ button, input, select, textarea {
     width: calc(100vw - 24px) !important;
     max-width: calc(100vw - 24px) !important;
   }
-}
-
-/* VocabPage sublist tiles */
-.sublist-tile {
-  background: rgba(255,255,255,0.03);
-  transition: background 130ms, border-color 130ms;
-}
-
-.sublist-tile:hover {
-  background: rgba(255,255,255,0.06);
-}
-
-.sublist-tile--selected,
-.sublist-tile--selected:hover {
-  background: rgba(255,255,255,0.1);
 }
 
 /* Disclosure toggle */
@@ -462,17 +481,38 @@ button, input, select, textarea {
   opacity: 1;
 }
 
-/* Cover carousel on the empty New card. The track renders the covers twice,
-   so animating it to -50% loops seamlessly. */
-@keyframes textbook-marquee-drift {
-  from { transform: translateX(0); }
-  to   { transform: translateX(-50%); }
-}
-.textbook-marquee__track {
-  animation: textbook-marquee-drift 42s linear infinite;
-}
+/* Cover rotation on the empty New card (RotatingCover in homeCards.jsx):
+   rotating through the cover art one at a time inside a fixed square,
+   instead of a horizontal drift across the card's full width. Each variant
+   pairs an -enter class (on the incoming cover) with an -exit class (on the
+   outgoing one); both play concurrently. */
+@keyframes cover-fade-in  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes cover-fade-out { from { opacity: 1; } to { opacity: 0; } }
+.cover-fade-enter { animation: cover-fade-in 450ms ease-out; }
+.cover-fade-exit  { animation: cover-fade-out 450ms ease-in forwards; }
+
+@keyframes cover-pop-in  { from { opacity: 0; transform: scale(0.82); } to { opacity: 1; transform: scale(1); } }
+@keyframes cover-pop-out { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.92); } }
+.cover-pop-enter { animation: cover-pop-in 420ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+.cover-pop-exit  { animation: cover-pop-out 300ms ease-in forwards; }
+
+@keyframes cover-slide-in  { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes cover-slide-out { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-16px); } }
+.cover-slide-enter { animation: cover-slide-in 420ms ease-out; }
+.cover-slide-exit  { animation: cover-slide-out 420ms ease-in forwards; }
+
+@keyframes cover-flip-in  { from { opacity: 0; transform: rotateY(90deg); } to { opacity: 1; transform: rotateY(0deg); } }
+@keyframes cover-flip-out { from { opacity: 1; transform: rotateY(0deg); } to { opacity: 0; transform: rotateY(-90deg); } }
+.cover-flip-enter { animation: cover-flip-in 480ms ease-out; backface-visibility: hidden; }
+.cover-flip-exit  { animation: cover-flip-out 480ms ease-in forwards; backface-visibility: hidden; }
+
 @media (prefers-reduced-motion: reduce) {
-  .textbook-marquee__track { animation: none; }
+  .cover-fade-enter, .cover-fade-exit,
+  .cover-pop-enter, .cover-pop-exit,
+  .cover-slide-enter, .cover-slide-exit,
+  .cover-flip-enter, .cover-flip-exit {
+    animation: none;
+  }
 }
 
 /* Textbook picker rows (the real picker and the layout bench). Every one of
@@ -499,9 +539,42 @@ button, input, select, textarea {
   outline: 1px solid var(--tb-accent-dim, rgba(255,255,255,0.4));
   outline-offset: -1px;
 }
-.tb-tile:hover {
-  border-color: rgba(255,255,255,0.28) !important;
-}
 .tb-buy:hover {
   text-decoration: underline !important;
+}
+
+/* Drill settings drawer rows (DrillSettingsPanel). The row is the hit
+   target, so hovering it lights the switch as well as the row. */
+.settings-row:hover {
+  background: rgba(255,255,255,0.04);
+}
+.switch-track {
+  filter: brightness(1);
+  transition: filter 130ms, background 140ms, border-color 140ms;
+}
+.settings-row:hover .switch-track,
+.switch:hover:not(:disabled) .switch-track {
+  filter: brightness(1.25);
+}
+.switch:focus-visible .switch-track {
+  outline: 1px solid rgba(255,255,255,0.5);
+  outline-offset: 2px;
+}
+
+/* Lantern loading pulse. The sprite itself never dims — stays fully opaque
+   and lit — only a soft glow halo around it breathes, so it reads as
+   "steadily working" rather than "pulsing on and off". ~1800ms — a faster
+   ease at this smoothness reads as jittery, not gentle. Glow colour is
+   BRAND (rgb(255,0,77)), tying the loading state to the app's own accent.
+   The earlier flicker/breathe variants it beat live on archive/design-labs
+   (AccentPolishLabPage). Reduced-motion: static lit, no glow. */
+@keyframes lantern-pulse-glow {
+  0%, 100% { filter: drop-shadow(0 0 1px rgba(255,0,77,0)); }
+  50%      { filter: drop-shadow(0 0 6px rgba(255,0,77,0.75)); }
+}
+.lantern-pulse {
+  animation: lantern-pulse-glow 1800ms ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lantern-pulse { animation: none; filter: none; }
 }

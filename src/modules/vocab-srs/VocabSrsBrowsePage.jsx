@@ -17,8 +17,7 @@ import ToggleButton from '../../components/ToggleButton.jsx'
 import ChipSelector from '../../components/Chip.jsx'
 import SignInGate from '../../components/SignInGate.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
-import { FONT, TRACKING, TEXT, TEXT_MUTED, FS_BASE, FS_CAPTION, SEGMENT_COLORS } from '../../data/theme.js'
-import { MODULES } from '../../data/modules.js'
+import { FONT, TRACKING, TEXT, TEXT_MUTED, FS_BASE, FS_CAPTION, SEGMENT_COLORS, BRAND, CONTENT_STANDARD } from '../../data/theme.js'
 import { ModuleThemeProvider } from '../../context/ModuleThemeContext.jsx'
 import { STATE_LABELS, STATE_DESCRIPTIONS, SUSPENDED_DESCRIPTION } from './cardStates.js'
 import { useIsMobile } from '../../hooks/useIsMobile.js'
@@ -32,7 +31,7 @@ function parseHashQuery() {
 const BG = '#1E1E1E'
 const SURFACE = '#2A2A2A'
 const PAGE_SIZE = 50
-const SRS_ACCENT = MODULES.find(m => m.id === 'vocab-srs').accent
+const SRS_ACCENT = BRAND
 
 const STATE_FILTER_OPTIONS = [
   { value: 'all', label: 'All states' },
@@ -280,8 +279,8 @@ function BrowseCards() {
   if (!user) {
     return (
       <SignInGate
-        crumbs={[{ label: 'Japanese Study', href: '#/' }, { label: 'SRS', href: '#/vocab-srs' }, { label: 'Browse cards' }]}
-        title="Sign in to browse your SRS cards"
+        crumbs={[{ label: 'Lantern', href: '#/' }, { label: 'Reviews', href: '#/vocab-srs' }, { label: 'Browse cards' }]}
+        title="Sign in to browse your review cards"
         onSignIn={signIn}
       />
     )
@@ -299,14 +298,14 @@ function BrowseCards() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: BG, fontFamily: FONT, letterSpacing: TRACKING, color: TEXT }}>
       <PageHeader
         crumbs={[
-          { label: 'Japanese Study', href: '#/' },
-          { label: 'SRS', onClick: () => { window.location.hash = '#/vocab-srs' } },
+          { label: 'Lantern', href: '#/' },
+          { label: 'Reviews', onClick: () => { window.location.hash = '#/vocab-srs' } },
           { label: 'Browse cards' },
         ]}
         rightSlot={<AuthSlot />}
       />
-      <main style={{ flex: 1, overflowY: 'auto', padding: `24px 24px ${manageMode && someFilteredSelected ? 96 : 60}px` }}>
-        <div style={{ maxWidth: 760, margin: '0 auto' }}>
+      <main style={{ flex: 1, overflowY: 'auto', scrollbarGutter: 'stable both-edges', padding: `24px 24px ${manageMode && someFilteredSelected ? 96 : 60}px` }}>
+        <div style={{ maxWidth: CONTENT_STANDARD, margin: '0 auto' }}>
           <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
             <div style={{ minWidth: 200, maxWidth: 320 }}>
               <Select
@@ -335,7 +334,7 @@ function BrowseCards() {
             onChange={setStateFilter}
           />
 
-          <TextInput value={searchInput} onChange={setSearchInput} placeholder="Search..." style={{ marginBottom: 20 }} />
+          <TextInput value={searchInput} onChange={setSearchInput} placeholder="Search cards" style={{ marginBottom: 20 }} />
 
           <div style={{ fontSize: FS_CAPTION, color: TEXT_MUTED, marginBottom: 10 }}>
             {filtered.length} card{filtered.length === 1 ? '' : 's'}

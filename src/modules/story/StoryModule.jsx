@@ -2,16 +2,18 @@ import { useState, useMemo, useEffect } from 'react'
 import PageHeader from '../../components/PageHeader.jsx'
 import AuthSlot from '../../components/AuthSlot.jsx'
 import TopProgressBar from '../../components/TopProgressBar.jsx'
+import CenteredLoadingMessage from '../../components/CenteredLoadingMessage.jsx'
 import { useDelayedLoading } from '../../hooks/useDelayedLoading.js'
 import Button from '../../components/Button.jsx'
 import Select from '../../components/Select.jsx'
 import ChipSelector from '../../components/Chip.jsx'
 import FeedCard from '../../components/FeedCard.jsx'
+import Japanese from '../../components/Japanese.jsx'
 import FilterCard, { FilterRow } from '../../components/FilterCard.jsx'
 import ActionBar, { ACTION_BAR_HEIGHT } from '../../components/ActionBar.jsx'
+import SectionHeader from '../../components/SectionHeader.jsx'
 import { BG } from './storyUI.jsx'
-import { FONT, TRACKING, TEXT, TEXT_MUTED, FS_CAPTION, FS_HEADING, DANGER } from '../../data/theme.js'
-import { MODULES } from '../../data/modules.js'
+import { FONT, TRACKING, TEXT, TEXT_MUTED, FS_CAPTION, DANGER, BRAND, CONTENT_READING } from '../../data/theme.js'
 import { ModuleThemeProvider, useAccent } from '../../context/ModuleThemeContext.jsx'
 import { AI_DAILY_LIMITS } from '../../data/aiLimits.js'
 import { useAiUsage } from '../../hooks/useAiUsage.js'
@@ -30,7 +32,7 @@ import { generateStory } from './api.js'
 import { useIsMobile } from '../../hooks/useIsMobile.js'
 
 const MAX_RECENT_STORIES = 20
-const STORY_ACCENT = MODULES.find(m => m.id === 'story').accent
+const STORY_ACCENT = BRAND
 
 const FORMATS = [
   { id: 'story', label: 'Story' },
@@ -63,7 +65,7 @@ function RecentCard({ entry, onClick }) {
   return (
     <FeedCard
       badges={[{ label: FORMAT_LABEL[entry.format] ?? entry.format, tone: 'neutral' }]}
-      title={entry.title || 'Untitled'}
+      title={entry.title ? <Japanese>{entry.title}</Japanese> : 'Untitled'}
       meta={formatDate(entry.createdAt)}
       onClick={onClick}
     />
@@ -98,10 +100,10 @@ function QuotaPips({ remaining }) {
   )
 }
 
-function StoryList({ title, stories, empty }) {
+function StoryList({ stories, empty }) {
   return (
     <div>
-      <div style={{ fontSize: FS_HEADING, color: TEXT_MUTED, marginBottom: 12 }}>{title}</div>
+      <SectionHeader title="Stories" />
       {stories.length > 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {stories.map(entry => (
@@ -134,14 +136,14 @@ function StoryGenerator() {
   const aiAvailable = useAiAvailability('story-generate')
   const storyRemaining = Math.max(0, STORY_LIMIT - (aiUsage.today['story-generate'] ?? 0))
 
-  const [myStories, setMyStories] = useState([])
-  const [exampleStories, setExampleStories] = useState([])
+  const [stories, setStories] = useState([])
   const [recentLoading, setRecentLoading] = useState(true)
   const [recentError, setRecentError] = useState(null)
 
-  // Two queries rather than one filtered client-side: a single limited query
-  // would let a long list of examples crowd out the user's own stories.
-  // RLS already restricts reads to own + shared, so this only shapes the split.
+  // Two queries rather than one filtered server-side `.or(...)`: RLS already
+  // restricts reads to own + shared, this just fetches each side's own top N
+  // before merging, so a long example list can't push a user's own recent
+  // story out of the top N before the merge even happens.
   useEffect(() => {
     if (!supabase) {
       setRecentError('Supabase not configured.')
@@ -166,8 +168,9 @@ function StoryGenerator() {
       } else {
         const own = (m.data ?? []).map(mapRow)
         const ownIds = new Set(own.map(s => s.id))
-        setMyStories(own)
-        setExampleStories((e.data ?? []).map(mapRow).filter(s => !ownIds.has(s.id)))
+        const shared = (e.data ?? []).map(mapRow).filter(s => !ownIds.has(s.id))
+        const merged = [...own, ...shared].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        setStories(merged.slice(0, MAX_RECENT_STORIES))
       }
       setRecentLoading(false)
     })
@@ -202,7 +205,7 @@ function StoryGenerator() {
         ...(src.lists ?? []).map(l => ({ value: `vocab:${l.id}`, label: l.label })),
       ],
     })),
-    { label: 'SRS decks', options: srsDecks.map(d => ({ value: `srs:${d.id}`, label: d.name })) },
+    { label: 'Review decks', options: srsDecks.map(d => ({ value: `srs:${d.id}`, label: d.name })) },
   ], [srsDecks])
 
   const isSrsSource = source.startsWith('srs:')
@@ -261,7 +264,7 @@ function StoryGenerator() {
         created_at: createdAt,
       })
       if (insertError) throw new Error(insertError.message)
-      setMyStories(prev => [{ id, title: data.title, format, createdAt }, ...prev].slice(0, MAX_RECENT_STORIES))
+      setStories(prev => [{ id, title: data.title, format, createdAt }, ...prev].slice(0, MAX_RECENT_STORIES))
       refreshUsage()
       window.location.hash = `#/story/${id}`
     } catch (err) {
@@ -273,18 +276,18 @@ function StoryGenerator() {
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: BG, color: TEXT, fontFamily: FONT, letterSpacing: TRACKING }}>
       <PageHeader
-        crumbs={[{ label: 'Japanese Study', href: '#/' }, { label: 'Story generator' }]}
+        crumbs={[{ label: 'Lantern', href: '#/' }, { label: 'Story generator' }]}
         rightSlot={<AuthSlot />}
       >
         <TopProgressBar loading={showGenerating} color={STORY_ACCENT} />
       </PageHeader>
-      <div style={{ flex: 1, overflowY: 'auto' }}>
-        <div style={{ maxWidth: 760, margin: '0 auto', padding: isMobile ? `18px 14px ${ACTION_BAR_HEIGHT + 18}px` : `24px 20px ${ACTION_BAR_HEIGHT + 24}px` }}>
+      <div style={{ flex: 1, overflowY: 'auto', scrollbarGutter: 'stable both-edges' }}>
+        <div style={{ maxWidth: CONTENT_READING, margin: '0 auto', padding: isMobile ? `18px 14px ${ACTION_BAR_HEIGHT + 18}px` : `24px 20px ${ACTION_BAR_HEIGHT + 24}px` }}>
           <FilterCard>
             <FilterRow key="source" label="Vocabulary">
               <Select value={source} onChange={setSource} variant="inline" options={sourceOptions} />
               {isSrsSource && !user && (
-                <div style={{ fontSize: FS_CAPTION, color: TEXT_MUTED, marginTop: 8 }}>Sign in to use SRS decks as a source.</div>
+                <div style={{ fontSize: FS_CAPTION, color: TEXT_MUTED, marginTop: 8 }}>Sign in to use review decks as a source.</div>
               )}
             </FilterRow>
             {isSrsSource && user && (
@@ -311,7 +314,7 @@ function StoryGenerator() {
           )}
           {error && <div style={{ marginTop: 14, fontSize: FS_CAPTION, color: DANGER }}>{error}</div>}
           <ActionBar
-            maxWidth={760}
+            maxWidth={CONTENT_READING}
             leading={(
               <span style={{ fontSize: FS_CAPTION, color: TEXT_MUTED, display: 'flex', flexDirection: 'column', gap: 5 }}>
                 <span>
@@ -320,7 +323,7 @@ function StoryGenerator() {
                     : context
                       ? `${context.wordCount} words in context`
                       : isSrsSource && srsLoading
-                        ? 'Loading SRS data…'
+                        ? 'Loading review data…'
                         : 'No words available'}
                 </span>
                 {/* Held back until the key status resolves, so a user on their
@@ -340,22 +343,14 @@ function StoryGenerator() {
 
           <div style={{ marginTop: 36 }}>
             {recentLoading ? (
-              <div style={{ fontSize: FS_CAPTION, color: TEXT_MUTED }}>Loading…</div>
+              <CenteredLoadingMessage text="Loading stories" />
             ) : recentError ? (
               <div style={{ fontSize: FS_CAPTION, color: TEXT_MUTED }}>{recentError}</div>
             ) : (
-              <>
-                <StoryList
-                  title="Your stories"
-                  stories={myStories}
-                  empty={user ? 'No stories generated yet.' : 'Sign in to generate and keep your own stories.'}
-                />
-                {exampleStories.length > 0 && (
-                  <div style={{ marginTop: 28 }}>
-                    <StoryList title="Examples" stories={exampleStories} empty={null} />
-                  </div>
-                )}
-              </>
+              <StoryList
+                stories={stories}
+                empty={user ? 'No stories generated yet.' : 'Sign in to generate and keep your own stories.'}
+              />
             )}
           </div>
         </div>

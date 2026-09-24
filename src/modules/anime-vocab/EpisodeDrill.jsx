@@ -11,7 +11,7 @@ import { useProgress } from '../../hooks/useProgress.js'
 import { createCard } from '../vocab-srs/srs.js'
 import {
   FONT, TEXT_MUTED, FS_BADGE, FS_CAPTION,
-  FS_DISPLAY_HEADING, FS_STAT_VALUE, FS_LIST_TITLE,
+  FS_DISPLAY_HEADING, FS_STAT_VALUE, FS_LIST_TITLE, CONTENT_NARROW,
 } from '../../data/theme.js'
 import { useAccent } from '../../context/ModuleThemeContext.jsx'
 import Button from '../../components/Button.jsx'
@@ -25,8 +25,8 @@ const ANIME_WORDS_DECK_ID = 'anime-words'
 // the user explicitly adds words from the done screen. Deliberately skips
 // gamepad support — Vocab Drill specific, not core to the flow.
 function ActiveEpisodeDrill({
-  drill, ttsVoice, audioEnabled, sfxEnabled, disableKeyboard,
-  showStreak, showFurigana, showTranslation, showSentence, sentenceSource, showKanjiMeaning, pixelFont, showVisualEffects,
+  drill, ttsVoice, playOnFront, playOnBack, sfxEnabled, disableKeyboard,
+  showStreak, showFurigana, showTranslation, showSentence, showKanjiMeaning, pixelFont, showVisualEffects,
 }) {
   const [flippedCardId, setFlippedCardId] = useState(null)
   const [transitioning, setTransitioning] = useState(false)
@@ -51,11 +51,20 @@ function ActiveEpisodeDrill({
   }
 
   useEffect(() => {
-    if (isFlipped) { if (audioEnabled) tts.speak(currentCard.word.kana) }
+    if (isFlipped) { if (playOnBack) tts.speak(currentCard.word.kana) }
     else tts.cancel()
     return () => tts.cancel()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isFlipped, currentCard.id, audioEnabled])
+  }, [isFlipped, currentCard.id, playOnBack])
+
+  // Front audio — these words have no recordings, so this is always the
+  // backup voice reading the card as it arrives.
+  useEffect(() => {
+    if (!playOnFront) return
+    tts.speak(currentCard.word.kana)
+    return () => tts.cancel()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentCard.id, playOnFront])
 
   useEffect(() => { setFlippedCardId(null) }, [currentCard.id])
 
@@ -113,7 +122,6 @@ function ActiveEpisodeDrill({
           showFurigana={showFurigana}
           showTranslation={showTranslation}
           showSentence={showSentence}
-          sentenceSource={sentenceSource}
           showKanjiMeaning={showKanjiMeaning}
           pixelFont={pixelFont}
         />
@@ -156,7 +164,7 @@ function DoneScreen({ pool, mistakeCounts, correct, troubled, onRestart, onBack,
   }
 
   return (
-    <div style={{ textAlign: 'center', fontFamily: FONT, width: '100%', maxWidth: 560, padding: '0 24px 48px' }}>
+    <div style={{ textAlign: 'center', fontFamily: FONT, width: '100%', maxWidth: CONTENT_NARROW, padding: '0 24px 48px' }}>
       <div style={{ color: '#fff', fontSize: FS_DISPLAY_HEADING, letterSpacing: '0.05em', marginBottom: 16 }}>Drill complete</div>
       <div style={{ display: 'flex', gap: 20, justifyContent: 'center', marginBottom: 32 }}>
         <div>
@@ -179,10 +187,10 @@ function DoneScreen({ pool, mistakeCounts, correct, troubled, onRestart, onBack,
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 8 }}>
             <span style={{ fontSize: FS_CAPTION, color: TEXT_MUTED, letterSpacing: '0.08em' }}>WORDS FROM THIS DRILL</span>
             {requiresSignIn ? (
-              <Button variant="neutral" size="sm" onClick={onSignIn}>Sign in to add to SRS</Button>
+              <Button variant="neutral" size="sm" onClick={onSignIn}>Sign in to add to review deck</Button>
             ) : (
               <Button variant="accent-outline" size="sm" onClick={handleAdd} disabled={selected.size === 0}>
-                Add {selected.size} to SRS
+                Add {selected.size} to review deck
               </Button>
             )}
           </div>
@@ -209,8 +217,8 @@ function DoneScreen({ pool, mistakeCounts, correct, troubled, onRestart, onBack,
 // AnimeVocabModule's settings state for why.
 export default function EpisodeDrill({
   words, onBack,
-  ttsVoice, audioEnabled, sfxEnabled, disableKeyboard,
-  showStreak, showFurigana, showTranslation, showSentence, sentenceSource, showKanjiMeaning, pixelFont, showVisualEffects,
+  ttsVoice, playOnFront, playOnBack, sfxEnabled, disableKeyboard,
+  showStreak, showFurigana, showTranslation, showSentence, showKanjiMeaning, pixelFont, showVisualEffects,
 }) {
   const pool = useMemo(() => words.map(w => ({ id: w.id, word: w })), [words])
   const drill = useDrill(pool, { engine: SimpleQueue })
@@ -259,14 +267,14 @@ export default function EpisodeDrill({
         <ActiveEpisodeDrill
           drill={drill}
           ttsVoice={ttsVoice}
-          audioEnabled={audioEnabled}
-          sfxEnabled={audioEnabled && sfxEnabled}
+          playOnFront={playOnFront}
+          playOnBack={playOnBack}
+          sfxEnabled={sfxEnabled}
           disableKeyboard={disableKeyboard}
           showStreak={showStreak}
           showFurigana={showFurigana}
           showTranslation={showTranslation}
           showSentence={showSentence}
-          sentenceSource={sentenceSource}
           showKanjiMeaning={showKanjiMeaning}
           pixelFont={pixelFont}
           showVisualEffects={showVisualEffects}

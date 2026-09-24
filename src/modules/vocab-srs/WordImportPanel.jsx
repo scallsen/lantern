@@ -19,8 +19,8 @@ const TAB_OPTIONS = [
 
 // Editable review table: surface / reading / meaning are inline inputs.
 const REVIEW_COLUMNS = [
-  { key: 'surface', width: 90 },
-  { key: 'reading', width: 90, placeholder: 'reading' },
+  { key: 'surface', width: 90, lang: 'ja' },
+  { key: 'reading', width: 90, placeholder: 'reading', lang: 'ja' },
   { key: 'meaning', placeholder: row => (row.jmdictId ? 'meaning' : 'no dictionary match — enter meaning') },
 ]
 const EDITABLE_FIELDS = ['surface', 'reading', 'meaning']
@@ -174,7 +174,7 @@ export default function WordImportPanel({ open, onClose, decks, isMobile, onAdd,
                 decks={decks}
                 isMobile={isMobile}
                 disabled={selectedCount === 0}
-                buttonLabel={`Add ${selectedCount} word${selectedCount === 1 ? '' : 's'} to SRS`}
+                buttonLabel={`Add ${selectedCount} word${selectedCount === 1 ? '' : 's'} to review deck`}
                 onAdd={handleAdd}
                 onCreateAndAdd={handleCreateAndAdd}
               />

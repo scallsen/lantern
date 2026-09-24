@@ -7,14 +7,9 @@ import TextInput from '../components/TextInput.jsx'
 import Select from '../components/Select.jsx'
 import DataList from '../components/DataList.jsx'
 import ConfirmDialog from '../components/ConfirmDialog.jsx'
-import Modal from '../components/Modal.jsx'
-import Markdown from '../components/Markdown.jsx'
 import TopProgressBar from '../components/TopProgressBar.jsx'
+import ProviderIcon from '../components/ProviderIcon.jsx'
 import { useAccent } from '../context/ModuleThemeContext.jsx'
-// Inlined at build time by Vite, so the modal always shows the committed file
-// rather than a copy that drifts from it.
-import PRIVACY_MD from '../../PRIVACY.md?raw'
-import { useIsMobile } from '../hooks/useIsMobile.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { supabase } from '../lib/supabase.js'
 import { setPendingToast } from '../utils/pendingToast.js'
@@ -22,6 +17,7 @@ import { AUTH_PROVIDERS, EMAIL_PROVIDER, providerLabel } from '../data/authProvi
 import { AI_DAILY_LIMITS } from '../data/aiLimits.js'
 import { useAiUsage } from '../hooks/useAiUsage.js'
 import { useApiKeyStatus } from '../hooks/useApiKeyStatus.js'
+import { useQuotaResetCountdown } from '../hooks/useQuotaResetCountdown.js'
 import { callFunction } from '../lib/functionsClient.js'
 import { useProgress } from '../hooks/useProgress.js'
 import { migrateProgress } from '../modules/vocab-srs/migrate.js'
@@ -31,9 +27,10 @@ import {
   FONT, TRACKING, TEXT, TEXT_MUTED, DANGER,
   FS_BASE, FS_SM, FS_CONTENT_HEADING,
   SPACE_4, SPACE_8, SPACE_12, SPACE_16, SPACE_24, SPACE_32,
+  CONTENT_STANDARD,
 } from '../data/theme.js'
 
-const COLUMN_WIDTH = 640
+const COLUMN_WIDTH = CONTENT_STANDARD
 const USAGE_BAR_WIDTH = 120
 
 // Mirrors looksLikeAnthropicKey in supabase/functions/_shared/userKey.ts. The
@@ -51,17 +48,16 @@ export default function AccountPage() {
   // null until the user picks one, so the control reflects whether a key is
   // actually stored — and lets them choose "own" before entering one.
   const [providerChoice, setProviderChoice] = useState(null)
-  const [privacyOpen, setPrivacyOpen] = useState(false)
   const [confirmingKeyRemoval, setConfirmingKeyRemoval] = useState(false)
   const [keyChecking, setKeyChecking] = useState(false)
   const [keyError, setKeyError] = useState(null)
-  const isMobile = useIsMobile()
   const accent = useAccent()
 
   // Above the early returns below — hooks can't run conditionally.
   const { usage } = useAiUsage()
   const { hint: keyHint, loading: keyLoading, refresh: refreshKey } = useApiKeyStatus()
   const { data: srsRaw } = useProgress('vocab-srs')
+  const resetsIn = useQuotaResetCountdown()
 
   const shell = {
     height: '100%',
@@ -76,7 +72,7 @@ export default function AccountPage() {
   // section inside is full width of that child.
   const scroll = {
     flex: 1,
-    overflowY: 'auto',
+    overflowY: 'auto', scrollbarGutter: 'stable both-edges',
     padding: SPACE_24,
     display: 'flex',
     flexDirection: 'column',
@@ -91,7 +87,7 @@ export default function AccountPage() {
     gap: SPACE_32,
   }
 
-  const crumbs = [{ label: 'Japanese Study', href: '#/' }, { label: 'Account' }]
+  const crumbs = [{ label: 'Lantern', href: '#/' }, { label: 'Account' }]
 
   if (loading) {
     return <div style={shell}><PageHeader crumbs={crumbs} rightSlot={<AuthSlot />} /></div>
@@ -243,7 +239,18 @@ export default function AccountPage() {
   ]
 
   const accountColumns = [
-    { key: 'label', width: 150 },
+    {
+      key: 'label',
+      width: 150,
+      // Own gap rather than the cell's default 4px, which sits the mark
+      // almost against the first letter.
+      render: row => (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: SPACE_8 }}>
+          <ProviderIcon provider={row.id} />
+          {row.label}
+        </span>
+      ),
+    },
     {
       key: 'detail',
       flex: 1,
@@ -441,7 +448,7 @@ export default function AccountPage() {
             <div style={{ color: TEXT_MUTED, fontSize: FS_SM, marginTop: SPACE_12, lineHeight: 1.5 }}>
               {usingOwnKey
                 ? 'Billed to your Anthropic account. Your key is stored encrypted and never shown again — only the last four characters come back.'
-                : 'Resets at 00:00 UTC. Generating a story and reading words from a photo both call Claude, so they’re capped per day.'}
+                : `Resets in ${resetsIn}`}
             </div>
           </section>
 
@@ -469,37 +476,28 @@ export default function AccountPage() {
           {/* Matches AttributionFooter's treatment — centred, muted, and using
               the same .attribution-link class so the hover behaves identically.
               Not literally that component: it renders from the static
-              ATTRIBUTIONS registry as <a href> only, and this opens a modal. */}
+              ATTRIBUTIONS registry as <a href> only, and this is a real link
+              too now — it used to open a modal, but that page has no stable
+              URL a crawler (or anyone) can reach directly, which is what
+              Google's OAuth branding verification flagged it for. */}
           <div style={{
             textAlign: 'center', paddingTop: SPACE_8,
             fontSize: FS_SM, color: TEXT_MUTED, opacity: 0.55, lineHeight: 1.6,
           }}>
-            <button
-              onClick={() => setPrivacyOpen(true)}
+            <a
+              href="#/privacy"
               className="attribution-link"
               style={{
-                background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                color: TEXT_MUTED,
                 fontFamily: FONT, fontSize: FS_SM, letterSpacing: TRACKING,
                 textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.3)',
               }}
             >
               Privacy policy
-            </button>
+            </a>
           </div>
         </div>
       </div>
-
-      <Modal
-        open={privacyOpen}
-        onClose={() => setPrivacyOpen(false)}
-        title="Privacy policy"
-        size="lg"
-        isMobile={isMobile}
-      >
-        {/* The document keeps its own H1 so it reads properly as a file on
-            GitHub; here the modal header already carries the title. */}
-        <Markdown source={PRIVACY_MD.replace(/^#\s+.*\n+/, '')} />
-      </Modal>
 
       <ConfirmDialog
         open={confirmingKeyRemoval}
