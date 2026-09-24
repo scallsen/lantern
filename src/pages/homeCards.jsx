@@ -38,7 +38,11 @@ function navigate(hash) {
 // deliberate, not incidental: it makes the two cards match heights because
 // they're told to, rather than relying on the parent grid's default stretch
 // staying that way.
-export function PrimaryCard({ accent, title, subtitle, cover, progress, actions, children }) {
+//
+// `meter` sits in the header beside the cover rather than below it, pinned
+// to the cover's bottom edge, so a score takes the header's spare height
+// instead of adding a row.
+export function PrimaryCard({ accent, title, subtitle, cover, meter, progress, actions, children }) {
   return (
     <ModuleThemeProvider accent={accent}>
       <Card
@@ -49,9 +53,12 @@ export function PrimaryCard({ accent, title, subtitle, cover, progress, actions,
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE_16 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: SPACE_16 }}>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: FS_CONTENT_HEADING, color: TEXT }}>{title}</div>
-              {subtitle && <div style={{ fontSize: FS_BASE, color: TEXT_MUTED, marginTop: SPACE_4 }}>{subtitle}</div>}
+            <div style={{ minWidth: 0, flex: meter ? 1 : undefined, alignSelf: 'stretch', display: 'flex', flexDirection: 'column', gap: SPACE_12 }}>
+              <div>
+                <div style={{ fontSize: FS_CONTENT_HEADING, color: TEXT }}>{title}</div>
+                {subtitle && <div style={{ fontSize: FS_BASE, color: TEXT_MUTED, marginTop: SPACE_4 }}>{subtitle}</div>}
+              </div>
+              {meter && <div style={{ marginTop: 'auto' }}>{meter}</div>}
             </div>
             {cover}
           </div>
@@ -398,17 +405,16 @@ export function NewCard({ loading, state, onStart, onAdvance, onChangeTextbook }
       title={textbook.title}
       subtitle={complete ? 'Book completed' : `${doneCount} of ${chapters.length} chapters`}
       cover={cover}
+      meter={scorePct != null && (
+        <ScoreBar pct={scorePct} target={READINESS_TARGET_PCT} height={8} caption={`${scorePct}% Correct`} />
+      )}
       actions={
         <ActionsRow>
           <SegmentedPrimary size="lg" label={label} onClick={onClick} menuItems={menuItems} />
           {viewChapters}
         </ActionsRow>
       }
-    >
-      {scorePct != null && (
-        <ScoreBar pct={scorePct} target={READINESS_TARGET_PCT} height={8} caption={`${scorePct}% correct first time`} />
-      )}
-    </PrimaryCard>
+    />
   )
 }
 
