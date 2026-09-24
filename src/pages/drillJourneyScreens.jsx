@@ -9,6 +9,8 @@ import DeckComboBox from '../components/DeckComboBox.jsx'
 import DrillHUD from '../components/DrillHUD.jsx'
 import Select from '../components/Select.jsx'
 import Japanese from '../components/Japanese.jsx'
+import ActionBar from '../components/ActionBar.jsx'
+import Disclosure from '../components/Disclosure.jsx'
 import { PrimaryCard, TextbookCover, SegmentedPrimary, ActionsRow } from './homeCards.jsx'
 import {
   FONT, TEXT, TEXT_MUTED, BRAND, BRAND_TEXT, BRAND_TINT, KANJI_FONT, SUCCESS, WARNING,
@@ -18,6 +20,7 @@ import {
 import {
   TEXTBOOK, CHAPTER, NEXT_CHAPTER, CHAPTERS_DONE_BEFORE, WORDS, SESSION, ROUNDS, LAST_RUN_PCT, LAST_RUN,
   CHRONIC, PAST_SESSIONS, DECKS, READINESS_TARGET_PCT, FSRS_EASY_FIRST_INTERVAL_DAYS,
+  WORD_ROUNDS, CLEARED_BY_ROUND,
 } from './drillJourneyFixtures.js'
 
 const HAIRLINE = 'rgba(255,255,255,0.08)'
@@ -218,10 +221,10 @@ export function RoundCheckpoint() {
       <div style={{ textAlign: 'left' }}>
         <WordList rows={round1Rows} />
       </div>
-      <Row>
+      <ActionBar>
+        <Button variant="quiet" size="xl">Stop for now</Button>
         <Button size="xl">Drill the {round1Left} again</Button>
-      </Row>
-      <Row><Button variant="ghost-muted" size="sm">Stop for now</Button></Row>
+      </ActionBar>
     </Screen>
   )
 }
@@ -299,6 +302,230 @@ export function ClearedMoment() {
           </span>
         ))}
       </Row>
+    </Screen>
+  )
+}
+
+// ── Stage 3 · Report concepts ────────────────────────────────────────────────
+//
+// Every concept encodes one thing — how much effort a word took, as the round
+// it was cleared in — with one sequential ramp: grey for right first time
+// (de-emphasised, it's the majority and needs no attention), deepening to full
+// brand for the last round. Always paired with a label or count, so colour is
+// never the only carrier.
+
+const EFFORT = ['#4A4A4A', '#8E1A3C', BRAND]
+const EFFORT_LABEL = ['Right first time', 'Cleared in round 2', 'Cleared in round 3']
+const effortOf = w => EFFORT[w.clearedRound - 1]
+
+function Swatch({ color, size = 10 }) {
+  return <span style={{ width: size, height: size, borderRadius: 2, background: color, flexShrink: 0, display: 'inline-block' }} />
+}
+
+function ClearedHeading() {
+  return (
+    <div style={{ textAlign: 'left' }}>
+      <div style={{ color: BRAND_TEXT, fontSize: FS_BASE, textTransform: 'uppercase' }}>{TEXTBOOK.title} · {CHAPTER.label}</div>
+      <div style={{ color: '#fff', fontSize: FS_DISPLAY_HEADING, marginTop: SPACE_4 }}>Lesson cleared</div>
+    </div>
+  )
+}
+
+function HeroFirstTry() {
+  const delta = SESSION.firstTryPct - LAST_RUN_PCT
+  return (
+    <div style={{ display: 'flex', alignItems: 'baseline', gap: SPACE_12, flexWrap: 'wrap' }}>
+      <span style={{ fontSize: 56, lineHeight: 1, color: TEXT }}>{SESSION.firstTryPct}%</span>
+      <span style={{ fontSize: FS_BASE, color: TEXT_MUTED }}>right first time</span>
+      <span style={{ fontSize: FS_BASE, color: delta >= 0 ? SUCCESS : TEXT_MUTED }}>{delta >= 0 ? '▲' : '▼'} {Math.abs(delta)} pts vs {LAST_RUN.whenLabel}</span>
+    </div>
+  )
+}
+
+function GroupHeader({ color, title, count }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: SPACE_8, margin: `${SPACE_16}px 0 ${SPACE_8}px` }}>
+      <Swatch color={color} />
+      <span style={{ fontSize: FS_BASE, color: TEXT }}>{title}</span>
+      <span style={{ fontSize: FS_BASE, color: TEXT_MUTED }}>{count}</span>
+    </div>
+  )
+}
+
+export function ClearedBar() {
+  const total = WORD_ROUNDS.length
+  const groups = CLEARED_BY_ROUND.map((words, i) => ({ i, words })).filter(g => g.words.length > 0)
+  return (
+    <Screen align="left">
+      <ClearedHeading />
+      <HeroFirstTry />
+      <div>
+        <div style={{ display: 'flex', gap: 2, height: 14 }}>
+          {groups.map(({ i, words }, k) => (
+            <div
+              key={i}
+              title={`${EFFORT_LABEL[i]}: ${words.length} of ${total}`}
+              style={{
+                flex: `${words.length} 0 0`, background: EFFORT[i],
+                borderRadius: k === 0 ? '4px 0 0 4px' : k === groups.length - 1 ? '0 4px 4px 0' : 0,
+              }}
+            />
+          ))}
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: `${SPACE_4}px ${SPACE_16}px`, marginTop: SPACE_8 }}>
+          {groups.map(({ i, words }) => (
+            <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: SPACE_8, fontSize: FS_BASE, color: TEXT_MUTED }}>
+              <Swatch color={EFFORT[i]} />
+              {EFFORT_LABEL[i]} <span style={{ color: TEXT }}>{words.length}</span>
+            </span>
+          ))}
+        </div>
+        <div style={{ fontSize: FS_BADGE, color: TEXT_MUTED, marginTop: SPACE_4 }}>
+          {SESSION.rounds} rounds · {SESSION.total} → {ROUNDS.slice(1).map(r => r.size).join(' → ')} → 0 words left
+        </div>
+      </div>
+      <div>
+        {[...groups].reverse().map(({ i, words }) => (
+          i === 0 ? (
+            <div key={i} style={{ marginTop: SPACE_16 }}>
+              <Disclosure label={`${EFFORT_LABEL[0]} · ${words.length}`}>
+                <WordList rows={words} />
+              </Disclosure>
+            </div>
+          ) : (
+            <div key={i}>
+              <GroupHeader color={EFFORT[i]} title={EFFORT_LABEL[i]} count={words.length} />
+              <WordList rows={[...words].sort((a, b) => b.misses - a.misses)} />
+            </div>
+          )
+        ))}
+      </div>
+    </Screen>
+  )
+}
+
+const TRAIL_CELL = 44
+
+function Trail({ trail }) {
+  return (
+    <span style={{ display: 'flex' }}>
+      {ROUNDS.map((_, r) => (
+        <span key={r} style={{ width: TRAIL_CELL, display: 'flex', gap: 2, alignItems: 'center' }}>
+          {r < trail.length && (
+            <>
+              {Array.from({ length: trail[r] }, (_, k) => <Swatch key={k} color={BRAND} size={8} />)}
+              <span style={{ width: 8, height: 8, borderRadius: 2, border: `1px solid ${TEXT_MUTED}`, boxSizing: 'border-box' }} />
+            </>
+          )}
+        </span>
+      ))}
+    </span>
+  )
+}
+
+const TRAIL_COLUMNS = [
+  { key: 'word', width: 90, render: row => <WordCell word={row} /> },
+  { key: 'gloss', tone: 'muted', wrap: true, render: row => row.english },
+  { key: 'trail', width: TRAIL_CELL * ROUNDS.length, render: row => <Trail trail={row.trail} /> },
+]
+
+export function ClearedTrail() {
+  const rows = [...WORD_ROUNDS].sort((a, b) => b.misses - a.misses || b.clearedRound - a.clearedRound)
+  return (
+    <Screen align="left">
+      <ClearedHeading />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: SPACE_12 }}>
+        <Stat label="First try" value={`${SESSION.firstTryPct}%`} note={`+${SESSION.firstTryPct - LAST_RUN_PCT} vs ${LAST_RUN.whenLabel}`} />
+        <Stat label="Misses" value={Object.values(SESSION.cumulative).reduce((a, b) => a + b, 0)} note={`across ${SESSION.struggled.length} words`} />
+        <Stat label="Rounds" value={SESSION.rounds} />
+      </div>
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 14px', marginBottom: SPACE_8, gap: SPACE_12 }}>
+          <span style={{ display: 'flex', gap: SPACE_12, fontSize: FS_BADGE, color: TEXT_MUTED }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: SPACE_4 }}><Swatch color={BRAND} size={8} /> miss</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: SPACE_4 }}><span style={{ width: 8, height: 8, borderRadius: 2, border: `1px solid ${TEXT_MUTED}`, boxSizing: 'border-box' }} /> right</span>
+          </span>
+          <span style={{ display: 'flex', fontSize: FS_BADGE, color: TEXT_MUTED }}>
+            {ROUNDS.map((_, r) => <span key={r} style={{ width: TRAIL_CELL }}>R{r + 1}</span>)}
+          </span>
+        </div>
+        <DataList columns={TRAIL_COLUMNS} rows={rows} maxWidth="100%" />
+      </div>
+    </Screen>
+  )
+}
+
+export function ClearedGrid() {
+  return (
+    <Screen align="left">
+      <ClearedHeading />
+      <HeroFirstTry />
+      <div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 2 }}>
+          {WORD_ROUNDS.map(w => (
+            <div
+              key={w.id}
+              title={`${w.kanji} (${w.english}) — ${w.misses ? `${w.misses} miss${w.misses === 1 ? '' : 'es'}, ` : ''}${EFFORT_LABEL[w.clearedRound - 1].toLowerCase()}`}
+              style={{ position: 'relative', aspectRatio: '1', background: effortOf(w), borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Japanese style={{ fontFamily: KANJI_FONT, letterSpacing: 0, fontSize: FS_BASE, color: TEXT }}>{w.kanji}</Japanese>
+              {w.misses > 0 && <span style={{ position: 'absolute', right: 4, bottom: 2, fontSize: FS_BADGE, color: TEXT }}>{w.misses}</span>}
+            </div>
+          ))}
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: `${SPACE_4}px ${SPACE_12}px`, marginTop: SPACE_8 }}>
+          {EFFORT_LABEL.map((label, i) => (
+            <span key={label} style={{ display: 'inline-flex', alignItems: 'center', gap: SPACE_4, fontSize: FS_BADGE, color: TEXT_MUTED }}>
+              <Swatch color={EFFORT[i]} size={8} /> {label} {CLEARED_BY_ROUND[i].length}
+            </span>
+          ))}
+        </div>
+      </div>
+      <div>
+        <SectionHeader title={`You struggled with ${SESSION.struggled.length}`} />
+        <WordList rows={SESSION.struggled} />
+      </div>
+    </Screen>
+  )
+}
+
+function RunMeter({ label, pct, color }) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '96px minmax(0, 1fr) 44px', gap: SPACE_12, alignItems: 'center' }}>
+      <span style={{ fontSize: FS_BASE, color: TEXT_MUTED }}>{label}</span>
+      <div style={{ position: 'relative', height: 10, borderRadius: 4, background: HAIRLINE }}>
+        <div style={{ height: '100%', width: `${pct}%`, borderRadius: 4, background: color }} />
+        <div title={`Target ${READINESS_TARGET_PCT}%`} style={{ position: 'absolute', top: -3, bottom: -3, left: `${READINESS_TARGET_PCT}%`, width: 2, background: TEXT_MUTED }} />
+      </div>
+      <span style={{ fontSize: FS_BASE, color: TEXT, textAlign: 'right' }}>{pct}%</span>
+    </div>
+  )
+}
+
+export function ClearedCompare() {
+  const lastMissed = new Set(PAST_SESSIONS[0].missed)
+  const nowMissed = new Set(Object.keys(SESSION.cumulative))
+  const byId = Object.fromEntries(WORD_ROUNDS.map(w => [w.id, w]))
+  const still = [...nowMissed].filter(id => lastMissed.has(id)).map(id => byId[id]).sort((a, b) => b.misses - a.misses)
+  const fresh = [...nowMissed].filter(id => !lastMissed.has(id)).map(id => byId[id])
+  const fixed = [...lastMissed].filter(id => !nowMissed.has(id)).map(id => byId[id])
+  return (
+    <Screen align="left">
+      <ClearedHeading />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE_8 }}>
+        <div style={{ fontSize: FS_BASE, color: TEXT_MUTED }}>Right first time</div>
+        <RunMeter label={LAST_RUN.whenLabel} pct={LAST_RUN_PCT} color={EFFORT[0]} />
+        <RunMeter label="Today" pct={SESSION.firstTryPct} color={BRAND} />
+        <div style={{ fontSize: FS_BADGE, color: TEXT_MUTED }}>The tick is your {READINESS_TARGET_PCT}% target.</div>
+      </div>
+      <div>
+        <GroupHeader color={BRAND} title="Still tricky" count={still.length} />
+        <WordList rows={still} />
+        <GroupHeader color={EFFORT[1]} title="New trouble" count={fresh.length} />
+        <WordList rows={fresh} />
+        <GroupHeader color={SUCCESS} title="Fixed since last time" count={fixed.length} />
+        <WordList rows={fixed} />
+      </div>
     </Screen>
   )
 }
@@ -398,8 +625,16 @@ export function SendHeadStart() {
           when="Start as new cards — up first in your next review."
           words={SESSION.struggled}
         />
-        <div style={{ marginTop: SPACE_12 }}><Button size="lg" fullWidth>Add {SESSION.total} words to Reviews</Button></div>
       </Card>
+      {/* Stacked through `leading` because ActionBar only right-aligns its
+          children, and three xl buttons wrap raggedly at phone width. */}
+      <ActionBar leading={(
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: SPACE_8 }}>
+          <div style={{ gridColumn: '1 / -1' }}><Button size="xl" fullWidth>Add all {SESSION.total} to Reviews</Button></div>
+          <Button variant="neutral" size="lg" fullWidth>Just the hard {SESSION.struggled.length}</Button>
+          <Button variant="quiet" size="lg" fullWidth>End review</Button>
+        </div>
+      )} />
     </Screen>
   )
 }

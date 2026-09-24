@@ -68,6 +68,22 @@ export const SESSION = (() => {
   }
 })()
 
+// Per-word attempt history. A missed card keeps coming back within its round
+// until it's answered, so every round a word appears in ends with one correct
+// answer; `trail[r]` is the misses before it. A word is cleared in the first
+// round it gets right first time.
+export const WORD_ROUNDS = WORDS.map(w => {
+  const trail = []
+  for (const round of ROUNDS) {
+    const misses = round.misses[w.id] ?? 0
+    trail.push(misses)
+    if (misses === 0) break
+  }
+  return { ...w, trail, clearedRound: trail.length, misses: trail.reduce((a, b) => a + b, 0) }
+})
+
+export const CLEARED_BY_ROUND = ROUNDS.map((_, i) => WORD_ROUNDS.filter(w => w.clearedRound === i + 1))
+
 export const LAST_RUN = { firstTry: 12, total: 20, whenLabel: '3 days ago' }
 export const LAST_RUN_PCT = Math.round((LAST_RUN.firstTry / LAST_RUN.total) * 100)
 
@@ -136,7 +152,7 @@ export const STAGES = [
     question: 'What does the screen between rounds say and offer?',
     variants: [
       { id: 'today', name: 'Today', fixes: [], today: true, tradeoff: '"Session complete" with 6 words to go; Restart and End review compete with the one thing you should do.' },
-      { id: 'checkpoint', name: 'Round checkpoint', fixes: ['mid'], recommended: true, tradeoff: 'One extra tap per round.' },
+      { id: 'checkpoint', name: 'Round checkpoint', fixes: ['mid'], recommended: true, tradeoff: 'One extra tap per round. The buttons sit in the sticky bottom bar, so a long list never pushes them off screen.' },
       { id: 'auto', name: 'Keep going', fixes: ['mid'], tradeoff: 'No screen at all — fastest, but no pause and no view of which words are coming back.' },
     ],
   },
@@ -146,7 +162,11 @@ export const STAGES = [
     question: 'What does finishing look like, and what does it remember?',
     variants: [
       { id: 'today', name: 'Today', fixes: [], today: true, tradeoff: 'Shows the last round only: 2 correct, 0 troubled, nothing flagged.' },
-      { id: 'report', name: 'Lesson report', fixes: ['lost', 'stats', 'reward', 'ready'], recommended: true, tradeoff: 'Needs the engine to carry misses across rounds and save the first pass once.' },
+      { id: 'report', name: 'Stat row (first draft)', fixes: ['lost', 'stats', 'reward', 'ready'], tradeoff: 'Three numbers and a text trail: the data is there, but nothing shows how the lesson divided up.' },
+      { id: 'bar', name: 'Clearing bar', fixes: ['lost', 'stats', 'reward', 'ready'], recommended: true, tradeoff: 'Shows the whole lesson split by the round each word was cleared in, and the list is grouped the same way. Per-word detail is only the miss count.' },
+      { id: 'trail', name: 'Word trail', fixes: ['lost', 'stats', 'reward'], tradeoff: 'Every attempt, per word, per round: the most complete view, but the densest, and there is no whole-lesson summary beyond the header.' },
+      { id: 'grid', name: 'Lesson grid', fixes: ['lost', 'reward'], tradeoff: 'The whole lesson at a glance as tiles; the list below it only keeps the struggled words.' },
+      { id: 'compare', name: 'Then vs now', fixes: ['lost', 'ready', 'chronic'], tradeoff: "Frames the run as progress since last time, which is the question behind \"am I ready?\" Needs per-word history stored, and a first run has nothing to compare against." },
       { id: 'moment', name: 'Big moment', fixes: ['lost', 'reward'], tradeoff: 'Feels good, says less: no comparison with last time.' },
     ],
   },
@@ -158,7 +178,7 @@ export const STAGES = [
       { id: 'today', name: 'Today', fixes: [], today: true, tradeoff: "Pre-ticks only the last round's misses — after a clean final round, nothing — and the deck is whatever you pick." },
       { id: 'pick', name: 'Pick words', fixes: ['lost'], tradeoff: "Today's control with the miss counts fixed. The other 14 words still trigger the send prompt when you move on, so there are still two paths." },
       { id: 'chapter', name: 'Whole lesson', fixes: ['decks'], tradeoff: 'One path into Reviews, but the drill you just did counts for nothing there.' },
-      { id: 'headstart', name: 'Whole lesson, head start', fixes: ['decks', 'lost'], recommended: true, tradeoff: 'Treats the drill as the first review. Words right first time skip the learning steps — a wrong guess costs one early lapse.' },
+      { id: 'headstart', name: 'Whole lesson, head start', fixes: ['decks', 'lost'], recommended: true, tradeoff: 'Treats the drill as the first review. Words right first time skip the learning steps — a wrong guess costs one early lapse. "Only the 6 I struggled with" stays a secondary choice; picking it means moving on later still asks about the other 14. Build note: the stacked three-button bar needs a layout option ActionBar does not have yet.' },
       { id: 'history', name: 'Hardest across sessions', fixes: ['lost', 'chronic'], tradeoff: 'Needs per-word miss history, which nothing stores yet. Still a subset, so two paths remain.' },
     ],
   },
@@ -177,6 +197,6 @@ export const STAGES = [
 
 export const PRESETS = {
   today: { start: 'today', round: 'today', cleared: 'today', send: 'today', next: 'today' },
-  recommended: { start: 'readiness', round: 'checkpoint', cleared: 'report', send: 'headstart', next: 'readiness' },
-  minimalFix: { start: 'today', round: 'checkpoint', cleared: 'report', send: 'pick', next: 'nextButton' },
+  recommended: { start: 'readiness', round: 'checkpoint', cleared: 'bar', send: 'headstart', next: 'readiness' },
+  minimalFix: { start: 'today', round: 'checkpoint', cleared: 'bar', send: 'pick', next: 'nextButton' },
 }

@@ -1,8 +1,9 @@
 import Badge from '../components/Badge.jsx'
+import { ACTION_BAR_HEIGHT } from '../components/ActionBar.jsx'
 import {
   StartToday, StartExplicit, StartReadiness,
   RoundToday, RoundCheckpoint, RoundAuto,
-  ClearedToday, ClearedReport, ClearedMoment,
+  ClearedToday, ClearedReport, ClearedMoment, ClearedBar, ClearedTrail, ClearedGrid, ClearedCompare,
   SendToday, SendPick, SendChapter, SendHeadStart, SendHistory,
   NextToday, NextButton, NextReadiness, NextFocus,
 } from './drillJourneyScreens.jsx'
@@ -16,6 +17,9 @@ const BG = '#1E1E1E'
 const SURFACE = '#2A2A2A'
 const HAIRLINE = 'rgba(255,255,255,0.08)'
 const READY_PCT = 90
+// A phone-ish viewport for screens with an Action Bar, so the sticky bar has
+// something to stick to and the list visibly scrolls under it.
+const BAR_FRAME_HEIGHT = 640
 
 // Each variant renders one or more states — the readiness variants are only
 // meaningful shown on both sides of the target.
@@ -30,19 +34,23 @@ const SCREENS = {
   },
   round: {
     today: [{ el: <RoundToday /> }],
-    checkpoint: [{ el: <RoundCheckpoint /> }],
+    checkpoint: [{ el: <RoundCheckpoint />, height: BAR_FRAME_HEIGHT }],
     auto: [{ el: <RoundAuto /> }],
   },
   cleared: {
     today: [{ el: <ClearedToday /> }],
     report: [{ el: <ClearedReport /> }],
+    bar: [{ el: <ClearedBar /> }],
+    trail: [{ el: <ClearedTrail /> }],
+    grid: [{ el: <ClearedGrid /> }],
+    compare: [{ el: <ClearedCompare /> }],
     moment: [{ el: <ClearedMoment /> }],
   },
   send: {
     today: [{ el: <SendToday /> }],
     pick: [{ el: <SendPick /> }],
     chapter: [{ el: <SendChapter /> }],
-    headstart: [{ el: <SendHeadStart /> }],
+    headstart: [{ el: <SendHeadStart />, height: BAR_FRAME_HEIGHT }],
     history: [{ el: <SendHistory /> }],
   },
   next: {
@@ -62,17 +70,27 @@ const variantOf = (stageId, variantId) => stageById(stageId).variants.find(v => 
 
 // ── Layout pieces ────────────────────────────────────────────────────────────
 
-function Frame({ width, label, children }) {
+function Frame({ width, label, height, children }) {
   return (
     <div style={{ width, maxWidth: '100%', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: SPACE_8 }}>
       {label && <div style={{ fontSize: FS_BADGE, color: TEXT_MUTED, textTransform: 'uppercase' }}>{label}</div>}
-      {/* Plain block wrapper: PrimaryCard sets height: 100%, which a flex
-          item would resolve against itself and overflow the frame. */}
-      <div>
-        <div style={{ background: BG, border: `1px solid ${HAIRLINE}`, borderRadius: 12, padding: SPACE_12 }}>
-          {children}
+      {height ? (
+        // The transform makes this box the containing block for the Action
+        // Bar's position: fixed, so it pins to the frame, not the canvas.
+        <div style={{ position: 'relative', transform: 'translateZ(0)', height, overflow: 'hidden', background: BG, border: `1px solid ${HAIRLINE}`, borderRadius: 12 }}>
+          <div style={{ height: '100%', overflowY: 'auto', padding: SPACE_12, paddingBottom: ACTION_BAR_HEIGHT + SPACE_24, boxSizing: 'border-box' }}>
+            {children}
+          </div>
         </div>
-      </div>
+      ) : (
+        // Plain block wrapper: PrimaryCard sets height: 100%, which a flex
+        // item would resolve against itself and overflow the frame.
+        <div>
+          <div style={{ background: BG, border: `1px solid ${HAIRLINE}`, borderRadius: 12, padding: SPACE_12 }}>
+            {children}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -113,7 +131,7 @@ function StageBoard({ stageId, frameWidth }) {
           <div key={variant.id} style={{ display: 'flex', flexDirection: 'column', gap: SPACE_16, width: frameWidth * SCREENS[stageId][variant.id].length + SPACE_16 * (SCREENS[stageId][variant.id].length - 1), flexShrink: 0 }}>
             <VariantHeader variant={variant} />
             <div style={{ display: 'flex', gap: SPACE_16 }}>
-              {SCREENS[stageId][variant.id].map((s, i) => <Frame key={i} width={frameWidth} label={s.label}>{s.el}</Frame>)}
+              {SCREENS[stageId][variant.id].map((s, i) => <Frame key={i} width={frameWidth} label={s.label} height={s.height}>{s.el}</Frame>)}
             </div>
           </div>
         ))}
@@ -160,7 +178,7 @@ function JourneyStep({ stage, variantId, frameWidth }) {
         <VariantHeader variant={variant} />
       </div>
       <div style={{ display: 'flex', gap: SPACE_16, flexWrap: 'wrap' }}>
-        {SCREENS[stage.id][variantId].map((s, i) => <Frame key={i} width={frameWidth} label={s.label}>{s.el}</Frame>)}
+        {SCREENS[stage.id][variantId].map((s, i) => <Frame key={i} width={frameWidth} label={s.label} height={s.height}>{s.el}</Frame>)}
       </div>
     </div>
   )
