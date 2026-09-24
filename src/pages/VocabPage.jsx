@@ -21,6 +21,7 @@ import { useDrillSettings, audioSourceForVoice } from '../hooks/useDrillSettings
 import {
   FONT, TRACKING, TEXT, TEXT_MUTED, FS_BASE, FS_CAPTION, FS_BADGE, FS_ENTRY_WORD, FS_STAT_VALUE,
   FS_DISPLAY_HEADING, FS_CONTENT_HEADING, KANJI_FONT, WARNING, BRAND,
+  CONTENT_NARROW, CONTENT_STANDARD,
 } from '../data/theme.js'
 import { ModuleThemeProvider, useAccent } from '../context/ModuleThemeContext.jsx'
 import { WORD_SOURCES, visibleSources } from '../data/wordLists.js'
@@ -455,7 +456,7 @@ function DoneScreen({
   }
 
   return (
-    <div style={{ textAlign: 'center', fontFamily: FONT, width: '100%', maxWidth: 560, padding: '48px 24px 48px' }}>
+    <div style={{ textAlign: 'center', fontFamily: FONT, width: '100%', maxWidth: CONTENT_NARROW, padding: '48px 24px 48px' }}>
       <div style={{ color: '#fff', fontSize: FS_DISPLAY_HEADING, letterSpacing: '0.05em', marginBottom: 16 }}>Session complete</div>
       <div style={{ display: 'flex', gap: 20, justifyContent: 'center', marginBottom: 32 }}>
         <div>
@@ -1091,7 +1092,7 @@ function VocabPageScreens() {
         <div style={{
           position: 'absolute', top: headerHeight, left: 0, right: 0,
           height: `calc(100dvh - ${headerHeight}px)`,
-          overflowY: 'auto',
+          overflowY: 'auto', scrollbarGutter: 'stable both-edges',
           display: 'flex', flexDirection: 'column', alignItems: 'center',
           zIndex: 2,
         }}>
@@ -1163,7 +1164,7 @@ function VocabPageScreens() {
               // card) — reachable via that card's own "View all" link, so
               // this can't just redirect home like the no-textbook-at-all
               // case above without bouncing that click straight back.
-              <div style={{ width: '100%', maxWidth: 680, margin: '0 auto', padding: 32, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+              <div style={{ width: '100%', maxWidth: CONTENT_STANDARD, margin: '0 auto', padding: 32, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
                 <div style={{ fontSize: FS_BASE, color: TEXT_MUTED }}>No words for this book yet.</div>
                 <Button onClick={() => setPickerOpen(true)}>Change textbook</Button>
               </div>
