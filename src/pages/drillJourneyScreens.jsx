@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { fn } from 'storybook/test'
 import Button from '../components/Button.jsx'
 import Badge from '../components/Badge.jsx'
@@ -7,24 +7,30 @@ import DataList from '../components/DataList.jsx'
 import SectionHeader from '../components/SectionHeader.jsx'
 import DeckComboBox from '../components/DeckComboBox.jsx'
 import DrillHUD from '../components/DrillHUD.jsx'
-import Select from '../components/Select.jsx'
+import ChipSelector from '../components/Chip.jsx'
 import Japanese from '../components/Japanese.jsx'
 import ActionBar from '../components/ActionBar.jsx'
-import Disclosure from '../components/Disclosure.jsx'
 import { PrimaryCard, TextbookCover, SegmentedPrimary, ActionsRow } from './homeCards.jsx'
 import {
-  FONT, TEXT, TEXT_MUTED, BRAND, BRAND_TEXT, BRAND_TINT, KANJI_FONT, SUCCESS, WARNING,
+  FONT, TEXT, TEXT_MUTED, BRAND, KANJI_FONT, SUCCESS, WARNING,
   FS_BASE, FS_BADGE, FS_CAPTION, FS_ENTRY_WORD, FS_STAT_VALUE, FS_DISPLAY_HEADING, FS_CONTENT_HEADING,
   SPACE_4, SPACE_8, SPACE_12, SPACE_16, SPACE_24, SPACE_32,
 } from '../data/theme.js'
 import {
-  TEXTBOOK, CHAPTER, NEXT_CHAPTER, CHAPTERS_DONE_BEFORE, WORDS, SESSION, ROUNDS, LAST_RUN_PCT, LAST_RUN,
-  CHRONIC, PAST_SESSIONS, DECKS, READINESS_TARGET_PCT, FSRS_EASY_FIRST_INTERVAL_DAYS,
-  WORD_ROUNDS, CLEARED_BY_ROUND,
+  TEXTBOOK, CHAPTER, NEXT_CHAPTER, CHAPTERS_DONE_BEFORE, WORDS, SESSION, ROUNDS,
+  PREVIOUS_RUNS, READINESS_TARGET_PCT,
 } from './drillJourneyFixtures.js'
 
 const HAIRLINE = 'rgba(255,255,255,0.08)'
+// The rest of the lesson in every score bar: a visible grey, not the faint
+// hairline track, since it stands for real words, not empty space.
+const REST_GREY = '#4A4A4A'
 const MISS_TONE = n => (n >= 2 ? 'danger' : n === 1 ? 'warning' : 'success')
+
+const DECKS = {
+  'textbook-genki-1': { id: 'textbook-genki-1', name: 'Genki 1', active: true, source: 'imported', addedAt: 0 },
+  'immersion-words': { id: 'immersion-words', name: 'Immersion Words', active: true, source: 'imported', addedAt: 0 },
+}
 
 // ── Shared pieces ────────────────────────────────────────────────────────────
 
@@ -37,28 +43,24 @@ function WordCell({ word }) {
   )
 }
 
-function wordColumns(countKey = 'misses', suffix = '×') {
-  return [
-    { key: 'word', width: 100, render: row => <WordCell word={row} /> },
-    { key: 'gloss', tone: 'muted', wrap: true, render: row => row.english },
-    {
-      key: 'count', width: 44, align: 'right',
-      render: row => row[countKey] > 0 ? <Badge variant="text" tone={MISS_TONE(row[countKey])}>{row[countKey]}{suffix}</Badge> : null,
-    },
-  ]
+const WORD_COLUMNS = [
+  { key: 'word', width: 100, render: row => <WordCell word={row} /> },
+  { key: 'gloss', tone: 'muted', wrap: true, render: row => row.english },
+  {
+    key: 'count', width: 44, align: 'right',
+    render: row => row.misses > 0 ? <Badge variant="text" tone={MISS_TONE(row.misses)}>{row.misses}×</Badge> : null,
+  },
+]
+
+function WordList({ rows, selection }) {
+  return <DataList columns={WORD_COLUMNS} rows={rows} selection={selection} maxWidth="100%" />
 }
 
-function WordList({ rows, countKey, suffix, selection }) {
-  const columns = useMemo(() => wordColumns(countKey, suffix), [countKey, suffix])
-  return <DataList columns={columns} rows={rows} selection={selection} maxWidth="100%" />
-}
-
-function Stat({ label, value, tone, note }) {
+function Stat({ label, value, tone }) {
   return (
     <div style={{ minWidth: 0 }}>
       <div style={{ color: tone ?? 'rgba(255,255,255,0.4)', fontSize: FS_CAPTION, marginBottom: SPACE_4, textTransform: 'uppercase' }}>{label}</div>
       <div style={{ color: tone ?? TEXT, fontSize: FS_STAT_VALUE }}>{value}</div>
-      {note && <div style={{ color: TEXT_MUTED, fontSize: FS_BADGE, marginTop: SPACE_4 }}>{note}</div>}
     </div>
   )
 }
@@ -79,10 +81,15 @@ function Note({ children, tone = TEXT_MUTED }) {
   return <div style={{ fontSize: FS_BASE, color: tone, lineHeight: 1.45 }}>{children}</div>
 }
 
-function ProgressBar({ value, color = BRAND }) {
+// Right-first-time share of the lesson: red for the words answered right
+// first time, grey for the rest. Two segments with the 2px surface gap
+// between them rather than a fill over a track, since both halves are words.
+function ScoreBar({ pct, height = 12 }) {
+  const radius = height >= 10 ? 4 : 3
   return (
-    <div style={{ height: 6, borderRadius: 3, background: HAIRLINE, overflow: 'hidden' }}>
-      <div style={{ height: '100%', width: `${Math.round(value * 100)}%`, background: color }} />
+    <div style={{ display: 'flex', gap: pct > 0 && pct < 100 ? 2 : 0, height }}>
+      {pct > 0 && <div style={{ flex: `${pct} 0 0`, background: BRAND, borderRadius: pct < 100 ? `${radius}px 0 0 ${radius}px` : radius }} />}
+      {pct < 100 && <div style={{ flex: `${100 - pct} 0 0`, background: REST_GREY, borderRadius: pct > 0 ? `0 ${radius}px ${radius}px 0` : radius }} />}
     </div>
   )
 }
@@ -211,16 +218,13 @@ export function RoundToday() {
 
 export function RoundCheckpoint() {
   return (
-    <Screen>
+    <Screen align="left">
       <div>
-        <div style={{ color: TEXT_MUTED, fontSize: FS_BASE, textTransform: 'uppercase' }}>Round 1 done</div>
-        <div style={{ color: '#fff', fontSize: FS_DISPLAY_HEADING, marginTop: SPACE_8 }}>{round1Left} to go</div>
+        <div style={{ color: TEXT, fontSize: FS_DISPLAY_HEADING }}>Round 1 done</div>
+        <Note>{round1Left} words to go. They come back until you get each one right.</Note>
       </div>
-      <ProgressBar value={round1Clean / ROUNDS[0].size} color={SUCCESS} />
-      <Note>{round1Clean} of {ROUNDS[0].size} right first time. These come back until you get each one right.</Note>
-      <div style={{ textAlign: 'left' }}>
-        <WordList rows={round1Rows} />
-      </div>
+      <ScoreBar pct={(round1Clean / ROUNDS[0].size) * 100} height={8} />
+      <WordList rows={round1Rows} />
       <ActionBar>
         <Button variant="quiet" size="xl">Stop for now</Button>
         <Button size="xl">Drill the {round1Left} again</Button>
@@ -243,518 +247,146 @@ export function RoundAuto() {
   )
 }
 
-// ── Stage 3 · Lesson cleared ─────────────────────────────────────────────────
+// ── Stage 3 · End of the lesson ──────────────────────────────────────────────
 
-export function ClearedToday() {
+export function EndToday() {
   const rows = WORDS.map(w => ({ ...w, misses: SESSION.lastRoundOnly.mistakeCounts[w.id] ?? 0 }))
   return <TodayDoneScreen correct={SESSION.lastRoundOnly.correct} troubled={SESSION.lastRoundOnly.troubled} rows={rows} preselected={[]} />
 }
 
-function RoundTrail() {
-  const sizes = [...ROUNDS.map(r => r.size), 0]
-  return (
-    <Row>
-      {sizes.map((n, i) => (
-        <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: SPACE_8, fontSize: FS_BASE, color: n === 0 ? SUCCESS : TEXT_MUTED }}>
-          {i > 0 && <span style={{ color: 'rgba(255,255,255,0.25)' }}>→</span>}
-          {n === 0 ? 'cleared' : `${n} words`}
-        </span>
-      ))}
-    </Row>
-  )
+const prefersReducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+
+// Eases 0 → target once on mount. The bar width and the number both read
+// this one value, so the count lands exactly as the bar stops.
+function useFillIn(target, duration = 1200) {
+  const [value, setValue] = useState(() => (prefersReducedMotion() ? target : 0))
+  useEffect(() => {
+    if (prefersReducedMotion()) return
+    let raf
+    let start
+    const tick = now => {
+      start ??= now
+      const p = Math.min(1, (now - start) / duration)
+      setValue(target * (1 - (1 - p) ** 3))
+      if (p < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [target, duration])
+  return value
 }
 
-export function ClearedReport() {
-  const delta = SESSION.firstTryPct - LAST_RUN_PCT
+const pctOf = firstTry => Math.round((firstTry / SESSION.total) * 100)
+
+function LessonSummary() {
+  const value = useFillIn(SESSION.firstTryPct)
   return (
-    <Screen>
-      <div>
-        <div style={{ color: BRAND_TEXT, fontSize: FS_BASE, textTransform: 'uppercase' }}>{TEXTBOOK.title}</div>
-        <div style={{ color: '#fff', fontSize: FS_DISPLAY_HEADING, marginTop: SPACE_8 }}>{CHAPTER.label} cleared</div>
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: SPACE_12 }}>
-        <Stat label="First try" value={`${SESSION.firstTryPct}%`} note={`${delta >= 0 ? '+' : ''}${delta} vs ${LAST_RUN.whenLabel}`} />
-        <Stat label="Rounds" value={SESSION.rounds} />
-        <Stat label="Best streak" value={SESSION.bestStreak} />
-      </div>
-      <RoundTrail />
-      <div style={{ textAlign: 'left' }}>
-        <SectionHeader title={`You struggled with ${SESSION.struggled.length}`} />
-        <WordList rows={SESSION.struggled} />
-      </div>
-    </Screen>
-  )
-}
-
-export function ClearedMoment() {
-  return (
-    <Screen>
-      <div style={{ margin: '0 auto', width: 96, height: 96, borderRadius: '50%', background: BRAND_TINT, border: `2px solid ${BRAND}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: BRAND_TEXT, fontSize: FS_DISPLAY_HEADING }}>
-        {SESSION.total}
-      </div>
-      <div style={{ color: '#fff', fontSize: FS_DISPLAY_HEADING }}>All {SESSION.total} words cleared</div>
-      <Note>{SESSION.firstTry} right first time. The rest took a few goes:</Note>
-      <Row>
-        {SESSION.struggled.map(w => (
-          <span key={w.id} style={{ display: 'inline-flex', alignItems: 'center', gap: SPACE_4, padding: '4px 10px', borderRadius: 999, background: 'rgba(255,255,255,0.06)', border: `1px solid ${HAIRLINE}` }}>
-            <Japanese style={{ fontFamily: KANJI_FONT, letterSpacing: 0, color: TEXT, fontSize: FS_BASE }}>{w.kanji}</Japanese>
-            <Badge variant="text" tone={MISS_TONE(w.misses)}>{w.misses}×</Badge>
-          </span>
-        ))}
-      </Row>
-    </Screen>
-  )
-}
-
-// ── Stage 3 · Report concepts ────────────────────────────────────────────────
-//
-// Every concept encodes one thing — how much effort a word took, as the round
-// it was cleared in — with one sequential ramp: grey for right first time
-// (de-emphasised, it's the majority and needs no attention), deepening to full
-// brand for the last round. Always paired with a label or count, so colour is
-// never the only carrier.
-
-const EFFORT = ['#4A4A4A', '#8E1A3C', BRAND]
-const EFFORT_LABEL = ['Right first time', 'Cleared in round 2', 'Cleared in round 3']
-const effortOf = w => EFFORT[w.clearedRound - 1]
-
-function Swatch({ color, size = 10 }) {
-  return <span style={{ width: size, height: size, borderRadius: 2, background: color, flexShrink: 0, display: 'inline-block' }} />
-}
-
-function ClearedHeading() {
-  return (
-    <div style={{ textAlign: 'left' }}>
-      <div style={{ color: BRAND_TEXT, fontSize: FS_BASE, textTransform: 'uppercase' }}>{TEXTBOOK.title} · {CHAPTER.label}</div>
-      <div style={{ color: '#fff', fontSize: FS_DISPLAY_HEADING, marginTop: SPACE_4 }}>Lesson cleared</div>
-    </div>
-  )
-}
-
-function HeroFirstTry() {
-  const delta = SESSION.firstTryPct - LAST_RUN_PCT
-  return (
-    <div style={{ display: 'flex', alignItems: 'baseline', gap: SPACE_12, flexWrap: 'wrap' }}>
-      <span style={{ fontSize: 56, lineHeight: 1, color: TEXT }}>{SESSION.firstTryPct}%</span>
-      <span style={{ fontSize: FS_BASE, color: TEXT_MUTED }}>right first time</span>
-      <span style={{ fontSize: FS_BASE, color: delta >= 0 ? SUCCESS : TEXT_MUTED }}>{delta >= 0 ? '▲' : '▼'} {Math.abs(delta)} pts vs {LAST_RUN.whenLabel}</span>
-    </div>
-  )
-}
-
-function GroupHeader({ color, title, count }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: SPACE_8, margin: `${SPACE_16}px 0 ${SPACE_8}px` }}>
-      <Swatch color={color} />
-      <span style={{ fontSize: FS_BASE, color: TEXT }}>{title}</span>
-      <span style={{ fontSize: FS_BASE, color: TEXT_MUTED }}>{count}</span>
-    </div>
-  )
-}
-
-export function ClearedBar() {
-  const total = WORD_ROUNDS.length
-  const groups = CLEARED_BY_ROUND.map((words, i) => ({ i, words })).filter(g => g.words.length > 0)
-  return (
-    <Screen align="left">
-      <ClearedHeading />
-      <HeroFirstTry />
-      <div>
-        <div style={{ display: 'flex', gap: 2, height: 14 }}>
-          {groups.map(({ i, words }, k) => (
-            <div
-              key={i}
-              title={`${EFFORT_LABEL[i]}: ${words.length} of ${total}`}
-              style={{
-                flex: `${words.length} 0 0`, background: EFFORT[i],
-                borderRadius: k === 0 ? '4px 0 0 4px' : k === groups.length - 1 ? '0 4px 4px 0' : 0,
-              }}
-            />
-          ))}
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: `${SPACE_4}px ${SPACE_16}px`, marginTop: SPACE_8 }}>
-          {groups.map(({ i, words }) => (
-            <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: SPACE_8, fontSize: FS_BASE, color: TEXT_MUTED }}>
-              <Swatch color={EFFORT[i]} />
-              {EFFORT_LABEL[i]} <span style={{ color: TEXT }}>{words.length}</span>
-            </span>
-          ))}
-        </div>
-        <div style={{ fontSize: FS_BADGE, color: TEXT_MUTED, marginTop: SPACE_4 }}>
-          {SESSION.rounds} rounds · {SESSION.total} → {ROUNDS.slice(1).map(r => r.size).join(' → ')} → 0 words left
-        </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE_32, textAlign: 'left' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE_12 }}>
+        <div style={{ fontSize: FS_DISPLAY_HEADING, color: TEXT }}>Lesson cleared</div>
+        <div style={{ fontSize: 64, lineHeight: 1, color: TEXT, fontVariantNumeric: 'tabular-nums' }}>{Math.round(value)}%</div>
+        <ScoreBar pct={value} />
+        <Note>{SESSION.firstTry} of {SESSION.total} right first time</Note>
       </div>
       <div>
-        {[...groups].reverse().map(({ i, words }) => (
-          i === 0 ? (
-            <div key={i} style={{ marginTop: SPACE_16 }}>
-              <Disclosure label={`${EFFORT_LABEL[0]} · ${words.length}`}>
-                <WordList rows={words} />
-              </Disclosure>
-            </div>
-          ) : (
-            <div key={i}>
-              <GroupHeader color={EFFORT[i]} title={EFFORT_LABEL[i]} count={words.length} />
-              <WordList rows={[...words].sort((a, b) => b.misses - a.misses)} />
-            </div>
-          )
-        ))}
-      </div>
-    </Screen>
-  )
-}
-
-const TRAIL_CELL = 44
-
-function Trail({ trail }) {
-  return (
-    <span style={{ display: 'flex' }}>
-      {ROUNDS.map((_, r) => (
-        <span key={r} style={{ width: TRAIL_CELL, display: 'flex', gap: 2, alignItems: 'center' }}>
-          {r < trail.length && (
-            <>
-              {Array.from({ length: trail[r] }, (_, k) => <Swatch key={k} color={BRAND} size={8} />)}
-              <span style={{ width: 8, height: 8, borderRadius: 2, border: `1px solid ${TEXT_MUTED}`, boxSizing: 'border-box' }} />
-            </>
-          )}
-        </span>
-      ))}
-    </span>
-  )
-}
-
-const TRAIL_COLUMNS = [
-  { key: 'word', width: 90, render: row => <WordCell word={row} /> },
-  { key: 'gloss', tone: 'muted', wrap: true, render: row => row.english },
-  { key: 'trail', width: TRAIL_CELL * ROUNDS.length, render: row => <Trail trail={row.trail} /> },
-]
-
-export function ClearedTrail() {
-  const rows = [...WORD_ROUNDS].sort((a, b) => b.misses - a.misses || b.clearedRound - a.clearedRound)
-  return (
-    <Screen align="left">
-      <ClearedHeading />
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: SPACE_12 }}>
-        <Stat label="First try" value={`${SESSION.firstTryPct}%`} note={`+${SESSION.firstTryPct - LAST_RUN_PCT} vs ${LAST_RUN.whenLabel}`} />
-        <Stat label="Misses" value={Object.values(SESSION.cumulative).reduce((a, b) => a + b, 0)} note={`across ${SESSION.struggled.length} words`} />
-        <Stat label="Rounds" value={SESSION.rounds} />
-      </div>
-      <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 14px', marginBottom: SPACE_8, gap: SPACE_12 }}>
-          <span style={{ display: 'flex', gap: SPACE_12, fontSize: FS_BADGE, color: TEXT_MUTED }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: SPACE_4 }}><Swatch color={BRAND} size={8} /> miss</span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: SPACE_4 }}><span style={{ width: 8, height: 8, borderRadius: 2, border: `1px solid ${TEXT_MUTED}`, boxSizing: 'border-box' }} /> right</span>
-          </span>
-          <span style={{ display: 'flex', fontSize: FS_BADGE, color: TEXT_MUTED }}>
-            {ROUNDS.map((_, r) => <span key={r} style={{ width: TRAIL_CELL }}>R{r + 1}</span>)}
-          </span>
-        </div>
-        <DataList columns={TRAIL_COLUMNS} rows={rows} maxWidth="100%" />
-      </div>
-    </Screen>
-  )
-}
-
-export function ClearedGrid() {
-  return (
-    <Screen align="left">
-      <ClearedHeading />
-      <HeroFirstTry />
-      <div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 2 }}>
-          {WORD_ROUNDS.map(w => (
-            <div
-              key={w.id}
-              title={`${w.kanji} (${w.english}) — ${w.misses ? `${w.misses} miss${w.misses === 1 ? '' : 'es'}, ` : ''}${EFFORT_LABEL[w.clearedRound - 1].toLowerCase()}`}
-              style={{ position: 'relative', aspectRatio: '1', background: effortOf(w), borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-            >
-              <Japanese style={{ fontFamily: KANJI_FONT, letterSpacing: 0, fontSize: FS_BASE, color: TEXT }}>{w.kanji}</Japanese>
-              {w.misses > 0 && <span style={{ position: 'absolute', right: 4, bottom: 2, fontSize: FS_BADGE, color: TEXT }}>{w.misses}</span>}
+        <SectionHeader title="Previous sessions" />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE_12 }}>
+          {PREVIOUS_RUNS.map(run => (
+            <div key={run.whenLabel} style={{ display: 'grid', gridTemplateColumns: '112px minmax(0, 1fr) 44px', gap: SPACE_12, alignItems: 'center' }}>
+              <span style={{ fontSize: FS_BASE, color: TEXT_MUTED }}>{run.whenLabel}</span>
+              <ScoreBar pct={pctOf(run.firstTry)} height={6} />
+              <span style={{ fontSize: FS_BASE, color: TEXT_MUTED, textAlign: 'right' }}>{pctOf(run.firstTry)}%</span>
             </div>
           ))}
         </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: `${SPACE_4}px ${SPACE_12}px`, marginTop: SPACE_8 }}>
-          {EFFORT_LABEL.map((label, i) => (
-            <span key={label} style={{ display: 'inline-flex', alignItems: 'center', gap: SPACE_4, fontSize: FS_BADGE, color: TEXT_MUTED }}>
-              <Swatch color={EFFORT[i]} size={8} /> {label} {CLEARED_BY_ROUND[i].length}
-            </span>
-          ))}
-        </div>
-      </div>
-      <div>
-        <SectionHeader title={`You struggled with ${SESSION.struggled.length}`} />
-        <WordList rows={SESSION.struggled} />
-      </div>
-    </Screen>
-  )
-}
-
-function RunMeter({ label, pct, color }) {
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: '96px minmax(0, 1fr) 44px', gap: SPACE_12, alignItems: 'center' }}>
-      <span style={{ fontSize: FS_BASE, color: TEXT_MUTED }}>{label}</span>
-      <div style={{ position: 'relative', height: 10, borderRadius: 4, background: HAIRLINE }}>
-        <div style={{ height: '100%', width: `${pct}%`, borderRadius: 4, background: color }} />
-        <div title={`Target ${READINESS_TARGET_PCT}%`} style={{ position: 'absolute', top: -3, bottom: -3, left: `${READINESS_TARGET_PCT}%`, width: 2, background: TEXT_MUTED }} />
-      </div>
-      <span style={{ fontSize: FS_BASE, color: TEXT, textAlign: 'right' }}>{pct}%</span>
-    </div>
-  )
-}
-
-export function ClearedCompare() {
-  const lastMissed = new Set(PAST_SESSIONS[0].missed)
-  const nowMissed = new Set(Object.keys(SESSION.cumulative))
-  const byId = Object.fromEntries(WORD_ROUNDS.map(w => [w.id, w]))
-  const still = [...nowMissed].filter(id => lastMissed.has(id)).map(id => byId[id]).sort((a, b) => b.misses - a.misses)
-  const fresh = [...nowMissed].filter(id => !lastMissed.has(id)).map(id => byId[id])
-  const fixed = [...lastMissed].filter(id => !nowMissed.has(id)).map(id => byId[id])
-  return (
-    <Screen align="left">
-      <ClearedHeading />
-      <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE_8 }}>
-        <div style={{ fontSize: FS_BASE, color: TEXT_MUTED }}>Right first time</div>
-        <RunMeter label={LAST_RUN.whenLabel} pct={LAST_RUN_PCT} color={EFFORT[0]} />
-        <RunMeter label="Today" pct={SESSION.firstTryPct} color={BRAND} />
-        <div style={{ fontSize: FS_BADGE, color: TEXT_MUTED }}>The tick is your {READINESS_TARGET_PCT}% target.</div>
-      </div>
-      <div>
-        <GroupHeader color={BRAND} title="Still tricky" count={still.length} />
-        <WordList rows={still} />
-        <GroupHeader color={EFFORT[1]} title="New trouble" count={fresh.length} />
-        <WordList rows={fresh} />
-        <GroupHeader color={SUCCESS} title="Fixed since last time" count={fixed.length} />
-        <WordList rows={fixed} />
-      </div>
-    </Screen>
-  )
-}
-
-// ── Stage 4 · Sending to Reviews ─────────────────────────────────────────────
-
-function useSelection(initial) {
-  const [selected, setSelected] = useState(() => new Set(initial))
-  const onToggle = id => setSelected(prev => {
-    const next = new Set(prev)
-    if (next.has(id)) next.delete(id); else next.add(id)
-    return next
-  })
-  return { selected, onToggle, bulkHeader: { selectFirst: true } }
-}
-
-function allWordsByMisses() {
-  return WORDS
-    .map(w => ({ ...w, misses: SESSION.cumulative[w.id] ?? 0 }))
-    .sort((a, b) => b.misses - a.misses)
-}
-
-export function SendToday() {
-  const selection = useSelection([])
-  const rows = WORDS.map(w => ({ ...w, misses: 0 }))
-  return (
-    <Screen align="left">
-      <SectionHeader
-        title="Review words"
-        action={<DeckComboBox decks={DECKS} disabled={selection.selected.size === 0} buttonLabel={`Add ${selection.selected.size} to review deck`} onAdd={fn()} onCreateAndAdd={fn()} />}
-      />
-      <WordList rows={rows} selection={selection} />
-    </Screen>
-  )
-}
-
-export function SendPick() {
-  const selection = useSelection(SESSION.struggled.map(w => w.id))
-  return (
-    <Screen align="left">
-      <SectionHeader
-        title="Add to Reviews"
-        action={<DeckComboBox decks={DECKS} lastUsedDeckId="textbook-genki-1" disabled={selection.selected.size === 0} buttonLabel={`Add ${selection.selected.size} to ${TEXTBOOK.title}`} onAdd={fn()} onCreateAndAdd={fn()} />}
-      />
-      <Note>Words you missed at any point this session are ticked.</Note>
-      <WordList rows={allWordsByMisses()} selection={selection} />
-    </Screen>
-  )
-}
-
-export function SendChapter() {
-  return (
-    <Screen align="left">
-      <Card padding={SPACE_16} style={{ display: 'flex', flexDirection: 'column', gap: SPACE_12 }}>
-        <div style={{ color: TEXT, fontSize: FS_CONTENT_HEADING }}>Keep {CHAPTER.label} for good</div>
-        <Note>Adds all {SESSION.total} words to your {TEXTBOOK.title} review deck, so they come back before you forget them.</Note>
-        <Button size="lg" fullWidth>Add {SESSION.total} words to Reviews</Button>
-      </Card>
-      <SectionHeader title="In this lesson" />
-      <WordList rows={allWordsByMisses()} />
-    </Screen>
-  )
-}
-
-function Bucket({ count, title, when, tone, words }) {
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: '48px minmax(0, 1fr)', gap: SPACE_12, alignItems: 'start', padding: `${SPACE_12}px 0`, borderTop: `1px solid ${HAIRLINE}` }}>
-      <div style={{ fontSize: FS_STAT_VALUE, color: tone }}>{count}</div>
-      <div style={{ minWidth: 0 }}>
-        <div style={{ color: TEXT, fontSize: FS_BASE }}>{title}</div>
-        <div style={{ color: TEXT_MUTED, fontSize: FS_BASE, marginTop: 2 }}>{when}</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: SPACE_8, marginTop: SPACE_8 }}>
-          {words.map(w => <Japanese key={w.id} style={{ fontFamily: KANJI_FONT, letterSpacing: 0, color: TEXT, fontSize: FS_BASE }}>{w.kanji}</Japanese>)}
-        </div>
       </div>
     </div>
   )
 }
 
-export function SendHeadStart() {
-  const clean = WORDS.filter(w => !SESSION.cumulative[w.id])
+function NextButtons() {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: SPACE_8 }}>
+      <Button variant="quiet" size="lg" fullWidth>Drill again</Button>
+      <Button size="lg" fullWidth>Start {NEXT_CHAPTER.label}</Button>
+    </div>
+  )
+}
+
+// The three button models below all put their whole group in ActionBar's
+// full-width `leading` slot: ActionBar only right-aligns its children, and
+// these want a stacked layout it doesn't offer yet.
+
+const hardCount = SESSION.struggled.length
+const ADDED_LABEL = { all: `Added ${SESSION.total} to Reviews`, hard: `Added ${hardCount} to Reviews`, none: 'Not added to Reviews' }
+
+export function EndTwoStep({ initialStep = 'reviews' }) {
+  const [added, setAdded] = useState(initialStep === 'reviews' ? null : 'all')
   return (
     <Screen align="left">
-      <Card padding={SPACE_16} style={{ display: 'flex', flexDirection: 'column', gap: SPACE_4 }}>
-        <div style={{ color: TEXT, fontSize: FS_CONTENT_HEADING, marginBottom: SPACE_8 }}>Add {CHAPTER.label} to Reviews</div>
-        <Bucket
-          count={clean.length}
-          tone={SUCCESS}
-          title="Right first time — head start"
-          when={`Counted as reviewed today. First review in ${FSRS_EASY_FIRST_INTERVAL_DAYS} days.`}
-          words={clean}
-        />
-        <Bucket
-          count={SESSION.struggled.length}
-          tone={WARNING}
-          title="You struggled with these"
-          when="Start as new cards — up first in your next review."
-          words={SESSION.struggled}
-        />
-      </Card>
-      {/* Stacked through `leading` because ActionBar only right-aligns its
-          children, and three xl buttons wrap raggedly at phone width. */}
-      <ActionBar leading={(
+      <LessonSummary />
+      <ActionBar leading={added == null ? (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: SPACE_8 }}>
-          <div style={{ gridColumn: '1 / -1' }}><Button size="xl" fullWidth>Add all {SESSION.total} to Reviews</Button></div>
-          <Button variant="neutral" size="lg" fullWidth>Just the hard {SESSION.struggled.length}</Button>
-          <Button variant="quiet" size="lg" fullWidth>End review</Button>
+          <div style={{ gridColumn: '1 / -1' }}><Button size="xl" fullWidth onClick={() => setAdded('all')}>Add all {SESSION.total} to Reviews</Button></div>
+          <Button variant="neutral" size="lg" fullWidth onClick={() => setAdded('hard')}>Just the hard {hardCount}</Button>
+          <Button variant="quiet" size="lg" fullWidth onClick={() => setAdded('none')}>Skip</Button>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE_8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: SPACE_8 }}>
+            <Note tone={added === 'none' ? TEXT_MUTED : SUCCESS}>{added === 'none' ? '' : '✓ '}{ADDED_LABEL[added]}</Note>
+            <Button variant="ghost-muted" size="sm" onClick={() => setAdded(null)}>Undo</Button>
+          </div>
+          <NextButtons />
         </div>
       )} />
     </Screen>
   )
 }
 
-const HISTORY_OPTIONS = [
-  { value: 'session', label: 'This session' },
-  { value: 'history', label: `Last ${PAST_SESSIONS.length + 1} sessions` },
+const REVIEW_CHOICES = [
+  { value: 'all', label: `All ${SESSION.total}` },
+  { value: 'hard', label: `Hard ${hardCount}` },
+  { value: 'none', label: 'None' },
 ]
 
-const CLEAN_BUT_CHRONIC = CHRONIC.find(w => !SESSION.cumulative[w.id])
-
-export function SendHistory() {
-  const [scope, setScope] = useState('history')
-  return <SendHistoryList key={scope} scope={scope} onScope={setScope} />
-}
-
-function SendHistoryList({ scope, onScope }) {
-  const rows = scope === 'history'
-    ? [...CHRONIC, ...WORDS.filter(w => !CHRONIC.some(c => c.id === w.id)).map(w => ({ ...w, runsMissed: 0 }))]
-    : allWordsByMisses()
-  const initial = scope === 'history' ? CHRONIC.map(w => w.id) : SESSION.struggled.map(w => w.id)
-  const selection = useSelection(initial)
+export function EndInline() {
+  const [choice, setChoice] = useState('all')
   return (
     <Screen align="left">
-      <SectionHeader
-        title="Your hardest words"
-        action={<DeckComboBox decks={DECKS} lastUsedDeckId="textbook-genki-1" disabled={selection.selected.size === 0} buttonLabel={`Add ${selection.selected.size} to ${TEXTBOOK.title}`} onAdd={fn()} onCreateAndAdd={fn()} />}
-      />
-      <div style={{ width: 200 }}>
-        <Select value={scope} onChange={onScope} options={HISTORY_OPTIONS} />
-      </div>
-      <Note>
-        {scope === 'history'
-          ? `Missed in at least 2 of your last ${PAST_SESSIONS.length + 1} runs of this lesson. `
-          : 'Missed at least once this session. '}
-        {scope === 'history' && CLEAN_BUT_CHRONIC && (
-          <>
-            <Japanese style={{ fontFamily: KANJI_FONT, letterSpacing: 0 }}>{CLEAN_BUT_CHRONIC.kanji}</Japanese> was clean today but missed in both earlier runs.
-          </>
-        )}
-      </Note>
-      <WordList rows={rows} countKey={scope === 'history' ? 'runsMissed' : 'misses'} suffix={scope === 'history' ? ' runs' : '×'} selection={selection} />
+      <LessonSummary />
+      <ActionBar leading={(
+        <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE_12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: SPACE_12, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: FS_BASE, color: TEXT_MUTED }}>Add to Reviews</span>
+            <ChipSelector mode="single" options={REVIEW_CHOICES} value={choice} onChange={setChoice} />
+          </div>
+          <NextButtons />
+        </div>
+      )} />
     </Screen>
   )
 }
 
-// ── Stage 5 · What next ──────────────────────────────────────────────────────
-
-export function NextToday() {
+export function EndAuto() {
+  const [added, setAdded] = useState('all')
   return (
     <Screen align="left">
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: SPACE_12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-        <div>
-          <div style={{ fontSize: FS_CONTENT_HEADING, color: TEXT }}>{TEXTBOOK.title}</div>
-          <div style={{ fontSize: FS_BASE, color: TEXT_MUTED, marginTop: SPACE_4 }}>{CHAPTERS_DONE_BEFORE + 1} of {chapterCount} chapters</div>
+      <LessonSummary />
+      <ActionBar leading={(
+        <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE_8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: SPACE_4 }}>
+            <Note tone={added === 'none' ? TEXT_MUTED : SUCCESS}>{added === 'none' ? '' : '✓ '}{ADDED_LABEL[added]}</Note>
+            <span style={{ display: 'flex', flexShrink: 0 }}>
+              {added === 'all' && <Button variant="ghost-muted" size="sm" onClick={() => setAdded('hard')}>Keep hard {hardCount}</Button>}
+              {added !== 'none'
+                ? <Button variant="ghost-muted" size="sm" onClick={() => setAdded('none')}>Undo</Button>
+                : <Button variant="ghost-muted" size="sm" onClick={() => setAdded('all')}>Add back</Button>}
+            </span>
+          </div>
+          <NextButtons />
         </div>
-        <SegmentedPrimary label={`Redo ${CHAPTER.label}`} onClick={fn()} menuItems={[{ id: 'next', label: 'Next chapter', onClick: fn() }]} />
-      </div>
-      <Note>After End review you land on the chapter list. The next lesson is in the dropdown.</Note>
-    </Screen>
-  )
-}
-
-function Added() {
-  return <Note tone={SUCCESS}>✓ {SESSION.total} words added to {TEXTBOOK.title}</Note>
-}
-
-export function NextButton() {
-  return (
-    <Screen>
-      <Added />
-      <Row><Button size="xl">Start {NEXT_CHAPTER.label}</Button></Row>
-      <Row>
-        <Button variant="neutral" size="lg">Drill {CHAPTER.label} again</Button>
-        <Button variant="ghost-muted" size="lg">Home</Button>
-      </Row>
-    </Screen>
-  )
-}
-
-export function NextReadiness({ pct = SESSION.firstTryPct }) {
-  const ready = pct >= READINESS_TARGET_PCT
-  return (
-    <Screen>
-      <Added />
-      <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: SPACE_8 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: FS_BASE }}>
-          <span style={{ color: TEXT }}>{pct}% first try</span>
-          <span style={{ color: ready ? SUCCESS : TEXT_MUTED }}>{ready ? 'Ready for the next lesson' : `Aim for ${READINESS_TARGET_PCT}% before moving on`}</span>
-        </div>
-        <TargetBar pct={pct} />
-      </div>
-      {ready ? (
-        <>
-          <Row><Button size="xl">Start {NEXT_CHAPTER.label}</Button></Row>
-          <Row><Button variant="neutral" size="lg">Drill {CHAPTER.label} again</Button></Row>
-        </>
-      ) : (
-        <>
-          <Row><Button size="xl">Drill {CHAPTER.label} again</Button></Row>
-          <Row><Button variant="neutral" size="lg">Start {NEXT_CHAPTER.label} anyway</Button></Row>
-        </>
-      )}
-    </Screen>
-  )
-}
-
-export function NextFocus() {
-  return (
-    <Screen>
-      <Added />
-      <Row><Button size="xl">Start {NEXT_CHAPTER.label}</Button></Row>
-      <Card padding={SPACE_16} style={{ textAlign: 'left', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: SPACE_12, flexWrap: 'wrap' }}>
-        <div>
-          <div style={{ color: TEXT, fontSize: FS_BASE }}>Quick focus round</div>
-          <Note>Just the {SESSION.struggled.length} you struggled with, about a minute.</Note>
-        </div>
-        <Button variant="warning-outline">Drill {SESSION.struggled.length}</Button>
-      </Card>
-      <Row><Button variant="ghost-muted" size="lg">Home</Button></Row>
+      )} />
     </Screen>
   )
 }

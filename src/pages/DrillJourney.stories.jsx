@@ -1,13 +1,13 @@
+import { useState } from 'react'
 import Badge from '../components/Badge.jsx'
+import Button from '../components/Button.jsx'
 import { ACTION_BAR_HEIGHT } from '../components/ActionBar.jsx'
 import {
   StartToday, StartExplicit, StartReadiness,
   RoundToday, RoundCheckpoint, RoundAuto,
-  ClearedToday, ClearedReport, ClearedMoment, ClearedBar, ClearedTrail, ClearedGrid, ClearedCompare,
-  SendToday, SendPick, SendChapter, SendHeadStart, SendHistory,
-  NextToday, NextButton, NextReadiness, NextFocus,
+  EndToday, EndTwoStep, EndInline, EndAuto,
 } from './drillJourneyScreens.jsx'
-import { STAGES, ISSUES, PRESETS, SESSION, READINESS_TARGET_PCT } from './drillJourneyFixtures.js'
+import { STAGES, ISSUES, PRESETS, SESSION, READINESS_TARGET_PCT, FSRS_EASY_FIRST_INTERVAL_DAYS } from './drillJourneyFixtures.js'
 import {
   TEXT, TEXT_MUTED, BRAND_TEXT, SUCCESS, DANGER,
   FS_BASE, FS_BADGE, FS_CONTENT_HEADING, SPACE_4, SPACE_8, SPACE_12, SPACE_16, SPACE_24, SPACE_32,
@@ -20,6 +20,11 @@ const READY_PCT = 90
 // A phone-ish viewport for screens with an Action Bar, so the sticky bar has
 // something to stick to and the list visibly scrolls under it.
 const BAR_FRAME_HEIGHT = 640
+// The end screen's bar holds two rows (a Reviews line or choice, then the
+// next-step buttons), so the content above needs more clearance than
+// ACTION_BAR_HEIGHT's single row.
+const END_FRAME_HEIGHT = 640
+const END_BAR_HEIGHT = 150
 
 // Each variant renders one or more states — the readiness variants are only
 // meaningful shown on both sides of the target.
@@ -37,30 +42,14 @@ const SCREENS = {
     checkpoint: [{ el: <RoundCheckpoint />, height: BAR_FRAME_HEIGHT }],
     auto: [{ el: <RoundAuto /> }],
   },
-  cleared: {
-    today: [{ el: <ClearedToday /> }],
-    report: [{ el: <ClearedReport /> }],
-    bar: [{ el: <ClearedBar /> }],
-    trail: [{ el: <ClearedTrail /> }],
-    grid: [{ el: <ClearedGrid /> }],
-    compare: [{ el: <ClearedCompare /> }],
-    moment: [{ el: <ClearedMoment /> }],
-  },
-  send: {
-    today: [{ el: <SendToday /> }],
-    pick: [{ el: <SendPick /> }],
-    chapter: [{ el: <SendChapter /> }],
-    headstart: [{ el: <SendHeadStart />, height: BAR_FRAME_HEIGHT }],
-    history: [{ el: <SendHistory /> }],
-  },
-  next: {
-    today: [{ el: <NextToday /> }],
-    nextButton: [{ el: <NextButton /> }],
-    readiness: [
-      { label: `Below target (${SESSION.firstTryPct}%)`, el: <NextReadiness pct={SESSION.firstTryPct} /> },
-      { label: `Above target (${READY_PCT}%)`, el: <NextReadiness pct={READY_PCT} /> },
+  end: {
+    today: [{ el: <EndToday /> }],
+    twoStep: [
+      { label: 'Finishing — click through', el: <EndTwoStep />, height: END_FRAME_HEIGHT, barHeight: END_BAR_HEIGHT, replay: true },
+      { label: 'After adding', el: <EndTwoStep initialStep="next" />, height: END_FRAME_HEIGHT, barHeight: END_BAR_HEIGHT, replay: true },
     ],
-    focus: [{ el: <NextFocus /> }],
+    inline: [{ el: <EndInline />, height: END_FRAME_HEIGHT, barHeight: END_BAR_HEIGHT, replay: true }],
+    auto: [{ el: <EndAuto />, height: END_FRAME_HEIGHT, barHeight: END_BAR_HEIGHT, replay: true }],
   },
 }
 
@@ -70,15 +59,23 @@ const variantOf = (stageId, variantId) => stageById(stageId).variants.find(v => 
 
 // ── Layout pieces ────────────────────────────────────────────────────────────
 
-function Frame({ width, label, height, children }) {
+function Frame({ width, label, height, barHeight = ACTION_BAR_HEIGHT, replay, children }) {
+  // Remounting the screen restarts its fill-in animation and resets any
+  // click-through state.
+  const [run, setRun] = useState(0)
   return (
     <div style={{ width, maxWidth: '100%', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: SPACE_8 }}>
-      {label && <div style={{ fontSize: FS_BADGE, color: TEXT_MUTED, textTransform: 'uppercase' }}>{label}</div>}
+      {(label || replay) && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 24 }}>
+          <span style={{ fontSize: FS_BADGE, color: TEXT_MUTED, textTransform: 'uppercase' }}>{label}</span>
+          {replay && <Button variant="ghost-muted" size="sm" onClick={() => setRun(r => r + 1)}>Replay</Button>}
+        </div>
+      )}
       {height ? (
         // The transform makes this box the containing block for the Action
         // Bar's position: fixed, so it pins to the frame, not the canvas.
         <div style={{ position: 'relative', transform: 'translateZ(0)', height, overflow: 'hidden', background: BG, border: `1px solid ${HAIRLINE}`, borderRadius: 12 }}>
-          <div style={{ height: '100%', overflowY: 'auto', padding: SPACE_12, paddingBottom: ACTION_BAR_HEIGHT + SPACE_24, boxSizing: 'border-box' }}>
+          <div key={run} style={{ height: '100%', overflowY: 'auto', padding: SPACE_12, paddingBottom: barHeight + SPACE_24, boxSizing: 'border-box' }}>
             {children}
           </div>
         </div>
@@ -131,7 +128,7 @@ function StageBoard({ stageId, frameWidth }) {
           <div key={variant.id} style={{ display: 'flex', flexDirection: 'column', gap: SPACE_16, width: frameWidth * SCREENS[stageId][variant.id].length + SPACE_16 * (SCREENS[stageId][variant.id].length - 1), flexShrink: 0 }}>
             <VariantHeader variant={variant} />
             <div style={{ display: 'flex', gap: SPACE_16 }}>
-              {SCREENS[stageId][variant.id].map((s, i) => <Frame key={i} width={frameWidth} label={s.label} height={s.height}>{s.el}</Frame>)}
+              {SCREENS[stageId][variant.id].map((s, i) => <Frame key={i} width={frameWidth} label={s.label} height={s.height} barHeight={s.barHeight} replay={s.replay}>{s.el}</Frame>)}
             </div>
           </div>
         ))}
@@ -178,7 +175,7 @@ function JourneyStep({ stage, variantId, frameWidth }) {
         <VariantHeader variant={variant} />
       </div>
       <div style={{ display: 'flex', gap: SPACE_16, flexWrap: 'wrap' }}>
-        {SCREENS[stage.id][variantId].map((s, i) => <Frame key={i} width={frameWidth} label={s.label} height={s.height}>{s.el}</Frame>)}
+        {SCREENS[stage.id][variantId].map((s, i) => <Frame key={i} width={frameWidth} label={s.label} height={s.height} barHeight={s.barHeight} replay={s.replay}>{s.el}</Frame>)}
       </div>
     </div>
   )
@@ -209,13 +206,13 @@ export default {
     layout: 'fullscreen',
     docs: {
       description: {
-        component: `Design exploration for drilling a textbook lesson from start to finish: choosing the lesson, the rounds, clearing it, sending words to Reviews, and moving on. Nothing here is wired into the app.
+        component: `Design exploration for drilling a textbook lesson from start to finish: choosing the lesson, the rounds, and the end of the lesson — its score, keeping the words in Reviews, and moving on, all on one screen. Nothing here is wired into the app.
 
 **Use when** comparing the options for one step (the numbered stage stories) or checking how one set of choices works end to end (the Journey stories, where each stage has its own control and the scorecard updates).
 
 **Don't use** as a reference for how the drill behaves today. Only the variants marked Today show current behaviour, and those are copies of the Vocabulary Drill's done screen, not the real one.
 
-*Build note:* the mock learner is on Genki 1 Lesson 3: 20 words, three rounds (20 → 6 → 2 → cleared), ${SESSION.firstTryPct}% right first time. The readiness target is ${READINESS_TARGET_PCT}%. The head-start timing comes from the app's own ts-fsrs settings: only an Easy first rating skips the learning steps.`,
+*Build note:* the mock learner is on Genki 1 Lesson 3: 20 words, three rounds (20 → 6 → 2 → cleared), ${SESSION.firstTryPct}% right first time. The readiness target is ${READINESS_TARGET_PCT}%. "Add to Reviews" is meant to give right-first-time words a head start: with the app's own ts-fsrs settings only an Easy first rating skips the learning steps, putting the first review ${FSRS_EASY_FIRST_INTERVAL_DAYS} days out.`,
       },
     },
   },
@@ -229,9 +226,7 @@ const stageStory = stageId => ({
 
 export const Stage1ChoosingWhatToDrill = stageStory('start')
 export const Stage2RoundEnd = stageStory('round')
-export const Stage3LessonCleared = stageStory('cleared')
-export const Stage4SendingToReviews = stageStory('send')
-export const Stage5WhatNext = stageStory('next')
+export const Stage3EndOfLesson = stageStory('end')
 
 const journeyStory = preset => ({
   args: { ...PRESETS[preset] },

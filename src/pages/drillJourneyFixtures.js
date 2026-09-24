@@ -57,68 +57,31 @@ export const SESSION = (() => {
     total: ROUNDS[0].size,
     firstTry,
     firstTryPct: Math.round((firstTry / ROUNDS[0].size) * 100),
-    rounds: ROUNDS.length,
     cumulative,
     struggled,
-    bestStreak: 9,
-    minutes: 6,
     // What today's engine actually hands the final done screen: the last
     // round's own counters, since every redo re-inits mistakeCounts.
     lastRoundOnly: { correct: ROUNDS.at(-1).size, troubled: 0, mistakeCounts: ROUNDS.at(-1).misses },
   }
 })()
 
-// Per-word attempt history. A missed card keeps coming back within its round
-// until it's answered, so every round a word appears in ends with one correct
-// answer; `trail[r]` is the misses before it. A word is cleared in the first
-// round it gets right first time.
-export const WORD_ROUNDS = WORDS.map(w => {
-  const trail = []
-  for (const round of ROUNDS) {
-    const misses = round.misses[w.id] ?? 0
-    trail.push(misses)
-    if (misses === 0) break
-  }
-  return { ...w, trail, clearedRound: trail.length, misses: trail.reduce((a, b) => a + b, 0) }
-})
-
-export const CLEARED_BY_ROUND = ROUNDS.map((_, i) => WORD_ROUNDS.filter(w => w.clearedRound === i + 1))
-
-export const LAST_RUN = { firstTry: 12, total: 20, whenLabel: '3 days ago' }
-export const LAST_RUN_PCT = Math.round((LAST_RUN.firstTry / LAST_RUN.total) * 100)
-
-// Words missed in earlier runs of the same lesson. Nothing records this
-// today — sublists only keeps { lastReviewed, correct, total } per chapter —
-// so this is the data the "across sessions" variant would need to start
-// storing.
-export const PAST_SESSIONS = [
-  { whenLabel: '3 days ago', missed: ['shuumatsu', 'zasshi', 'kaeru', 'konban', 'neru', 'ongaku', 'okiru', 'ocha'] },
-  { whenLabel: '9 days ago', missed: ['shuumatsu', 'kaeru', 'asagohan', 'zasshi', 'mainichi'] },
+// Earlier runs of this lesson, newest first, as first-try counts out of the
+// same 20 words. Nothing stores this today — sublists keeps one
+// { lastReviewed, correct, total } per chapter and each run overwrites it —
+// so the summary's history needs a small per-run log to exist.
+export const PREVIOUS_RUNS = [
+  { whenLabel: '2 hours ago', firstTry: 11 },
+  { whenLabel: 'Yesterday', firstTry: 7 },
 ]
-
-// Missed in at least two of the last three runs, counting this one.
-export const CHRONIC = (() => {
-  const counts = {}
-  const runs = [Object.keys(SESSION.cumulative), ...PAST_SESSIONS.map(s => s.missed)]
-  for (const run of runs) for (const id of run) counts[id] = (counts[id] ?? 0) + 1
-  return Object.entries(counts)
-    .filter(([, n]) => n >= 2)
-    .sort((a, b) => b[1] - a[1])
-    .map(([id, runsMissed]) => ({ ...WORD_BY_ID[id], runsMissed }))
-})()
 
 // First interval ts-fsrs gives a brand-new card per rating, with the app's
 // own generatorParameters (fuzz off): Again/Hard/Good all stay in same-day
 // learning steps (1/6/10 min); only Easy graduates straight to review, 8 days
-// out. That's why the "head start" variant has two buckets, not four.
+// out. So "Add to Reviews" can give right-first-time words a head start by
+// rating them Easy, and leave the rest as new cards.
 export const FSRS_EASY_FIRST_INTERVAL_DAYS = 8
 
 export const READINESS_TARGET_PCT = 80
-
-export const DECKS = {
-  'textbook-genki-1': { id: 'textbook-genki-1', name: 'Genki 1', active: true, source: 'imported', addedAt: 0 },
-  'immersion-words': { id: 'immersion-words', name: 'Immersion Words', active: true, source: 'imported', addedAt: 0 },
-}
 
 // ── What's wrong with the journey today ──────────────────────────────────────
 
@@ -128,12 +91,13 @@ export const ISSUES = [
   { id: 'stats', title: 'Redo rounds overwrite the lesson score', detail: "Each round saves its own clean count against the whole lesson — a clean last round of 2 saves as 2/20, which is worse than the real first pass." },
   { id: 'decks', title: 'Two ways into Reviews that disagree', detail: "The done screen sends a hand-picked subset to any deck; moving to the next lesson sends the whole lesson to the book's deck." },
   { id: 'next', title: 'No next step from the finish', detail: 'End review drops you on the chapter list; the next lesson is hidden in a dropdown.' },
-  { id: 'ready', title: 'No "am I ready to move on?" signal', detail: 'Nothing compares this run with the last one, or with a target.' },
+  { id: 'ready', title: 'No "am I ready to move on?" signal', detail: 'Nothing compares this run with earlier ones, or with a target.' },
   { id: 'reward', title: "Finishing doesn't feel like finishing", detail: 'The last screen looks and sounds like every other round.' },
-  { id: 'chronic', title: 'Words you keep missing go unnoticed', detail: 'A word missed in every run of a lesson looks the same as one missed once.' },
 ]
 
 // ── Candidate solutions per stage ────────────────────────────────────────────
+
+const END_FIXES = ['lost', 'stats', 'decks', 'next', 'ready', 'reward']
 
 export const STAGES = [
   {
@@ -157,46 +121,20 @@ export const STAGES = [
     ],
   },
   {
-    id: 'cleared',
-    title: '3 · Lesson cleared',
-    question: 'What does finishing look like, and what does it remember?',
+    id: 'end',
+    title: '3 · End of the lesson',
+    question: 'One screen: the score, then keeping the words and moving on. How do the buttons split that up?',
     variants: [
-      { id: 'today', name: 'Today', fixes: [], today: true, tradeoff: 'Shows the last round only: 2 correct, 0 troubled, nothing flagged.' },
-      { id: 'report', name: 'Stat row (first draft)', fixes: ['lost', 'stats', 'reward', 'ready'], tradeoff: 'Three numbers and a text trail: the data is there, but nothing shows how the lesson divided up.' },
-      { id: 'bar', name: 'Clearing bar', fixes: ['lost', 'stats', 'reward', 'ready'], recommended: true, tradeoff: 'Shows the whole lesson split by the round each word was cleared in, and the list is grouped the same way. Per-word detail is only the miss count.' },
-      { id: 'trail', name: 'Word trail', fixes: ['lost', 'stats', 'reward'], tradeoff: 'Every attempt, per word, per round: the most complete view, but the densest, and there is no whole-lesson summary beyond the header.' },
-      { id: 'grid', name: 'Lesson grid', fixes: ['lost', 'reward'], tradeoff: 'The whole lesson at a glance as tiles; the list below it only keeps the struggled words.' },
-      { id: 'compare', name: 'Then vs now', fixes: ['lost', 'ready', 'chronic'], tradeoff: "Frames the run as progress since last time, which is the question behind \"am I ready?\" Needs per-word history stored, and a first run has nothing to compare against." },
-      { id: 'moment', name: 'Big moment', fixes: ['lost', 'reward'], tradeoff: 'Feels good, says less: no comparison with last time.' },
-    ],
-  },
-  {
-    id: 'send',
-    title: '4 · Sending words to Reviews',
-    question: 'Whole lesson or only the hard ones? This session or history too?',
-    variants: [
-      { id: 'today', name: 'Today', fixes: [], today: true, tradeoff: "Pre-ticks only the last round's misses — after a clean final round, nothing — and the deck is whatever you pick." },
-      { id: 'pick', name: 'Pick words', fixes: ['lost'], tradeoff: "Today's control with the miss counts fixed. The other 14 words still trigger the send prompt when you move on, so there are still two paths." },
-      { id: 'chapter', name: 'Whole lesson', fixes: ['decks'], tradeoff: 'One path into Reviews, but the drill you just did counts for nothing there.' },
-      { id: 'headstart', name: 'Whole lesson, head start', fixes: ['decks', 'lost'], recommended: true, tradeoff: 'Treats the drill as the first review. Words right first time skip the learning steps — a wrong guess costs one early lapse. "Only the 6 I struggled with" stays a secondary choice; picking it means moving on later still asks about the other 14. Build note: the stacked three-button bar needs a layout option ActionBar does not have yet.' },
-      { id: 'history', name: 'Hardest across sessions', fixes: ['lost', 'chronic'], tradeoff: 'Needs per-word miss history, which nothing stores yet. Still a subset, so two paths remain.' },
-    ],
-  },
-  {
-    id: 'next',
-    title: '5 · What next',
-    question: 'Once the words are sent, where does the finish lead?',
-    variants: [
-      { id: 'today', name: 'Today', fixes: [], today: true, tradeoff: 'End review lands on the chapter list with "Redo Lesson 3" as the main button.' },
-      { id: 'nextButton', name: 'Next lesson button', fixes: ['next'], tradeoff: 'Pushes on regardless of how the run went.' },
-      { id: 'readiness', name: 'Readiness-aware', fixes: ['next', 'ready'], recommended: true, tradeoff: 'Two layouts to maintain; the target has to be explained once.' },
-      { id: 'focus', name: 'Focus round offer', fixes: ['next', 'lost'], tradeoff: 'A third choice on a screen that should have one main action.' },
+      { id: 'today', name: 'Today', fixes: [], today: true, tradeoff: 'Shows the last round only (2 correct, 0 troubled), pre-selects nothing, and "End review" is the way out.' },
+      { id: 'twoStep', name: 'Two steps in the bar', fixes: END_FIXES, tradeoff: 'The bar asks about Reviews first, then swaps to what next. Clear, but finishing always takes two taps. Click through it.' },
+      { id: 'inline', name: 'Choice above the bar', fixes: END_FIXES, recommended: true, tradeoff: 'One tap finishes: the Reviews choice (All 20 by default) is applied by whichever next step you press. A setting-like control on a celebration screen.' },
+      { id: 'auto', name: 'Added automatically', fixes: END_FIXES, tradeoff: 'No decision at all: the lesson goes into Reviews when it is cleared, with Undo. Quietest, but it writes to your Reviews without asking.' },
     ],
   },
 ]
 
 export const PRESETS = {
-  today: { start: 'today', round: 'today', cleared: 'today', send: 'today', next: 'today' },
-  recommended: { start: 'readiness', round: 'checkpoint', cleared: 'bar', send: 'headstart', next: 'readiness' },
-  minimalFix: { start: 'today', round: 'checkpoint', cleared: 'bar', send: 'pick', next: 'nextButton' },
+  today: { start: 'today', round: 'today', end: 'today' },
+  recommended: { start: 'readiness', round: 'checkpoint', end: 'inline' },
+  minimalFix: { start: 'today', round: 'checkpoint', end: 'twoStep' },
 }
