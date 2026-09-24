@@ -297,8 +297,10 @@ function LessonSummary({ firstTry, history }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE_32, textAlign: 'left' }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE_12 }}>
-        <div style={{ fontSize: FS_DISPLAY_HEADING, color: TEXT }}>Lesson cleared</div>
-        <div style={{ fontSize: FS_DISPLAY_HEADING, lineHeight: 1, color: TEXT, fontVariantNumeric: 'tabular-nums' }}>{Math.round(value)}%</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: SPACE_12, fontSize: FS_DISPLAY_HEADING, color: TEXT }}>
+          <span>Lesson cleared</span>
+          <span style={{ fontVariantNumeric: 'tabular-nums' }}>{Math.round(value)}%</span>
+        </div>
         <div style={{ position: 'relative' }}>
           <ScoreBar pct={value} />
           <TargetTick />
