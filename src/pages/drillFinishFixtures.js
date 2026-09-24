@@ -37,6 +37,13 @@ export function finishRows(firstTry) {
     .sort((a, b) => b.misses - a.misses)
 }
 
+// The learner's own review decks. The book's deck isn't among them yet, so
+// the picker offers it as "Suggested · new".
+export const DECKS = {
+  'imported-anime': { id: 'imported-anime', name: 'Anime words', addedAt: 1 },
+  'imported-kanji': { id: 'imported-kanji', name: 'Kanji I keep missing', addedAt: 2 },
+}
+
 const HOUR = 60 * 60 * 1000
 export const PREVIOUS_RUNS = [
   { at: new Date(Date.now() - 2 * HOUR).toISOString(), firstTry: 11, total: 20 },

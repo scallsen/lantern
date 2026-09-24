@@ -1,6 +1,6 @@
 import { fn } from 'storybook/test'
 import { RoundBreak, LessonCleared } from './drillFinish.jsx'
-import { finishRows, PREVIOUS_RUNS } from './drillFinishFixtures.js'
+import { finishRows, PREVIOUS_RUNS, DECKS } from './drillFinishFixtures.js'
 
 // The vocab drill's finishing screens, rendered with the real components.
 // LessonCleared's Action Bar is position: fixed, so every story renders in
@@ -26,7 +26,13 @@ const cleared = {
     rows: finishRows(14),
     previousRuns: PREVIOUS_RUNS,
     isMobile: false,
-    onAddToReview: words => ({ count: words.length, cardIds: words.map(w => w.id) }),
+    decks: DECKS,
+    suggestedDeck: { deckId: 'textbook-genki-1', deckName: 'Genki 1' },
+    onAddToReview: (words, { deckId, newDeckName }) => ({
+      count: words.length,
+      cardIds: words.map(w => w.id),
+      deckName: newDeckName ?? DECKS[deckId]?.name ?? 'Genki 1',
+    }),
     onUndoAdd: fn(),
     onDrillAgain: fn(),
     onDrillTroubled: fn(),

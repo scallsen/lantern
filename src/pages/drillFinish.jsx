@@ -5,6 +5,10 @@ import DataList from '../components/DataList.jsx'
 import SectionHeader from '../components/SectionHeader.jsx'
 import ActionBar from '../components/ActionBar.jsx'
 import ScoreBar from '../components/ScoreBar.jsx'
+import Popover from '../components/Popover.jsx'
+import OptionPicker from '../components/OptionPicker.jsx'
+import { deckPickerItems } from '../components/deckPickerItems.js'
+import { isBundledDeck } from '../modules/vocab-srs/deckUtils.js'
 import { SegmentedPrimary } from './homeCards.jsx'
 import { useDictionaryEntries, useSenseGlosses } from '../hooks/useDictionaryEntries.js'
 import { cardGloss } from '../utils/dictionaryEntryLookup.js'
@@ -13,7 +17,7 @@ import { READINESS_TARGET_PCT, pctOf, timeAgo } from '../lib/drillScore.js'
 import {
   FONT, TEXT, TEXT_MUTED, SUCCESS, WARNING, KANJI_FONT, LANTERN_ON, LANTERN_SIZES,
   FS_BASE, FS_BADGE, FS_ENTRY_WORD, FS_DISPLAY_HEADING, FS_CONTENT_HEADING,
-  SPACE_8, SPACE_12, SPACE_16, SPACE_24, SPACE_32, CONTENT_NARROW,
+  SPACE_8, SPACE_12, SPACE_16, SPACE_24, SPACE_32, CONTENT_STANDARD,
 } from '../data/theme.js'
 
 // The vocab drill's two finishing screens: the beat between rounds while
@@ -147,17 +151,30 @@ function useWordColumns(rows) {
   ], [dictEntries, senseGlosses])
 }
 
+// The deck picker's rows, with the drill's own deck — the book's, or the
+// word source's — pinned first even before it exists: picking it creates
+// it, the same deck the advance gate fills.
+function reviewDeckItems(decks, suggested) {
+  const items = deckPickerItems(decks, { exclude: isBundledDeck })
+  if (!suggested) return items
+  return [
+    { id: suggested.deckId, label: suggested.deckName, meta: decks[suggested.deckId] ? 'Suggested' : 'Suggested · new' },
+    ...items.filter(item => item.id !== suggested.deckId),
+  ]
+}
+
 // `rows`: [{ id, word, misses }] for every word in the session, misses summed
 // across all its rounds. `previousRuns`: this lesson's earlier first passes,
 // newest first — empty on a first run, or when a different lesson was
-// drilled in between.
+// drilled in between. `onAddToReview(words, { deckId } | { newDeckName })`
+// returns `{ count, cardIds, deckName }`.
 //
 // The score picks the lead action. At or above the readiness target, adding
 // the words to review; below it, drilling again. Neither is hidden — the
 // screen nudges, it doesn't block. Moving on to the next lesson is the home
 // card's job, not this screen's.
 export function LessonCleared({
-  rows, previousRuns = [], isMobile,
+  rows, previousRuns = [], isMobile, decks = {}, suggestedDeck,
   onAddToReview, onUndoAdd, onDrillAgain, onDrillTroubled, onEnd, onBarHeight,
 }) {
   const total = rows.length
@@ -166,15 +183,19 @@ export function LessonCleared({
   const pct = pctOf(firstTry, total)
   const value = useFillIn(pct)
   const columns = useWordColumns(rows)
-  const [added, setAdded] = useState(null) // { count, cardIds }
+  const [added, setAdded] = useState(null) // { count, cardIds, deckName }
+  const [picking, setPicking] = useState(null) // the words waiting on a deck
+  const addRef = useRef(null)
   const barRef = useFixedChildHeight(onBarHeight)
 
   const addFirst = pct >= READINESS_TARGET_PCT
   const size = isMobile ? 'lg' : 'xl'
+  const fullWidth = isMobile
 
-  function add(words) {
-    const result = onAddToReview(words)
-    if (result) setAdded({ count: result.count, cardIds: result.cardIds })
+  function add(target) {
+    const result = onAddToReview(picking, target)
+    setPicking(null)
+    if (result) setAdded({ count: result.count, cardIds: result.cardIds, deckName: result.deckName })
   }
 
   function undo() {
@@ -182,30 +203,33 @@ export function LessonCleared({
     setAdded(null)
   }
 
-  const addAction = added ? (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: SPACE_8, minHeight: '100%' }}>
-      <span style={{ fontSize: FS_BASE, color: SUCCESS }}>
-        {added.count > 0 ? `✓ Added ${added.count} to review` : '✓ Already in review'}
+  const confirmation = added && (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'space-between' : 'flex-start', gap: SPACE_8, minHeight: '100%', minWidth: 0 }}>
+      <span style={{ fontSize: FS_BASE, color: SUCCESS, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {added.count > 0 ? `✓ Added ${added.count} to ${added.deckName}` : `✓ Already in ${added.deckName}`}
       </span>
       {added.count > 0 && <Button variant="ghost-muted" size="sm" onClick={undo}>Undo</Button>}
     </div>
-  ) : (
-    <SegmentedPrimary
-      size={size}
-      fullWidth
-      tone={addFirst ? 'primary' : 'neutral'}
-      label={`Add all ${total} to review`}
-      menuLabel="More ways to add to review"
-      onClick={() => add(rows.map(r => r.word))}
-      menuItems={troubledRows.length > 0 && troubledRows.length < total
-        ? [{ id: 'troubled', label: `Just add ${troubledRows.length} troubled to review`, onClick: () => add(troubledRows.map(r => r.word)) }]
-        : []}
-    />
+  )
+  const addAction = added ? confirmation : (
+    <div ref={addRef}>
+      <SegmentedPrimary
+        size={size}
+        fullWidth={fullWidth}
+        tone={addFirst ? 'primary' : 'neutral'}
+        label={`Add all ${total} to review`}
+        menuLabel="More ways to add to review"
+        onClick={() => setPicking(rows.map(r => r.word))}
+        menuItems={troubledRows.length > 0 && troubledRows.length < total
+          ? [{ id: 'troubled', label: `Just add ${troubledRows.length} troubled to review`, onClick: () => setPicking(troubledRows.map(r => r.word)) }]
+          : []}
+      />
+    </div>
   )
   const againAction = (
     <SegmentedPrimary
       size={size}
-      fullWidth
+      fullWidth={fullWidth}
       tone={addFirst ? 'quiet' : 'primary'}
       label="Drill again"
       menuLabel="More ways to drill again"
@@ -217,10 +241,35 @@ export function LessonCleared({
   )
   // Once the words are in, the add slot is only a confirmation, so the lead
   // passes to finishing — otherwise the screen would be left with no primary.
-  const endAction = <Button variant={added && addFirst ? 'primary' : 'quiet'} size={size} fullWidth onClick={onEnd}>End drill</Button>
+  const endIsPrimary = Boolean(added) && addFirst
+  const endAction = <Button variant={endIsPrimary ? 'primary' : 'quiet'} size={size} fullWidth={fullWidth} onClick={onEnd}>End drill</Button>
+  const [lead, other] = addFirst ? [addAction, againAction] : [againAction, addAction]
+
+  const bar = isMobile ? (
+    // The leading action takes the first row; the other two share the
+    // second. Grouped through ActionBar's full-width `leading` slot, since
+    // ActionBar only right-aligns its children.
+    <ActionBar leading={(
+      <div style={{ display: 'grid', gridTemplateColumns: addFirst ? '1fr 1fr' : 'minmax(0, 1fr) auto', gap: SPACE_8, alignItems: 'stretch' }}>
+        <div style={{ gridColumn: '1 / -1' }}>{lead}</div>
+        {other}
+        {endAction}
+      </div>
+    )} />
+  ) : (
+    // One row, primary last. After adding, the confirmation moves to the
+    // left-hand status slot. The screen is CONTENT_STANDARD wide (not the
+    // narrow done-screen width) because three xl buttons don't fit on one row
+    // any narrower, and the bar matches it so the buttons line up with the list.
+    <ActionBar maxWidth={CONTENT_STANDARD} leading={confirmation || null}>
+      {added
+        ? (endIsPrimary ? <>{againAction}{endAction}</> : <>{endAction}{againAction}</>)
+        : <>{endAction}{other}{lead}</>}
+    </ActionBar>
+  )
 
   return (
-    <div style={{ width: '100%', maxWidth: CONTENT_NARROW, padding: `${SPACE_32 + SPACE_16}px ${SPACE_24}px`, fontFamily: FONT, display: 'flex', flexDirection: 'column', gap: SPACE_32 }}>
+    <div style={{ width: '100%', maxWidth: CONTENT_STANDARD + SPACE_24 * 2, padding: `${SPACE_32 + SPACE_16}px ${SPACE_24}px`, fontFamily: FONT, display: 'flex', flexDirection: 'column', gap: SPACE_32 }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE_12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: SPACE_12, fontSize: FS_DISPLAY_HEADING, color: TEXT }}>
           <span>Lesson cleared</span>
@@ -252,20 +301,26 @@ export function LessonCleared({
         <DataList columns={columns} rows={rows} maxWidth="100%" />
       </div>
 
-      {/* The leading action takes the first row; the other two share the
-          second. Grouped through ActionBar's full-width `leading` slot, since
-          ActionBar only right-aligns its children. */}
-      <div ref={barRef}>
-        {/* Content's own width less its side padding, so the buttons line up
-            with the column above instead of overhanging it. */}
-        <ActionBar maxWidth={CONTENT_NARROW - SPACE_24 * 2} leading={(
-          <div style={{ display: 'grid', gridTemplateColumns: addFirst ? '1fr 1fr' : 'minmax(0, 1fr) auto', gap: SPACE_8, alignItems: 'stretch' }}>
-            <div style={{ gridColumn: '1 / -1' }}>{addFirst ? addAction : againAction}</div>
-            {addFirst ? againAction : addAction}
-            {endAction}
-          </div>
-        )} />
-      </div>
+      <div ref={barRef}>{bar}</div>
+
+      {/* DeckComboBox's picker, opened from the split button rather than its
+          own trigger so the bar keeps a single add control. */}
+      <Popover
+        open={Boolean(picking)}
+        onClose={() => setPicking(null)}
+        anchorRef={addRef}
+        isMobile={isMobile}
+        align="end"
+        title={`Add ${picking?.length ?? 0} to which deck?`}
+      >
+        <OptionPicker
+          items={reviewDeckItems(decks, suggestedDeck)}
+          onSelect={deckId => add({ deckId })}
+          onCreate={name => add({ newDeckName: name })}
+          placeholder="Search or create a deck"
+          emptyMessage="No decks yet"
+        />
+      </Popover>
     </div>
   )
 }

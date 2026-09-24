@@ -35,7 +35,7 @@ import { safeLocalStorageGet, safeLocalStorageSet } from '../utils/storage.js'
 import * as SimpleQueue from '../engines/simpleQueue.js'
 import { WORD_DATA, bundledWordCountFor } from '../data/wordData.js'
 import { useCustomWords, useCustomWordCounts } from '../hooks/useCustomWords.js'
-import { deleteCards } from '../modules/vocab-srs/deckUtils.js'
+import { createDeck, deleteCards } from '../modules/vocab-srs/deckUtils.js'
 import { addWordsToSrs, textbookDeck } from '../modules/vocab-srs/addWordsToDeck.js'
 import { getVoicevoxAudioUrl, getVoicevoxCredit, speakerIdFromAudioSource } from '../utils/voicevoxAudio.js'
 import AttributionFooter from '../components/AttributionFooter.jsx'
@@ -811,9 +811,10 @@ function VocabPageScreens() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drill.done, drill.round, drill.sessionId, isDrilling, pool.length])
 
-  // Every drill's words go to one deck per book, the same one the advance
-  // gate fills — so adding here also clears that gate for the chapter. A free
-  // drill outside any textbook gets a deck named after its word source.
+  // The deck the finish screen's picker suggests first: one per book, the
+  // same one the advance gate fills — so adding there also clears that gate
+  // for the chapter. A free drill outside any textbook suggests a deck named
+  // after its word source.
   function reviewDeckForDrill() {
     const book = TEXTBOOKS.find(t => t.chapters.some(ch => selectedSubLists.includes(ch.id)))
     if (book) return textbookDeck(book)
@@ -821,9 +822,17 @@ function VocabPageScreens() {
     return { deckId: `source-${selectedSourceId}`, deckName: source?.label ?? 'Vocab Drill' }
   }
 
-  function handleAddToReview(words) {
-    const { deckId, deckName } = reviewDeckForDrill()
-    const result = addWordsToSrs(srsData, words, deckId, deckName, poolDictEntries, poolSenseGlosses)
+  function handleAddToReview(words, { deckId, newDeckName }) {
+    const current = srsData ?? { decks: {}, cards: {}, lastSession: null, totalReviews: 0, newCardDay: { date: '', count: 0 } }
+    if (newDeckName) {
+      const created = createDeck(current.decks, newDeckName)
+      const result = addWordsToSrs({ ...current, decks: created.decks }, words, created.deckId, newDeckName, poolDictEntries, poolSenseGlosses)
+      saveSrs(result.data)
+      return result
+    }
+    const suggested = reviewDeckForDrill()
+    const deckName = current.decks[deckId]?.name ?? (deckId === suggested.deckId ? suggested.deckName : 'Deck')
+    const result = addWordsToSrs(current, words, deckId, deckName, poolDictEntries, poolSenseGlosses)
     saveSrs(result.data)
     return result
   }
@@ -981,6 +990,8 @@ function VocabPageScreens() {
                   rows={finishRows}
                   previousRuns={drill.sessionPool.length === pool.length ? previousRuns : []}
                   isMobile={isMobile}
+                  decks={srsData?.decks ?? {}}
+                  suggestedDeck={reviewDeckForDrill()}
                   onAddToReview={handleAddToReview}
                   onUndoAdd={handleUndoAdd}
                   onDrillAgain={drill.restart}
