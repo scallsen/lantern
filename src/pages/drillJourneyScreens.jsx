@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { fn } from 'storybook/test'
 import Button from '../components/Button.jsx'
 import Badge from '../components/Badge.jsx'
@@ -7,12 +8,13 @@ import DataList from '../components/DataList.jsx'
 import SectionHeader from '../components/SectionHeader.jsx'
 import DeckComboBox from '../components/DeckComboBox.jsx'
 import DrillHUD from '../components/DrillHUD.jsx'
-import ChipSelector from '../components/Chip.jsx'
+import Popover from '../components/Popover.jsx'
+import Menu from '../components/Menu.jsx'
 import Japanese from '../components/Japanese.jsx'
 import ActionBar from '../components/ActionBar.jsx'
 import { PrimaryCard, TextbookCover, SegmentedPrimary, ActionsRow } from './homeCards.jsx'
 import {
-  FONT, TEXT, TEXT_MUTED, BRAND, KANJI_FONT, SUCCESS, WARNING,
+  FONT, TRACKING, TEXT, TEXT_MUTED, BRAND, KANJI_FONT, SUCCESS, WARNING,
   FS_BASE, FS_BADGE, FS_CAPTION, FS_ENTRY_WORD, FS_STAT_VALUE, FS_DISPLAY_HEADING, FS_CONTENT_HEADING,
   SPACE_4, SPACE_8, SPACE_12, SPACE_16, SPACE_24, SPACE_32,
 } from '../data/theme.js'
@@ -276,17 +278,26 @@ function useFillIn(target, duration = 1200) {
   return value
 }
 
+
 const pctOf = firstTry => Math.round((firstTry / SESSION.total) * 100)
 
-function LessonSummary() {
-  const value = useFillIn(SESSION.firstTryPct)
+function TargetTick() {
+  return <div style={{ position: 'absolute', top: -4, bottom: -4, left: `${READINESS_TARGET_PCT}%`, width: 2, background: TEXT, opacity: 0.6 }} />
+}
+
+function LessonSummary({ firstTry }) {
+  const pct = pctOf(firstTry)
+  const value = useFillIn(pct)
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE_32, textAlign: 'left' }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE_12 }}>
         <div style={{ fontSize: FS_DISPLAY_HEADING, color: TEXT }}>Lesson cleared</div>
         <div style={{ fontSize: 64, lineHeight: 1, color: TEXT, fontVariantNumeric: 'tabular-nums' }}>{Math.round(value)}%</div>
-        <ScoreBar pct={value} />
-        <Note>{SESSION.firstTry} of {SESSION.total} right first time</Note>
+        <div style={{ position: 'relative' }}>
+          <ScoreBar pct={value} />
+          <TargetTick />
+        </div>
+        <Note>{firstTry} of {SESSION.total} right first time · target {READINESS_TARGET_PCT}%</Note>
       </div>
       <div>
         <SectionHeader title="Previous sessions" />
@@ -304,89 +315,103 @@ function LessonSummary() {
   )
 }
 
-function NextButtons() {
+// SegmentedPrimary's split-button shape with a tone, since here the add
+// action is only primary when the score has reached the target. Lab-local:
+// if this direction is built, it's a `tone` prop on SegmentedPrimary (and
+// probably a promotion out of homeCards.jsx into src/components/).
+const SPLIT_TONES = {
+  primary: { className: 'btn btn-tint btn-primary', background: BRAND, color: '#fff', border: 'none', divider: 'rgba(255,255,255,0.25)' },
+  neutral: { className: 'btn btn-neutral', background: 'rgba(255,255,255,0.06)', color: TEXT, border: '1px solid rgba(255,255,255,0.15)', divider: 'rgba(255,255,255,0.15)' },
+}
+const SPLIT_HEIGHT = 10 * 2 + FS_BASE
+
+function SplitButton({ tone, label, onClick, menuItems }) {
+  const [open, setOpen] = useState(false)
+  const chevronRef = useRef(null)
+  const t = SPLIT_TONES[tone]
+  const segment = {
+    background: t.background, color: t.color, border: 'none', boxSizing: 'border-box', height: SPLIT_HEIGHT,
+    fontFamily: FONT, letterSpacing: TRACKING, lineHeight: 1, cursor: 'pointer',
+  }
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: SPACE_8 }}>
-      <Button variant="quiet" size="lg" fullWidth>Drill again</Button>
-      <Button size="lg" fullWidth>Start {NEXT_CHAPTER.label}</Button>
+    <div style={{ display: 'flex', width: '100%', borderRadius: 6, overflow: 'hidden', border: t.border, boxSizing: 'border-box' }}>
+      <button type="button" className={t.className} onClick={onClick} style={{ ...segment, flex: '1 1 auto', padding: `0 ${SPACE_16}px`, fontSize: FS_BASE, whiteSpace: 'nowrap' }}>
+        {label}
+      </button>
+      <button
+        ref={chevronRef}
+        type="button"
+        className={t.className}
+        onClick={() => setOpen(o => !o)}
+        aria-label="More ways to add"
+        style={{ ...segment, flexShrink: 0, width: SPLIT_HEIGHT, padding: 0, borderLeft: `1px solid ${t.divider}`, fontSize: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      >
+        <span style={{ display: 'block', transform: 'translateY(-2px)' }}>▾</span>
+      </button>
+      {/* Portalled only because the lab's phone frame is transformed (to pin
+          the Action Bar), which would make Popover's position: fixed
+          relative to the frame and clip it. The app has no such ancestor. */}
+      {createPortal(
+        <Popover open={open} onClose={() => setOpen(false)} anchorRef={chevronRef} align="end" width={240} bodyPadding={0}>
+          <Menu items={menuItems} onSelect={id => { setOpen(false); menuItems.find(i => i.id === id)?.onClick() }} />
+        </Popover>,
+        document.body,
+      )}
     </div>
   )
 }
 
-// The three button models below all put their whole group in ActionBar's
-// full-width `leading` slot: ActionBar only right-aligns its children, and
-// these want a stacked layout it doesn't offer yet.
+const troubledCount = SESSION.struggled.length
 
-const hardCount = SESSION.struggled.length
-const ADDED_LABEL = { all: `Added ${SESSION.total} to Reviews`, hard: `Added ${hardCount} to Reviews`, none: 'Not added to Reviews' }
+// `priority: 'score'` puts the add action first once the target is reached
+// and Drill again first below it; 'add' always leads with the add action.
+function EndActions({ pct, priority }) {
+  const [added, setAdded] = useState(null)
+  const addFirst = priority === 'add' || pct >= READINESS_TARGET_PCT
 
-export function EndTwoStep({ initialStep = 'reviews' }) {
-  const [added, setAdded] = useState(initialStep === 'reviews' ? null : 'all')
+  const add = added ? (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: SPLIT_HEIGHT, gap: SPACE_8 }}>
+      <Note tone={SUCCESS}>✓ Added {added} to review</Note>
+      <Button variant="ghost-muted" size="sm" onClick={() => setAdded(null)}>Undo</Button>
+    </div>
+  ) : (
+    <SplitButton
+      tone={addFirst ? 'primary' : 'neutral'}
+      label={`Add all ${SESSION.total} to review`}
+      onClick={() => setAdded(SESSION.total)}
+      menuItems={[{ id: 'troubled', label: `Add ${troubledCount} troubled to review`, onClick: () => setAdded(troubledCount) }]}
+    />
+  )
+  const again = <Button variant={addFirst ? 'quiet' : 'primary'} size="lg" fullWidth>Drill again</Button>
+  // Once the words are in, the add slot is only a confirmation, so the lead
+  // passes to finishing — otherwise the screen would be left with no primary.
+  const end = <Button variant={added && addFirst ? 'primary' : 'quiet'} size="lg" fullWidth>End drill</Button>
+
+  // The leading action takes the full first row; the other two share the
+  // second. Grouped through ActionBar's full-width `leading` slot, since
+  // ActionBar only right-aligns its children.
   return (
-    <Screen align="left">
-      <LessonSummary />
-      <ActionBar leading={added == null ? (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: SPACE_8 }}>
-          <div style={{ gridColumn: '1 / -1' }}><Button size="xl" fullWidth onClick={() => setAdded('all')}>Add all {SESSION.total} to Reviews</Button></div>
-          <Button variant="neutral" size="lg" fullWidth onClick={() => setAdded('hard')}>Just the hard {hardCount}</Button>
-          <Button variant="quiet" size="lg" fullWidth onClick={() => setAdded('none')}>Skip</Button>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE_8 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: SPACE_8 }}>
-            <Note tone={added === 'none' ? TEXT_MUTED : SUCCESS}>{added === 'none' ? '' : '✓ '}{ADDED_LABEL[added]}</Note>
-            <Button variant="ghost-muted" size="sm" onClick={() => setAdded(null)}>Undo</Button>
-          </div>
-          <NextButtons />
-        </div>
-      )} />
-    </Screen>
+    <ActionBar leading={addFirst ? (
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: SPACE_8 }}>
+        <div style={{ gridColumn: '1 / -1' }}>{add}</div>
+        {again}
+        {end}
+      </div>
+    ) : (
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: SPACE_8 }}>
+        <div style={{ gridColumn: '1 / -1' }}>{again}</div>
+        {add}
+        {end}
+      </div>
+    )} />
   )
 }
 
-const REVIEW_CHOICES = [
-  { value: 'all', label: `All ${SESSION.total}` },
-  { value: 'hard', label: `Hard ${hardCount}` },
-  { value: 'none', label: 'None' },
-]
-
-export function EndInline() {
-  const [choice, setChoice] = useState('all')
+export function EndLesson({ firstTry = SESSION.firstTry, priority = 'score' }) {
   return (
     <Screen align="left">
-      <LessonSummary />
-      <ActionBar leading={(
-        <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE_12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: SPACE_12, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: FS_BASE, color: TEXT_MUTED }}>Add to Reviews</span>
-            <ChipSelector mode="single" options={REVIEW_CHOICES} value={choice} onChange={setChoice} />
-          </div>
-          <NextButtons />
-        </div>
-      )} />
-    </Screen>
-  )
-}
-
-export function EndAuto() {
-  const [added, setAdded] = useState('all')
-  return (
-    <Screen align="left">
-      <LessonSummary />
-      <ActionBar leading={(
-        <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE_8 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: SPACE_4 }}>
-            <Note tone={added === 'none' ? TEXT_MUTED : SUCCESS}>{added === 'none' ? '' : '✓ '}{ADDED_LABEL[added]}</Note>
-            <span style={{ display: 'flex', flexShrink: 0 }}>
-              {added === 'all' && <Button variant="ghost-muted" size="sm" onClick={() => setAdded('hard')}>Keep hard {hardCount}</Button>}
-              {added !== 'none'
-                ? <Button variant="ghost-muted" size="sm" onClick={() => setAdded('none')}>Undo</Button>
-                : <Button variant="ghost-muted" size="sm" onClick={() => setAdded('all')}>Add back</Button>}
-            </span>
-          </div>
-          <NextButtons />
-        </div>
-      )} />
+      <LessonSummary firstTry={firstTry} />
+      <EndActions pct={pctOf(firstTry)} priority={priority} />
     </Screen>
   )
 }

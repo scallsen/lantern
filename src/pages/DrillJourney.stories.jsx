@@ -5,7 +5,7 @@ import { ACTION_BAR_HEIGHT } from '../components/ActionBar.jsx'
 import {
   StartToday, StartExplicit, StartReadiness,
   RoundToday, RoundCheckpoint, RoundAuto,
-  EndToday, EndTwoStep, EndInline, EndAuto,
+  EndToday, EndLesson,
 } from './drillJourneyScreens.jsx'
 import { STAGES, ISSUES, PRESETS, SESSION, READINESS_TARGET_PCT, FSRS_EASY_FIRST_INTERVAL_DAYS } from './drillJourneyFixtures.js'
 import {
@@ -17,6 +17,7 @@ const BG = '#1E1E1E'
 const SURFACE = '#2A2A2A'
 const HAIRLINE = 'rgba(255,255,255,0.08)'
 const READY_PCT = 90
+const READY_FIRST_TRY = Math.round((READY_PCT / 100) * SESSION.total)
 // A phone-ish viewport for screens with an Action Bar, so the sticky bar has
 // something to stick to and the list visibly scrolls under it.
 const BAR_FRAME_HEIGHT = 640
@@ -44,12 +45,11 @@ const SCREENS = {
   },
   end: {
     today: [{ el: <EndToday /> }],
-    twoStep: [
-      { label: 'Finishing — click through', el: <EndTwoStep />, height: END_FRAME_HEIGHT, barHeight: END_BAR_HEIGHT, replay: true },
-      { label: 'After adding', el: <EndTwoStep initialStep="next" />, height: END_FRAME_HEIGHT, barHeight: END_BAR_HEIGHT, replay: true },
+    scored: [
+      { label: `Below target (${SESSION.firstTryPct}%)`, el: <EndLesson />, height: END_FRAME_HEIGHT, barHeight: END_BAR_HEIGHT, replay: true },
+      { label: `Target reached (${READY_PCT}%)`, el: <EndLesson firstTry={READY_FIRST_TRY} />, height: END_FRAME_HEIGHT, barHeight: END_BAR_HEIGHT, replay: true },
     ],
-    inline: [{ el: <EndInline />, height: END_FRAME_HEIGHT, barHeight: END_BAR_HEIGHT, replay: true }],
-    auto: [{ el: <EndAuto />, height: END_FRAME_HEIGHT, barHeight: END_BAR_HEIGHT, replay: true }],
+    fixed: [{ label: `Below target (${SESSION.firstTryPct}%)`, el: <EndLesson priority="add" />, height: END_FRAME_HEIGHT, barHeight: END_BAR_HEIGHT, replay: true }],
   },
 }
 
@@ -206,7 +206,7 @@ export default {
     layout: 'fullscreen',
     docs: {
       description: {
-        component: `Design exploration for drilling a textbook lesson from start to finish: choosing the lesson, the rounds, and the end of the lesson — its score, keeping the words in Reviews, and moving on, all on one screen. Nothing here is wired into the app.
+        component: `Design exploration for drilling a textbook lesson from start to finish: choosing the lesson, the rounds, and the end of the lesson — its score, then adding the words to review, drilling again or ending. Moving on to the next lesson happens from the home card. Nothing here is wired into the app.
 
 **Use when** comparing the options for one step (the numbered stage stories) or checking how one set of choices works end to end (the Journey stories, where each stage has its own control and the scorecard updates).
 

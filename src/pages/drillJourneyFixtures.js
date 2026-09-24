@@ -97,7 +97,7 @@ export const ISSUES = [
 
 // ── Candidate solutions per stage ────────────────────────────────────────────
 
-const END_FIXES = ['lost', 'stats', 'decks', 'next', 'ready', 'reward']
+const END_FIXES = ['lost', 'stats', 'decks', 'ready', 'reward']
 
 export const STAGES = [
   {
@@ -123,18 +123,17 @@ export const STAGES = [
   {
     id: 'end',
     title: '3 · End of the lesson',
-    question: 'One screen: the score, then keeping the words and moving on. How do the buttons split that up?',
+    question: 'The score, then three actions: add to review, drill again, end. Moving to the next lesson stays on the home card.',
     variants: [
       { id: 'today', name: 'Today', fixes: [], today: true, tradeoff: 'Shows the last round only (2 correct, 0 troubled), pre-selects nothing, and "End review" is the way out.' },
-      { id: 'twoStep', name: 'Two steps in the bar', fixes: END_FIXES, tradeoff: 'The bar asks about Reviews first, then swaps to what next. Clear, but finishing always takes two taps. Click through it.' },
-      { id: 'inline', name: 'Choice above the bar', fixes: END_FIXES, recommended: true, tradeoff: 'One tap finishes: the Reviews choice (All 20 by default) is applied by whichever next step you press. A setting-like control on a celebration screen.' },
-      { id: 'auto', name: 'Added automatically', fixes: END_FIXES, tradeoff: 'No decision at all: the lesson goes into Reviews when it is cleared, with Undo. Quietest, but it writes to your Reviews without asking.' },
+      { id: 'scored', name: 'Score picks the primary', fixes: END_FIXES, recommended: true, tradeoff: `Below the target, Drill again leads; at or above it, adding to review does. The screen nudges without blocking — both stay one tap away. "Add 6 troubled" sits in the dropdown. Click through it.` },
+      { id: 'fixed', name: 'Add always leads', fixes: ['lost', 'stats', 'decks', 'reward'], tradeoff: 'The same actions in a fixed order. Simpler, but the score is shown without steering anything, so a 40% run is nudged into Reviews like a 95% one.' },
     ],
   },
 ]
 
 export const PRESETS = {
   today: { start: 'today', round: 'today', end: 'today' },
-  recommended: { start: 'readiness', round: 'checkpoint', end: 'inline' },
-  minimalFix: { start: 'today', round: 'checkpoint', end: 'twoStep' },
+  recommended: { start: 'readiness', round: 'checkpoint', end: 'scored' },
+  minimalFix: { start: 'today', round: 'checkpoint', end: 'fixed' },
 }
