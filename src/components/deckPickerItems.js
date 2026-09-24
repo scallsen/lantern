@@ -1,3 +1,5 @@
+import { isBundledDeck } from '../modules/vocab-srs/deckUtils.js'
+
 // Maps the SRS deck map onto OptionPicker's { id, label, meta } shape.
 // Lives in its own .js file rather than inside DeckComboBox.jsx so that file
 // stays export-only-components (react-refresh), matching how vocabMap.js and
@@ -16,4 +18,17 @@ export function deckPickerItems(decks, { lastUsedDeckId, exclude } = {}) {
       label: d.name,
       meta: d.id === lastUsedDeckId ? 'Last used' : undefined,
     }))
+}
+
+// The picker's rows for adding a textbook's (or word source's) words, with
+// that drill's own deck pinned first even before it exists — picking it
+// creates it. `suggested`: { deckId, deckName }, from textbookDeck().
+// Shared by the drill's Lesson cleared screen and the advance gate dialog.
+export function suggestedDeckItems(decks, suggested) {
+  const items = deckPickerItems(decks, { exclude: isBundledDeck })
+  if (!suggested) return items
+  return [
+    { id: suggested.deckId, label: suggested.deckName, meta: decks[suggested.deckId] ? 'Suggested' : 'Suggested · new' },
+    ...items.filter(item => item.id !== suggested.deckId),
+  ]
 }

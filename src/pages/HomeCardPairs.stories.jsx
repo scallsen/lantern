@@ -26,5 +26,5 @@ export default {
 }
 
 export const FirstRun = { args: { newState: NEW_CARD_STATES.empty, reviewState: REVIEW_CARD_STATES.signedOut } }
-export const TypicalReturningUser = { args: { newState: NEW_CARD_STATES.inProgress, reviewState: REVIEW_CARD_STATES.due } }
+export const TypicalReturningUser = { args: { newState: NEW_CARD_STATES.belowTarget, reviewState: REVIEW_CARD_STATES.due } }
 export const StudiedEverythingToday = { args: { newState: NEW_CARD_STATES.complete, reviewState: REVIEW_CARD_STATES.caughtUp } }

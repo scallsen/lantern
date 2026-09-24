@@ -3,10 +3,12 @@ import Card from '../components/Card.jsx'
 import Button from '../components/Button.jsx'
 import Popover from '../components/Popover.jsx'
 import Menu from '../components/Menu.jsx'
+import ScoreBar from '../components/ScoreBar.jsx'
 import { ModuleThemeProvider, useAccent } from '../context/ModuleThemeContext.jsx'
 import { useIsMobile } from '../hooks/useIsMobile.js'
 import { TEXTBOOKS, COVER_GUTTER_FRACTION } from '../data/textbooks.js'
 import { chapterPrimaryAction } from './chapterAction.jsx'
+import { READINESS_TARGET_PCT } from '../lib/drillScore.js'
 import { useCoverRotation } from './coverRotation.js'
 import {
   FONT, TRACKING, TEXT, TEXT_MUTED, FS_BADGE, FS_BASE, FS_CONTENT_HEADING,
@@ -36,7 +38,11 @@ function navigate(hash) {
 // deliberate, not incidental: it makes the two cards match heights because
 // they're told to, rather than relying on the parent grid's default stretch
 // staying that way.
-export function PrimaryCard({ accent, title, subtitle, cover, progress, actions, children }) {
+//
+// `meter` sits in the header beside the cover rather than below it, pinned
+// to the cover's bottom edge, so a score takes the header's spare height
+// instead of adding a row.
+export function PrimaryCard({ accent, title, subtitle, cover, meter, progress, actions, children }) {
   return (
     <ModuleThemeProvider accent={accent}>
       <Card
@@ -47,9 +53,12 @@ export function PrimaryCard({ accent, title, subtitle, cover, progress, actions,
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE_16 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: SPACE_16 }}>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: FS_CONTENT_HEADING, color: TEXT }}>{title}</div>
-              {subtitle && <div style={{ fontSize: FS_BASE, color: TEXT_MUTED, marginTop: SPACE_4 }}>{subtitle}</div>}
+            <div style={{ minWidth: 0, flex: meter ? 1 : undefined, alignSelf: 'stretch', display: 'flex', flexDirection: 'column', gap: SPACE_12 }}>
+              <div>
+                <div style={{ fontSize: FS_CONTENT_HEADING, color: TEXT }}>{title}</div>
+                {subtitle && <div style={{ fontSize: FS_BASE, color: TEXT_MUTED, marginTop: SPACE_4 }}>{subtitle}</div>}
+              </div>
+              {meter && <div style={{ marginTop: 'auto' }}>{meter}</div>}
             </div>
             {cover}
           </div>
@@ -263,20 +272,28 @@ export function ActionsRow({ children }) {
 // rather than surfacing it as a second visible button. Degrades to a plain
 // Button when there's nothing to put in the menu.
 //
-// Hand-rolled rather than two <Button variant="primary">s glued together —
-// the shared square-height chevron segment and the seam between them don't
-// map onto Button's API — so it needs Button.jsx's btn-primary class added
-// explicitly (see global.css) to get the same BRAND_DEEP hover Button's own
-// primary variant gets; it won't pick that up automatically from Button.jsx.
-export function SegmentedPrimary({ size = 'lg', label, onClick, menuItems = [], fullWidth = false }) {
+// Hand-rolled rather than two <Button>s glued together — the shared
+// square-height chevron segment and the seam between them don't map onto
+// Button's API — so each tone names Button.jsx's own classes explicitly (see
+// global.css) to get the same hover its Button variant gets. `tone` exists
+// for the drill's finish screen, where which action leads depends on the
+// score: the others sit beside it as `neutral` or `quiet`.
+const SEGMENT_TONES = {
+  primary: { className: 'btn btn-tint btn-primary', background: null, color: '#fff', border: 'none', divider: 'rgba(255,255,255,0.25)' },
+  neutral: { className: 'btn btn-neutral', background: 'rgba(255,255,255,0.06)', color: TEXT, border: '1px solid rgba(255,255,255,0.15)', divider: 'rgba(255,255,255,0.15)' },
+  quiet: { className: 'btn btn-quiet', background: 'transparent', color: TEXT, border: '1px solid rgba(255,255,255,0.14)', divider: 'rgba(255,255,255,0.14)' },
+}
+
+export function SegmentedPrimary({ size = 'lg', tone = 'primary', label, onClick, menuItems = [], menuLabel = 'More actions', fullWidth = false }) {
   const accent = useAccent()
   const [open, setOpen] = useState(false)
   const chevronRef = useRef(null)
 
   if (menuItems.length === 0) {
-    return <Button size={size} onClick={onClick} fullWidth={fullWidth}>{label}</Button>
+    return <Button size={size} variant={tone} onClick={onClick} fullWidth={fullWidth}>{label}</Button>
   }
 
+  const t = SEGMENT_TONES[tone] ?? SEGMENT_TONES.primary
   const pad = size === 'xl' ? `${SPACE_12}px ${SPACE_32}px` : `10px ${SPACE_24}px`
   // The chevron segment is a perfect square sized to the main button's own
   // rendered height (2× its vertical padding + one line of FS_BASE text) —
@@ -284,7 +301,14 @@ export function SegmentedPrimary({ size = 'lg', label, onClick, menuItems = [], 
   // with align-items: stretch doesn't resolve reliably (the cross-axis size
   // isn't "definite" yet when the aspect-ratio width would need it, so
   // Chromium falls back to the glyph's own tiny content width instead).
+  // Only the width is fixed: the height stretches with the row, since the
+  // label's real line box can run a pixel past FS_BASE and a fixed height
+  // left the label segment overhanging the chevron at the bottom.
   const square = (size === 'xl' ? SPACE_12 : 10) * 2 + FS_BASE
+  const segment = {
+    background: t.background ?? accent, color: t.color, border: 'none', boxSizing: 'border-box',
+    fontFamily: FONT, letterSpacing: TRACKING, lineHeight: 1, cursor: 'pointer',
+  }
 
   return (
     <div style={{
@@ -292,16 +316,16 @@ export function SegmentedPrimary({ size = 'lg', label, onClick, menuItems = [], 
       width: fullWidth ? '100%' : undefined,
       flexShrink: fullWidth ? undefined : 0,
       alignItems: 'stretch', borderRadius: 6, overflow: 'hidden', boxSizing: 'border-box',
+      border: t.border,
     }}>
       <button
         type="button"
-        className="btn btn-tint btn-primary"
+        className={t.className}
         onClick={onClick}
         style={{
-          background: accent, border: 'none', boxSizing: 'border-box',
+          ...segment,
           flex: fullWidth ? '1 1 auto' : '0 0 auto',
-          whiteSpace: 'nowrap', textAlign: 'center',
-          color: '#fff', padding: pad, fontFamily: FONT, letterSpacing: TRACKING, fontSize: FS_BASE, lineHeight: 1, cursor: 'pointer',
+          whiteSpace: 'nowrap', textAlign: 'center', padding: pad, fontSize: FS_BASE,
         }}
       >
         {label}
@@ -309,18 +333,19 @@ export function SegmentedPrimary({ size = 'lg', label, onClick, menuItems = [], 
       <button
         ref={chevronRef}
         type="button"
-        className="btn btn-tint btn-primary"
+        className={t.className}
         onClick={() => setOpen(o => !o)}
-        aria-label="More actions"
+        aria-label={menuLabel}
         style={{
-          background: accent, border: 'none', borderLeft: '1px solid rgba(255,255,255,0.25)', boxSizing: 'border-box', flexShrink: 0,
-          color: '#fff', padding: 0, width: square, height: square, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontFamily: FONT, letterSpacing: TRACKING, fontSize: 20, lineHeight: 1, cursor: 'pointer',
+          ...segment,
+          borderLeft: `1px solid ${t.divider}`, flexShrink: 0,
+          padding: 0, width: square, minHeight: square, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 20,
         }}
       >
         <span style={{ display: 'block', transform: 'translateY(-2px)' }}>▾</span>
       </button>
-      <Popover open={open} onClose={() => setOpen(false)} anchorRef={chevronRef} align="end" width={200} bodyPadding={0}>
+      <Popover open={open} onClose={() => setOpen(false)} anchorRef={chevronRef} align="end" width={240} bodyPadding={0}>
         <Menu items={menuItems} onSelect={id => { setOpen(false); menuItems.find(i => i.id === id)?.onClick() }} />
       </Popover>
     </div>
@@ -370,6 +395,9 @@ export function NewCard({ loading, state, onStart, onAdvance, onChangeTextbook }
   }
 
   const { label, onClick, menuItems } = chapterPrimaryAction(state, { onStart, onAdvance, onChangeTextbook })
+  // The current lesson's last first-try score against the readiness target —
+  // the reason the primary below says "Start next" or "Drill again".
+  const scorePct = complete ? null : state.current.scorePct
 
   return (
     <PrimaryCard
@@ -377,6 +405,9 @@ export function NewCard({ loading, state, onStart, onAdvance, onChangeTextbook }
       title={textbook.title}
       subtitle={complete ? 'Book completed' : `${doneCount} of ${chapters.length} chapters`}
       cover={cover}
+      meter={scorePct != null && (
+        <ScoreBar pct={scorePct} target={READINESS_TARGET_PCT} height={8} caption={`${scorePct}% Correct`} />
+      )}
       actions={
         <ActionsRow>
           <SegmentedPrimary size="lg" label={label} onClick={onClick} menuItems={menuItems} />

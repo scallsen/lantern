@@ -30,7 +30,12 @@ export function useDrill(pool, { engine = SimpleQueue, floatSize = 7, seekCardId
   const onWrong       = useCallback(() => setState(s => engine.onWrong(s)),   [engine])
   const onUndo        = useCallback(() => setState(s => engine.onUndo ? engine.onUndo(s) : s), [engine])
   const restart       = useCallback(() => setState(engine.init(poolRef.current, floatSize)), [engine, floatSize])
-  const redoTroubled  = useCallback(() => setState(s => engine.init(s.troubled, floatSize)), [engine, floatSize])
+  // Continues the same session when the engine supports rounds, so its
+  // running miss totals survive; otherwise a fresh session over the misses.
+  const redoTroubled  = useCallback(
+    () => setState(s => (engine.nextRound ? engine.nextRound(s, floatSize) : engine.init(s.troubled, floatSize))),
+    [engine, floatSize],
+  )
   const redoSelection = useCallback(specs => setState(engine.init(specs, floatSize)), [engine, floatSize])
 
   return {
@@ -44,6 +49,10 @@ export function useDrill(pool, { engine = SimpleQueue, floatSize = 7, seekCardId
     remaining:    state.float.length + state.pool.length,
     done:         state.float.length === 0,
     mistakeCounts: state.mistakeCounts ?? {},
+    sessionId:       state.sessionId ?? null,
+    sessionPool:     state.sessionPool ?? pool,
+    round:           state.round ?? 1,
+    sessionMistakes: state.sessionMistakes ?? state.mistakeCounts ?? {},
     canUndo:      state.prevSnapshot !== null,
     prevCard:     state.prevSnapshot?.float[0] ?? null,
     onCorrect,

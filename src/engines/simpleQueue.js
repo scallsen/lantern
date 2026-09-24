@@ -1,5 +1,6 @@
 // Engine contract: export { label, description, init, onCorrect, onWrong }
-// State shape: { float, pool, retired, troubled, mistakeCounts, streak, bestStreak, prevSnapshot }
+// State shape: { float, pool, retired, troubled, mistakeCounts, streak, bestStreak, prevSnapshot,
+//                sessionId, sessionPool, round, sessionMistakes }
 //
 // float    — active card specs; float[0] is always current
 // pool     — unplayed specs waiting to enter float
@@ -7,11 +8,19 @@
 //
 // Wrong cards reinsert into the float WRONG_INSERT_OFFSET positions ahead,
 // so the user sees a few different cards before it returns.
+//
+// A session is a first pass over every card, then rounds over whatever was
+// missed until nothing is. `mistakeCounts` is this round's (it decides which
+// cards are troubled and come back); `sessionMistakes` sums every round, so
+// the finish can still rank the words that were hard — a word missed in
+// round 1 but clean in round 3 must not look untroubled.
 
 export const label = 'Simple Queue'
 export const description = 'Wrong cards return after a few correct answers. Streak resets on wrong.'
 
 const WRONG_INSERT_OFFSET = 3
+
+let nextSessionId = 1
 
 function shuffle(arr) {
   const a = [...arr]
@@ -30,7 +39,7 @@ function nextPoolIndex(pool, float) {
   return idx !== -1 ? idx : 0
 }
 
-export function init(pool, floatSize = 7) {
+function roundOf(pool, floatSize) {
   const shuffled = shuffle(pool)
   return {
     float:          shuffled.slice(0, floatSize),
@@ -41,6 +50,29 @@ export function init(pool, floatSize = 7) {
     streak:         0,
     bestStreak:     0,
     prevSnapshot:   null,
+  }
+}
+
+export function init(pool, floatSize = 7) {
+  return {
+    ...roundOf(pool, floatSize),
+    sessionId:       nextSessionId++,
+    sessionPool:     pool,
+    round:           1,
+    sessionMistakes: {},
+  }
+}
+
+// The next round of the same session: only this round's troubled cards,
+// with the session's running totals carried over.
+export function nextRound(state, floatSize = 7) {
+  return {
+    ...roundOf(state.troubled, floatSize),
+    sessionId:       state.sessionId,
+    sessionPool:     state.sessionPool,
+    round:           state.round + 1,
+    sessionMistakes: state.sessionMistakes,
+    bestStreak:      state.bestStreak,
   }
 }
 
@@ -72,10 +104,11 @@ export function onWrong(state) {
 
   return {
     ...state,
-    float:         newFloat,
-    mistakeCounts: { ...state.mistakeCounts, [current.id]: (state.mistakeCounts[current.id] ?? 0) + 1 },
-    streak:        0,
-    prevSnapshot:  { ...state, prevSnapshot: null },
+    float:           newFloat,
+    mistakeCounts:   { ...state.mistakeCounts, [current.id]: (state.mistakeCounts[current.id] ?? 0) + 1 },
+    sessionMistakes: { ...state.sessionMistakes, [current.id]: (state.sessionMistakes?.[current.id] ?? 0) + 1 },
+    streak:          0,
+    prevSnapshot:    { ...state, prevSnapshot: null },
   }
 }
 

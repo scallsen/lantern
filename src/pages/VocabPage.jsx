@@ -7,7 +7,6 @@ import SectionHeader from '../components/SectionHeader.jsx'
 import Checkbox from '../components/Checkbox.jsx'
 import Select from '../components/Select.jsx'
 import Button from '../components/Button.jsx'
-import Badge from '../components/Badge.jsx'
 import DataList from '../components/DataList.jsx'
 import Modal from '../components/Modal.jsx'
 import TextbookPicker from '../components/TextbookPicker.jsx'
@@ -19,9 +18,7 @@ import SettingsSidebar, { SidebarHeaderToggle } from '../components/SettingsSide
 import DrillSettingsPanel from '../components/DrillSettingsPanel.jsx'
 import { useDrillSettings, audioSourceForVoice } from '../hooks/useDrillSettings.js'
 import {
-  FONT, TRACKING, TEXT, TEXT_MUTED, FS_BASE, FS_CAPTION, FS_BADGE, FS_ENTRY_WORD, FS_STAT_VALUE,
-  FS_DISPLAY_HEADING, FS_CONTENT_HEADING, KANJI_FONT, WARNING, BRAND,
-  CONTENT_NARROW, CONTENT_STANDARD,
+  FONT, TRACKING, TEXT, TEXT_MUTED, FS_BASE, FS_CAPTION, FS_CONTENT_HEADING, BRAND, CONTENT_STANDARD,
 } from '../data/theme.js'
 import { ModuleThemeProvider, useAccent } from '../context/ModuleThemeContext.jsx'
 import { WORD_SOURCES, visibleSources } from '../data/wordLists.js'
@@ -30,45 +27,34 @@ import { useTTS, useJaVoices } from '../hooks/useTTS.js'
 import { useSFX } from '../hooks/useSFX.js'
 import { useVoicevoxPlayer } from '../hooks/useVoicevoxPlayer.js'
 import { useGamepad } from '../hooks/useGamepad.js'
-import { useAuth } from '../context/AuthContext.jsx'
 import { useProgress } from '../hooks/useProgress.js'
 import { useAudioGenerationStatus } from '../hooks/useAudioGenerationStatus.js'
 import { useDictionaryEntries, useSenseGlosses } from '../hooks/useDictionaryEntries.js'
-import { cardGloss } from '../utils/dictionaryEntryLookup.js'
 import { speechTextOf } from '../lib/displayForm.js'
-import { resolveWordDisplay } from '../utils/wordDisplay.js'
 import { safeLocalStorageGet, safeLocalStorageSet } from '../utils/storage.js'
 import * as SimpleQueue from '../engines/simpleQueue.js'
 import { WORD_DATA, bundledWordCountFor } from '../data/wordData.js'
 import { useCustomWords, useCustomWordCounts } from '../hooks/useCustomWords.js'
 import { createDeck, deleteCards } from '../modules/vocab-srs/deckUtils.js'
-import { addWordsToSrs } from '../modules/vocab-srs/addWordsToDeck.js'
-import DeckComboBox from '../components/DeckComboBox.jsx'
-import { useToast } from '../context/ToastContext.jsx'
+import { addWordsToSrs, textbookDeck } from '../modules/vocab-srs/addWordsToDeck.js'
 import { getVoicevoxAudioUrl, getVoicevoxCredit, speakerIdFromAudioSource } from '../utils/voicevoxAudio.js'
 import AttributionFooter from '../components/AttributionFooter.jsx'
 import { renderAttributionSegments } from '../utils/attributionSegments.jsx'
 import { useIsMobile } from '../hooks/useIsMobile.js'
 import { useTextbookAdvance } from '../hooks/useTextbookAdvance.js'
 import { resolveTextbookState } from '../lib/textbookProgress.js'
-import { getTextbook } from '../data/textbooks.js'
+import { getTextbook, TEXTBOOKS } from '../data/textbooks.js'
+import { sessionScore, recordFirstPass } from '../lib/drillScore.js'
+import { RoundBreak, LessonCleared } from './drillFinish.jsx'
 import { chapterPrimaryAction } from './chapterAction.jsx'
 import { SegmentedPrimary, TextbookCover } from './homeCards.jsx'
 
 const VOCAB_ACCENT = BRAND
 
-const MISTAKE_TIER_TONE = { none: 'success', one: 'warning', many: 'danger' }
-
 const REVIEW_MODE_OPTIONS = [
   { value: 'kanji-front', label: 'Japanese → English' },
   { value: 'meaning-front', label: 'English → Japanese' },
 ]
-
-function mistakeTier(count) {
-  if (!count) return 'none'
-  if (count === 1) return 'one'
-  return 'many'
-}
 
 
 // The dashboard's "Start Lesson N" deep-links here as
@@ -365,155 +351,6 @@ function ActiveDrill({ drill, audioSource, playOnFront, playOnBack, sfxEnabled, 
   )
 }
 
-function DoneScreen({
-  pool, mistakeCounts, correct, troubled, onRestart, onRedoTroubled, onRedoSelected, onBack,
-  decks, isMobile, onAddToSrs, onCreateDeckAndAddToSrs, onUndoAdd,
-}) {
-  const rows = useMemo(() =>
-    pool
-      .map(({ id, word }) => ({ id, word, mistakes: mistakeCounts[id] ?? 0 }))
-      .sort((a, b) => b.mistakes - a.mistakes),
-    [pool, mistakeCounts]
-  )
-  const jmdictIds = useMemo(() => rows.map(r => r.word.jmdictId).filter(Boolean), [rows])
-  const { entries: dictEntries } = useDictionaryEntries(jmdictIds, true)
-  const senseGlosses = useSenseGlosses(useMemo(() => rows.map(r => r.word), [rows]))
-  const defaultSelectedIds = useMemo(() => new Set(rows.filter(r => r.mistakes > 0).map(r => r.id)), [rows])
-  const [selected, setSelected] = useState(() => new Set(defaultSelectedIds))
-  const { showToast } = useToast()
-  const selectionChanged = selected.size !== defaultSelectedIds.size || [...selected].some(id => !defaultSelectedIds.has(id))
-
-  function toggleRow(id) {
-    setSelected(prev => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id); else next.add(id)
-      return next
-    })
-  }
-
-  // Row content is a word/reading stack, a 2-line-clamped gloss and a
-  // mistake badge — three columns, the first two needing their own render.
-  const columns = useMemo(() => [
-    {
-      key: 'word', width: 100, lang: 'ja',
-      render: row => {
-        const dictEntry = row.word.jmdictId ? dictEntries[row.word.jmdictId] : null
-        const { displayForm, reading } = resolveWordDisplay(row.word, dictEntry)
-        return (
-          <span style={{ display: 'flex', flexDirection: 'column', gap: 2, width: '100%', overflow: 'hidden' }}>
-            <span style={{ fontSize: FS_ENTRY_WORD, color: TEXT, fontFamily: KANJI_FONT, letterSpacing: 0, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {displayForm}
-            </span>
-            {reading && (
-              <span style={{ fontSize: FS_BADGE, color: TEXT_MUTED, fontFamily: KANJI_FONT, letterSpacing: 0, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {reading}
-              </span>
-            )}
-          </span>
-        )
-      },
-    },
-    {
-      key: 'gloss', tone: 'muted', wrap: true,
-      render: row => {
-        const dictEntry = row.word.jmdictId ? dictEntries[row.word.jmdictId] : null
-        return (
-          <span style={{ lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-            {row.word.english ?? cardGloss(row.word, dictEntry, senseGlosses)}
-          </span>
-        )
-      },
-    },
-    {
-      key: 'mistakes', width: 36, align: 'right',
-      render: row => row.mistakes > 0 ? <Badge variant="text" tone={MISTAKE_TIER_TONE[mistakeTier(row.mistakes)]}>{row.mistakes}×</Badge> : null,
-    },
-  ], [dictEntries, senseGlosses])
-
-  function showAddedToast(result) {
-    if (!result) return
-    if (result.count === 0) {
-      showToast({ message: `Already in "${result.deckName}".` })
-      return
-    }
-    showToast({
-      message: `Added ${result.count} word${result.count === 1 ? '' : 's'} to "${result.deckName}".`,
-      actionLabel: 'Undo',
-      onAction: () => onUndoAdd(result.cardIds),
-    })
-  }
-
-  function handleAdd(deckId) {
-    const words = rows.filter(r => selected.has(r.id)).map(r => r.word)
-    if (words.length === 0) return
-    showAddedToast(onAddToSrs(words, deckId))
-  }
-
-  function handleCreateAndAdd(name) {
-    const words = rows.filter(r => selected.has(r.id)).map(r => r.word)
-    if (words.length === 0) return
-    showAddedToast(onCreateDeckAndAddToSrs(words, name))
-  }
-
-  return (
-    <div style={{ textAlign: 'center', fontFamily: FONT, width: '100%', maxWidth: CONTENT_NARROW, padding: '48px 24px 48px' }}>
-      <div style={{ color: '#fff', fontSize: FS_DISPLAY_HEADING, letterSpacing: '0.05em', marginBottom: 16 }}>Session complete</div>
-      <div style={{ display: 'flex', gap: 20, justifyContent: 'center', marginBottom: 32 }}>
-        <div>
-          <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: FS_CAPTION, marginBottom: 4 }}>CORRECT</div>
-          <div style={{ color: '#fff', fontSize: FS_STAT_VALUE }}>{correct}</div>
-        </div>
-        <div style={{ color: 'rgba(255,255,255,0.15)', fontSize: FS_STAT_VALUE, alignSelf: 'center' }}>·</div>
-        <div>
-          <div style={{ color: troubled > 0 ? WARNING : 'rgba(255,255,255,0.4)', fontSize: FS_CAPTION, marginBottom: 4 }}>TROUBLED</div>
-          <div style={{ color: troubled > 0 ? WARNING : 'rgba(255,255,255,0.4)', fontSize: FS_STAT_VALUE }}>{troubled}</div>
-        </div>
-      </div>
-      <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-        {(troubled > 0 || selectionChanged) && (
-          <Button
-            variant="warning-outline"
-            size="lg"
-            onClick={() => {
-              if (selectionChanged) onRedoSelected(pool.filter(p => selected.has(p.id)))
-              else onRedoTroubled()
-            }}
-            disabled={selectionChanged && selected.size === 0}
-          >
-            {selectionChanged ? `Redo Selected (${selected.size})` : `Redo Troubled (${troubled})`}
-          </Button>
-        )}
-        <Button variant="neutral" size="lg" onClick={onRestart}>Restart</Button>
-        <Button variant="neutral" size="lg" onClick={onBack}>End review</Button>
-      </div>
-
-      {rows.length > 0 && (
-        <div style={{ marginTop: 36, textAlign: 'left' }}>
-          <SectionHeader
-            title="Review words"
-            action={(
-              <DeckComboBox
-                decks={decks}
-                isMobile={isMobile}
-                disabled={selected.size === 0}
-                buttonLabel={`Add ${selected.size} to review deck`}
-                onAdd={handleAdd}
-                onCreateAndAdd={handleCreateAndAdd}
-              />
-            )}
-          />
-          <DataList
-            columns={columns}
-            rows={rows}
-            selection={{ selected, onToggle: toggleRow, bulkHeader: { selectFirst: true } }}
-            maxWidth="100%"
-          />
-        </div>
-      )}
-    </div>
-  )
-}
-
 // ── Textbook chapter path ────────────────────────────────────────────────────
 //
 // The book-featured landing screen for #/vocab once a textbook is chosen —
@@ -540,7 +377,7 @@ function ChapterGlyph({ kind, accent }) {
 function ChapterRow({ chapter, isCurrent, hasNext, accent, open, onToggleOpen, onStart, onAdvance, onSetCurrent, onViewWords }) {
   const kind = isCurrent ? 'current' : chapter.drilled ? 'done' : 'todo'
   const meta = [`${chapter.wordCount} words`, chapter.drilled ? 'drilled' : null].filter(Boolean).join(' · ')
-  const primaryLabel = isCurrent ? (chapter.drilled ? 'Redo chapter' : 'Start chapter') : 'Drill chapter'
+  const primaryLabel = isCurrent ? (chapter.drilled ? 'Drill again' : 'Start chapter') : 'Drill chapter'
   return (
     <div style={{ borderTop: `1px solid rgba(255,255,255,0.06)` }}>
       <div
@@ -761,7 +598,6 @@ export default function VocabPage() {
 
 function VocabPageScreens() {
   const ACCENT = useAccent()
-  const { user } = useAuth()
   // A personal source belongs to one account, so the list of sources on offer
   // depends on who is signed in.
   const customCounts = useCustomWordCounts()
@@ -789,7 +625,7 @@ function VocabPageScreens() {
     [vocabProgressLoading, vocabProgress, wordCountFor],
   )
   const showTextbookScreen = !!textbookState && textbookState.hasWords
-  const { gate, unsentWords, requestAdvance, skipGate, sendAndAdvance, closeGate, setCurrent: setCurrentChapter } = useTextbookAdvance({
+  const { gate, unsentWords, suggestedDeck, requestAdvance, skipGate, sendAndAdvance, closeGate, setCurrent: setCurrentChapter } = useTextbookAdvance({
     state: textbookState,
     vocabProgress,
     saveVocabProgress,
@@ -903,6 +739,17 @@ function VocabPageScreens() {
   )
 
   const drill = useDrill(pool, { engine: SimpleQueue })
+  // The finish screen's words, most-missed first across every round of the
+  // session (a stable sort, so ties keep lesson order).
+  const finishRows = useMemo(
+    () => drill.sessionPool
+      .map(({ id, word }) => ({ id, word, misses: drill.sessionMistakes[id] ?? 0 }))
+      .sort((a, b) => b.misses - a.misses),
+    [drill.sessionPool, drill.sessionMistakes],
+  )
+  // The finish screen's Action Bar is two rows and fixed, so the scroller
+  // pads by its measured height rather than ACTION_BAR_HEIGHT's one row.
+  const [finishBarHeight, setFinishBarHeight] = useState(0)
   // The card-settings sidebar only means anything while a drill is actually
   // on screen — showing it over the chapter list, a preview, or the done
   // screen reads as controls for a card that isn't there.
@@ -936,9 +783,15 @@ function VocabPageScreens() {
     }
   }, [vocabProgressLoading, textbookState, isDrilling])
 
-  // Save progress when session completes. Not gated on sign-in: useProgress
+  // Save the score once per session, when its first pass ends — that pass
+  // is the lesson's score (see drillScore.js). The rounds after it only work
+  // through the misses; saving each of those used to overwrite a real 14/20
+  // with a clean-but-meaningless 2/20. Not gated on sign-in: useProgress
   // falls back to localStorage when logged out, and the dashboard's chapter
-  // pointer needs drilled state either way.
+  // pointer needs drilled state either way. A session over just the troubled
+  // words ("Drill 6 troubled again") isn't the lesson, so it isn't saved.
+  const savedSessionRef = useRef(null)
+  const [previousRuns, setPreviousRuns] = useState([])
   useEffect(() => {
     // pool.length === 0 also covers the moment a deep-linked personal
     // chapter's drill.done is briefly (and wrongly) true before its async
@@ -946,31 +799,35 @@ function VocabPageScreens() {
     // it this fired with total: 0 and marked the chapter drilled before a
     // single card had been shown.
     if (!isDrilling || !drill.done || pool.length === 0) return
-    const now = new Date().toISOString()
-    const total = pool.length
-    const updatedSublists = { ...(vocabProgress?.sublists ?? {}) }
-    for (const listId of selectedSubLists) {
-      const existing = updatedSublists[listId]
-      const existingByMode = existing && 'lastReviewed' in existing ? { 'kanji-front': existing } : (existing ?? {})
-      updatedSublists[listId] = {
-        ...existingByMode,
-        [reviewMode]: { lastReviewed: now, correct: drill.correct, total },
-      }
-    }
-    saveVocabProgress({ ...(vocabProgress ?? {}), sublists: updatedSublists })
+    if (drill.round !== 1 || drill.sessionPool.length !== pool.length) return
+    if (savedSessionRef.current === drill.sessionId) return
+    savedSessionRef.current = drill.sessionId
+    const { firstTry, total } = sessionScore(drill.sessionPool, drill.sessionMistakes)
+    const { progress, previousRuns: runs } = recordFirstPass(vocabProgress, {
+      listIds: selectedSubLists, mode: reviewMode, firstTry, total, at: new Date().toISOString(),
+    })
+    setPreviousRuns(runs)
+    saveVocabProgress(progress)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [drill.done, isDrilling, user, reviewMode])
+  }, [drill.done, drill.round, drill.sessionId, isDrilling, pool.length])
 
-  function handleAddToSrs(words, deckId) {
-    const result = addWordsToSrs(srsData, words, deckId, 'Deck', poolDictEntries, poolSenseGlosses)
-    if (result.count > 0) saveSrs(result.data)
-    return result
+  // The deck the finish screen's picker suggests first: one per book, the
+  // same one the advance gate fills — so adding there also clears that gate
+  // for the chapter. A free drill outside any textbook suggests a deck named
+  // after its word source.
+  function reviewDeckForDrill() {
+    const book = TEXTBOOKS.find(t => t.chapters.some(ch => selectedSubLists.includes(ch.id)))
+    if (book) return textbookDeck(book)
+    const source = WORD_SOURCES.find(src => src.id === selectedSourceId)
+    return { deckId: `source-${selectedSourceId}`, deckName: source?.label ?? 'Vocab Drill' }
   }
 
-  function handleCreateDeckAndAddToSrs(words, name) {
-    const current = srsData ?? { decks: {}, cards: {}, lastSession: null, totalReviews: 0, newCardDay: { date: '', count: 0 } }
-    const { decks, deckId } = createDeck(current.decks, name)
-    const result = addWordsToSrs({ ...current, decks }, words, deckId, name, poolDictEntries, poolSenseGlosses)
+  function handleAddToReview(words, { deckId, newDeckName }) {
+    const decks = srsData?.decks ?? {}
+    // A new deck only needs its fresh id here — addWordsToSrs creates it.
+    const targetId = newDeckName ? createDeck(decks, newDeckName).deckId : deckId
+    const deckName = newDeckName ?? decks[targetId]?.name ?? reviewDeckForDrill().deckName
+    const result = addWordsToSrs(srsData, words, targetId, deckName, poolDictEntries, poolSenseGlosses)
     saveSrs(result.data)
     return result
   }
@@ -997,6 +854,9 @@ function VocabPageScreens() {
   function startChapterDrill(chapter) {
     setSelectedSourceId(sourceIdForListKey(chapter.id))
     setSelectedSubLists([chapter.id])
+    // Same chapter as last time means the same pool, which useDrill won't
+    // re-init by itself — without this, a second visit opens on the finish.
+    drill.restart()
     setIsDrilling(true)
   }
 
@@ -1094,6 +954,7 @@ function VocabPageScreens() {
           height: `calc(100dvh - ${headerHeight}px)`,
           overflowY: 'auto', scrollbarGutter: 'stable both-edges',
           display: 'flex', flexDirection: 'column', alignItems: 'center',
+          paddingBottom: isDrilling ? finishBarHeight : 0, boxSizing: 'border-box',
           zIndex: 2,
         }}>
           <div style={{
@@ -1109,21 +970,30 @@ function VocabPageScreens() {
               // and flashes a 0-card done screen before the real cards arrive.
               personalSource && customWordsLoading ? (
                 <CenteredLoadingMessage text="Loading words" />
-              ) : drill.done ? (
-                <DoneScreen
-                  pool={pool}
-                  mistakeCounts={drill.mistakeCounts}
-                  correct={drill.correct}
+              ) : drill.done && drill.troubled > 0 ? (
+                <RoundBreak
+                  key={`${drill.sessionId}-${drill.round}`}
+                  round={drill.round}
+                  correct={drill.sessionPool.length - drill.troubled}
                   troubled={drill.troubled}
-                  onRestart={drill.restart}
-                  onRedoTroubled={drill.redoTroubled}
-                  onRedoSelected={drill.redoSelection}
-                  onBack={() => setIsDrilling(false)}
-                  onAddToSrs={handleAddToSrs}
-                  onCreateDeckAndAddToSrs={handleCreateDeckAndAddToSrs}
-                  onUndoAdd={handleUndoAdd}
-                  decks={srsData?.decks ?? {}}
+                  onContinue={drill.redoTroubled}
+                  onEnd={() => setIsDrilling(false)}
+                />
+              ) : drill.done ? (
+                <LessonCleared
+                  key={drill.sessionId}
+                  rows={finishRows}
+                  previousRuns={drill.sessionPool.length === pool.length ? previousRuns : []}
+                  practice={drill.sessionPool.length < pool.length}
                   isMobile={isMobile}
+                  decks={srsData?.decks ?? {}}
+                  suggestedDeck={reviewDeckForDrill()}
+                  onAddToReview={handleAddToReview}
+                  onUndoAdd={handleUndoAdd}
+                  onDrillAgain={drill.restart}
+                  onDrillTroubled={ids => drill.redoSelection(drill.sessionPool.filter(spec => ids.includes(spec.id)))}
+                  onEnd={() => setIsDrilling(false)}
+                  onBarHeight={setFinishBarHeight}
                 />
               ) : (
                 <ActiveDrill
@@ -1204,6 +1074,8 @@ function VocabPageScreens() {
         onCancel={closeGate}
         onSkip={skipGate}
         onSend={sendAndAdvance}
+        decks={srsData?.decks ?? {}}
+        suggestedDeck={suggestedDeck}
         isMobile={isMobile}
       />
       <WordExplorerModal
@@ -1229,7 +1101,7 @@ function VocabPageScreens() {
         onToggleIncludeSentenceVocab={() => setIncludeSentenceVocab(v => !v)}
         glanceWords={glanceWords}
         onPreview={() => setFreeDrillStep('words')}
-        onStart={() => { setFreeDrillOpen(false); setIsDrilling(true) }}
+        onStart={() => { setFreeDrillOpen(false); drill.restart(); setIsDrilling(true) }}
       />
 
     </div>
