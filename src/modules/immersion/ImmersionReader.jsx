@@ -122,7 +122,7 @@ export default function ImmersionReader({ article, defaultLevel = 'simplified', 
         ]}
         rightSlot={<AuthSlot />}
       />
-      <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '40px 24px' }}>
+      <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', scrollbarGutter: 'stable both-edges', padding: '40px 24px' }}>
         <div style={{ maxWidth: CONTENT_READING, margin: '0 auto' }}>
           {(hasSimplified || tokens) && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>

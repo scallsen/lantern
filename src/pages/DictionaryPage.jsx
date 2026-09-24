@@ -449,7 +449,7 @@ export default function DictionaryPage() {
       >
         <TopProgressBar loading={showLoadingMessage} color={ACCENT} />
       </PageHeader>
-      <div ref={scrollRef} onScroll={handleScroll} style={{ flex: 1, overflowY: 'auto', padding: '24px 16px 48px', display: 'flex', flexDirection: 'column' }}>
+      <div ref={scrollRef} onScroll={handleScroll} style={{ flex: 1, overflowY: 'auto', scrollbarGutter: 'stable both-edges', padding: '24px 16px 48px', display: 'flex', flexDirection: 'column' }}>
         <div style={{ maxWidth: CONTENT_STANDARD, margin: '0 auto', width: '100%', flex: 1, display: 'flex', flexDirection: 'column' }}>
         <div style={{ flex: 1 }}>
           <TextInput

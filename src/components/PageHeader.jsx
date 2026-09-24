@@ -123,6 +123,7 @@ export default function PageHeader({ crumbs = [], rightSlot, subtitle, noBorder,
       borderBottom: noBorder ? undefined : `1px solid ${BORDER}`,
       flexShrink: 0,
       paddingTop: 'env(safe-area-inset-top)',
+      position: 'relative',
     }}>
       <div style={{
         display: 'flex',
@@ -145,7 +146,14 @@ export default function PageHeader({ crumbs = [], rightSlot, subtitle, noBorder,
         )}
         {rightSlot && <div style={{ marginLeft: 'auto' }}>{rightSlot}</div>}
       </div>
-      {children}
+      {/* Overlaid on the bottom border rather than in flow: the slot holds a
+          loading bar that comes and goes, and in flow it pushed the page
+          down 3px while loading and snapped it back up when done. */}
+      {children && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1 }}>
+          {children}
+        </div>
+      )}
     </header>
   )
 }

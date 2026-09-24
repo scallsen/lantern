@@ -353,7 +353,7 @@ export default function DictionaryEntryPage({ entryId }) {
         ]}
         rightSlot={<AuthSlot />}
       />
-      <div style={{ flex: 1, overflowY: 'auto', padding: '32px 16px 64px', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, overflowY: 'auto', scrollbarGutter: 'stable both-edges', padding: '32px 16px 64px', display: 'flex', flexDirection: 'column' }}>
         <div style={{ maxWidth: CONTENT_STANDARD, margin: '0 auto', width: '100%', flex: 1, display: 'flex', flexDirection: 'column' }}>
         <div style={{ flex: 1 }}>
           {loading && <CenteredLoadingMessage text="Loading..." />}

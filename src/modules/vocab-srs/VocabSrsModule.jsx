@@ -802,7 +802,7 @@ function VocabSrsHome() {
               rightSlot={<AuthSlot />}
             />
 
-            <main style={{ flex: 1, overflowY: 'auto', padding: '28px 24px', display: 'flex', flexDirection: 'column' }}>
+            <main style={{ flex: 1, overflowY: 'auto', scrollbarGutter: 'stable both-edges', padding: '28px 24px', display: 'flex', flexDirection: 'column' }}>
               <div style={{ maxWidth: 820, margin: '0 auto', width: '100%', flex: 1, display: 'flex', flexDirection: 'column' }}>
                 <div style={{ flex: 1 }}>
 

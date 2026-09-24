@@ -281,7 +281,7 @@ function StoryGenerator() {
       >
         <TopProgressBar loading={showGenerating} color={STORY_ACCENT} />
       </PageHeader>
-      <div style={{ flex: 1, overflowY: 'auto' }}>
+      <div style={{ flex: 1, overflowY: 'auto', scrollbarGutter: 'stable both-edges' }}>
         <div style={{ maxWidth: CONTENT_READING, margin: '0 auto', padding: isMobile ? `18px 14px ${ACTION_BAR_HEIGHT + 18}px` : `24px 20px ${ACTION_BAR_HEIGHT + 24}px` }}>
           <FilterCard>
             <FilterRow key="source" label="Vocabulary">

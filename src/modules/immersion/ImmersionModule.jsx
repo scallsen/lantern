@@ -211,7 +211,7 @@ function ImmersionScreens() {
       >
         <TopProgressBar loading={showLoadingMessage} color={IMMERSION_ACCENT} />
       </PageHeader>
-      <div style={{ flex: 1, overflowY: 'auto', padding: '32px 24px' }}>
+      <div style={{ flex: 1, overflowY: 'auto', scrollbarGutter: 'stable both-edges', padding: '32px 24px' }}>
         <div style={{ maxWidth: CONTENT_STANDARD, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: SPACE_16 }}>
           <TextInput
             value={searchInput}

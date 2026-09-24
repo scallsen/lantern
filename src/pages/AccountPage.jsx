@@ -72,7 +72,7 @@ export default function AccountPage() {
   // section inside is full width of that child.
   const scroll = {
     flex: 1,
-    overflowY: 'auto',
+    overflowY: 'auto', scrollbarGutter: 'stable both-edges',
     padding: SPACE_24,
     display: 'flex',
     flexDirection: 'column',

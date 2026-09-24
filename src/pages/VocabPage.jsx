@@ -1092,7 +1092,7 @@ function VocabPageScreens() {
         <div style={{
           position: 'absolute', top: headerHeight, left: 0, right: 0,
           height: `calc(100dvh - ${headerHeight}px)`,
-          overflowY: 'auto',
+          overflowY: 'auto', scrollbarGutter: 'stable both-edges',
           display: 'flex', flexDirection: 'column', alignItems: 'center',
           zIndex: 2,
         }}>

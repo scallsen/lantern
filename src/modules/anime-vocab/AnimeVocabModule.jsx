@@ -189,7 +189,7 @@ export default function AnimeVocabModule({ initialMediaId }) {
         <TopProgressBar loading={showProgressBar} color={ACCENT} />
       </PageHeader>
       <div style={{ flex: 1, display: 'flex', minHeight: 0, position: 'relative' }}>
-        <div ref={scrollRef} style={{ flex: 1, minWidth: 0, overflowY: 'auto', padding: showDrillBar ? '32px 24px 84px' : '32px 24px', display: 'flex', flexDirection: 'column' }}>
+        <div ref={scrollRef} style={{ flex: 1, minWidth: 0, overflowY: 'auto', scrollbarGutter: 'stable both-edges', padding: showDrillBar ? '32px 24px 84px' : '32px 24px', display: 'flex', flexDirection: 'column' }}>
           <div style={{ flex: 1 }}>
             {resolving && (
               <div style={{ maxWidth: CONTENT_STANDARD, margin: '0 auto' }}>

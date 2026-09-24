@@ -20,7 +20,7 @@ export default function PrivacyPage() {
 
   const scroll = {
     flex: 1,
-    overflowY: 'auto',
+    overflowY: 'auto', scrollbarGutter: 'stable both-edges',
     padding: 24,
     display: 'flex',
     flexDirection: 'column',

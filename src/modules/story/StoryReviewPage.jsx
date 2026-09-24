@@ -166,7 +166,7 @@ function StoryReview({ storyId }) {
       )}
 
       <PageHeader crumbs={crumbs} rightSlot={<AuthSlot />} />
-      <div style={{ flex: 1, overflowY: 'auto' }} onScroll={() => setPopup(null)}>
+      <div style={{ flex: 1, overflowY: 'auto', scrollbarGutter: 'stable both-edges' }} onScroll={() => setPopup(null)}>
         <div style={{ maxWidth: CONTENT_READING, margin: '0 auto', padding: isMobile ? '18px 14px 70px' : '24px 20px 80px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
             {!Layout && (

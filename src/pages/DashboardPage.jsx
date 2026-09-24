@@ -189,7 +189,7 @@ export default function DashboardPage() {
 
       <main style={{
         flex: 1,
-        overflowY: 'auto',
+        overflowY: 'auto', scrollbarGutter: 'stable both-edges',
         display: 'flex',
         flexDirection: 'column',
         padding: isMobile ? '20px 16px' : '28px 28px',

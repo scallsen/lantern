@@ -304,7 +304,7 @@ function BrowseCards() {
         ]}
         rightSlot={<AuthSlot />}
       />
-      <main style={{ flex: 1, overflowY: 'auto', padding: `24px 24px ${manageMode && someFilteredSelected ? 96 : 60}px` }}>
+      <main style={{ flex: 1, overflowY: 'auto', scrollbarGutter: 'stable both-edges', padding: `24px 24px ${manageMode && someFilteredSelected ? 96 : 60}px` }}>
         <div style={{ maxWidth: CONTENT_STANDARD, margin: '0 auto' }}>
           <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
             <div style={{ minWidth: 200, maxWidth: 320 }}>
