@@ -3,19 +3,18 @@ import { createPortal } from 'react-dom'
 import { fn } from 'storybook/test'
 import Button from '../components/Button.jsx'
 import Badge from '../components/Badge.jsx'
-import Card from '../components/Card.jsx'
 import DataList from '../components/DataList.jsx'
 import SectionHeader from '../components/SectionHeader.jsx'
 import DeckComboBox from '../components/DeckComboBox.jsx'
-import DrillHUD from '../components/DrillHUD.jsx'
 import Popover from '../components/Popover.jsx'
 import Menu from '../components/Menu.jsx'
 import Japanese from '../components/Japanese.jsx'
 import ActionBar from '../components/ActionBar.jsx'
 import { PrimaryCard, TextbookCover, SegmentedPrimary, ActionsRow } from './homeCards.jsx'
+import './drillJourney.css'
 import {
-  FONT, TRACKING, TEXT, TEXT_MUTED, BRAND, KANJI_FONT, SUCCESS, WARNING,
-  FS_BASE, FS_BADGE, FS_CAPTION, FS_ENTRY_WORD, FS_ENTRY_KANJI, FS_STAT_VALUE, FS_DISPLAY_HEADING, FS_CONTENT_HEADING,
+  FONT, TRACKING, TEXT, TEXT_MUTED, BRAND, KANJI_FONT, SUCCESS, WARNING, LANTERN_ON_HERO, LANTERN_SIZES,
+  FS_BASE, FS_BADGE, FS_CAPTION, FS_ENTRY_WORD, FS_STAT_VALUE, FS_DISPLAY_HEADING, FS_CONTENT_HEADING,
   SPACE_4, SPACE_8, SPACE_12, SPACE_16, SPACE_24, SPACE_32,
 } from '../data/theme.js'
 import {
@@ -244,82 +243,38 @@ export function RoundList() {
   )
 }
 
-function StudyCard({ word }) {
-  return (
-    <Card padding={SPACE_16} style={{ display: 'flex', alignItems: 'center', gap: SPACE_16 }}>
-      <Japanese style={{ fontFamily: KANJI_FONT, letterSpacing: 0, fontSize: FS_ENTRY_KANJI, color: TEXT, lineHeight: 1 }}>{word.kanji}</Japanese>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <Japanese as="div" style={{ fontFamily: KANJI_FONT, letterSpacing: 0, fontSize: FS_BASE, color: TEXT_MUTED }}>{word.kana}</Japanese>
-        <div style={{ fontSize: FS_BASE, color: TEXT, marginTop: SPACE_4 }}>{word.english}</div>
-      </div>
-      <Badge variant="text" tone={MISS_TONE(word.misses)}>{word.misses}×</Badge>
-    </Card>
-  )
-}
+// Between rounds: no review, just a beat to say what's happening before the
+// next round starts on its own. Headline by round, then the drill HUD's own
+// stat line (without Remaining, which the headline already implies).
+const ROUND_HEADLINES = [
+  'Some cards need to be drilled again',
+  "You're almost there",
+  'Just a few cards left',
+]
 
-export function RoundSpotlight() {
-  const repeat = round1Rows.filter(w => w.misses >= 2)
-  const once = round1Rows.filter(w => w.misses === 1)
+export function RoundLantern({ round = 1, correct = round1Clean, troubled = round1Left }) {
   return (
-    <Screen align="left">
-      <RoundHeading />
-      <div>
-        <SectionHeader title="Missed more than once" />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE_8 }}>
-          {repeat.map(w => <StudyCard key={w.id} word={w} />)}
+    <div style={{ minHeight: 560, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: SPACE_24, fontFamily: FONT, textAlign: 'center', padding: SPACE_16 }}>
+      <img
+        className="journey-lantern"
+        src={LANTERN_ON_HERO}
+        alt=""
+        height={LANTERN_SIZES.hero}
+        style={{ display: 'block', imageRendering: 'pixelated' }}
+      />
+      <div className="journey-fade-in" style={{ animationDelay: '250ms', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: SPACE_12 }}>
+        <div style={{ fontSize: FS_CONTENT_HEADING, color: TEXT }}>{ROUND_HEADLINES[Math.min(round, ROUND_HEADLINES.length) - 1]}</div>
+        {/* Same markup as DrillHUD's stat line, minus Remaining. */}
+        <div style={{ display: 'flex', gap: SPACE_8, fontSize: FS_BASE, alignItems: 'center' }}>
+          <span style={{ color: correct > 0 ? SUCCESS : 'rgba(255,255,255,0.5)' }}>{correct} Correct</span>
+          <span style={{ color: 'rgba(255,255,255,0.25)' }}>·</span>
+          <span style={{ color: troubled > 0 ? WARNING : 'rgba(255,255,255,0.5)' }}>{troubled} Troubled</span>
         </div>
       </div>
-      <div>
-        <SectionHeader title="Missed once" />
-        <WordList rows={once} />
+      <div style={{ width: 160, height: 2, borderRadius: 1, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+        <div className="journey-countdown" style={{ height: '100%', background: TEXT_MUTED }} />
       </div>
-      <RoundActions />
-    </Screen>
-  )
-}
-
-export function RoundPeek() {
-  const [revealed, setRevealed] = useState(() => new Set())
-  const toggle = row => setRevealed(prev => {
-    const next = new Set(prev)
-    if (next.has(row.id)) next.delete(row.id); else next.add(row.id)
-    return next
-  })
-  const columns = [
-    WORD_COLUMNS[0],
-    {
-      key: 'gloss', tone: 'muted', wrap: true,
-      render: row => revealed.has(row.id)
-        ? row.english
-        : <span aria-label="Hidden meaning" style={{ filter: 'blur(6px)', userSelect: 'none' }}>{row.english}</span>,
-    },
-    WORD_COLUMNS[2],
-  ]
-  return (
-    <Screen align="left">
-      <RoundHeading />
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: SPACE_12 }}>
-        <Note>Recall each meaning, then tap to check.</Note>
-        <span style={{ flexShrink: 0, whiteSpace: 'nowrap' }}>
-          <Button variant="ghost-muted" size="sm" onClick={() => setRevealed(new Set(round1Rows.map(r => r.id)))}>Show all</Button>
-        </span>
-      </div>
-      <DataList columns={columns} rows={round1Rows} navigate={{ onClick: toggle }} maxWidth="100%" />
-      <RoundActions />
-    </Screen>
-  )
-}
-
-export function RoundAuto() {
-  return (
-    <div style={{ padding: `${SPACE_24}px ${SPACE_12}px`, display: 'flex', justifyContent: 'center' }}>
-      <DrillHUD streak={0} bestStreak={9} correct={round1Clean} troubled={round1Left} remaining={round1Left} canUndo={false} onUndo={fn()} showStreak={false}>
-        <Card padding={SPACE_24} style={{ width: 'min(380px, 100%)', boxSizing: 'border-box', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: SPACE_12 }}>
-          <div style={{ color: TEXT, fontSize: FS_CONTENT_HEADING }}>Round 1 done</div>
-          <Note>{round1Left} words coming back · next round in 3…</Note>
-          <Row><Button variant="neutral" size="sm">Pause</Button></Row>
-        </Card>
-      </DrillHUD>
+      <Button variant="ghost-muted" size="sm">End drill</Button>
     </div>
   )
 }
@@ -431,10 +386,12 @@ function wordsByTrouble(firstTry) {
 const SPLIT_TONES = {
   primary: { className: 'btn btn-tint btn-primary', background: BRAND, color: '#fff', border: 'none', divider: 'rgba(255,255,255,0.25)' },
   neutral: { className: 'btn btn-neutral', background: 'rgba(255,255,255,0.06)', color: TEXT, border: '1px solid rgba(255,255,255,0.15)', divider: 'rgba(255,255,255,0.15)' },
+  // Matches Button's `quiet`, for when it sits beside a quiet End drill.
+  quiet: { className: 'btn btn-quiet', background: 'transparent', color: TEXT, border: '1px solid rgba(255,255,255,0.14)', divider: 'rgba(255,255,255,0.14)' },
 }
 const SPLIT_HEIGHT = 10 * 2 + FS_BASE
 
-function SplitButton({ tone, label, onClick, menuItems }) {
+function SplitButton({ tone, label, onClick, menuItems, menuLabel }) {
   const [open, setOpen] = useState(false)
   const chevronRef = useRef(null)
   const t = SPLIT_TONES[tone]
@@ -452,7 +409,7 @@ function SplitButton({ tone, label, onClick, menuItems }) {
         type="button"
         className={t.className}
         onClick={() => setOpen(o => !o)}
-        aria-label="More ways to add"
+        aria-label={menuLabel}
         style={{ ...segment, flexShrink: 0, width: SPLIT_HEIGHT, padding: 0, borderLeft: `1px solid ${t.divider}`, fontSize: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
       >
         <span style={{ display: 'block', transform: 'translateY(-2px)' }}>▾</span>
@@ -485,11 +442,21 @@ function EndActions({ pct, troubledCount, priority }) {
     <SplitButton
       tone={addFirst ? 'primary' : 'neutral'}
       label={`Add all ${SESSION.total} to review`}
+      menuLabel="More ways to add to review"
       onClick={() => setAdded(SESSION.total)}
       menuItems={[{ id: 'troubled', label: `Just add ${troubledCount} troubled to review`, onClick: () => setAdded(troubledCount) }]}
     />
   )
-  const again = <Button variant={addFirst ? 'quiet' : 'primary'} size="lg" fullWidth>Drill again</Button>
+  const again = troubledCount > 0 ? (
+    <SplitButton
+      tone={addFirst ? 'quiet' : 'primary'}
+      label="Drill again"
+      menuLabel="More ways to drill again"
+      menuItems={[{ id: 'troubled', label: `Drill ${troubledCount} troubled again`, onClick: fn() }]}
+    />
+  ) : (
+    <Button variant={addFirst ? 'quiet' : 'primary'} size="lg" fullWidth>Drill again</Button>
+  )
   // Once the words are in, the add slot is only a confirmation, so the lead
   // passes to finishing — otherwise the screen would be left with no primary.
   const end = <Button variant={added && addFirst ? 'primary' : 'quiet'} size="lg" fullWidth>End drill</Button>

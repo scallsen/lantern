@@ -4,7 +4,7 @@ import Button from '../components/Button.jsx'
 import { ACTION_BAR_HEIGHT } from '../components/ActionBar.jsx'
 import {
   StartToday, StartExplicit, StartReadiness,
-  RoundToday, RoundList, RoundSpotlight, RoundPeek, RoundAuto,
+  RoundToday, RoundList, RoundLantern,
   EndToday, EndLesson,
 } from './drillJourneyScreens.jsx'
 import { STAGES, ISSUES, PRESETS, SESSION, READINESS_TARGET_PCT, FSRS_EASY_FIRST_INTERVAL_DAYS } from './drillJourneyFixtures.js'
@@ -43,9 +43,11 @@ const SCREENS = {
   round: {
     today: [{ el: <RoundToday /> }],
     list: [{ el: <RoundList />, height: BAR_FRAME_HEIGHT, barHeight: ROUND_BAR_HEIGHT }],
-    spotlight: [{ el: <RoundSpotlight />, height: BAR_FRAME_HEIGHT, barHeight: ROUND_BAR_HEIGHT }],
-    peek: [{ el: <RoundPeek />, height: BAR_FRAME_HEIGHT, barHeight: ROUND_BAR_HEIGHT }],
-    auto: [{ el: <RoundAuto /> }],
+    lantern: [
+      { label: 'After round 1', el: <RoundLantern round={1} correct={14} troubled={6} />, height: BAR_FRAME_HEIGHT, barHeight: 0, replay: true },
+      { label: 'After round 2', el: <RoundLantern round={2} correct={18} troubled={2} />, height: BAR_FRAME_HEIGHT, barHeight: 0, replay: true },
+      { label: 'After round 3 (if needed)', el: <RoundLantern round={3} correct={19} troubled={1} />, height: BAR_FRAME_HEIGHT, barHeight: 0, replay: true },
+    ],
   },
   end: {
     today: [{ el: <EndToday /> }],

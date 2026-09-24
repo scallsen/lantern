@@ -1,0 +1,49 @@
+/* Drill Journey lab only — the between-rounds lantern interstitial. Keyframes
+   can't be inline styles, which is the one reason this file exists. */
+
+@keyframes journey-lantern-arrive {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* The lantern's own window colours (GLOW / EMBER), so the light reads as
+   coming from the sprite rather than a UI highlight. */
+@keyframes journey-lantern-glow {
+  0%, 100% { filter: drop-shadow(0 0 6px rgba(255, 163, 0, 0.35)); }
+  50%      { filter: drop-shadow(0 0 18px rgba(255, 236, 39, 0.55)); }
+}
+
+@keyframes journey-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes journey-countdown {
+  from { width: 0; }
+  to   { width: 100%; }
+}
+
+.journey-lantern {
+  animation:
+    journey-lantern-arrive 500ms ease-out both,
+    journey-lantern-glow 2.4s ease-in-out 500ms infinite;
+}
+
+.journey-fade-in {
+  animation: journey-fade-in 400ms ease-out both;
+}
+
+.journey-countdown {
+  animation: journey-countdown 2.5s linear 400ms both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .journey-lantern,
+  .journey-fade-in {
+    animation: none;
+  }
+  .journey-countdown {
+    animation: none;
+    width: 100%;
+  }
+}

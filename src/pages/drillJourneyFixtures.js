@@ -120,13 +120,11 @@ export const STAGES = [
   {
     id: 'round',
     title: '2 · End of a round, words still left',
-    question: 'What is the pause between rounds for? No score bar here — at the end it means the first-try score, so mid-loop it would give that away and read as progress.',
+    question: 'The goal between rounds is to keep going, not to review. No score bar here — at the end it means the first-try score.',
     variants: [
       { id: 'today', name: 'Today', fixes: [], today: true, tradeoff: '"Session complete" with 6 words to go; Restart and End review compete with the one thing you should do.' },
-      { id: 'list', name: 'Words to go', fixes: ['mid'], recommended: true, tradeoff: 'The missed words with their answers, hardest first — a last look right before they come back. Adds one tap per round.' },
-      { id: 'spotlight', name: 'Spotlight', fixes: ['mid'], tradeoff: 'Words missed more than once get large study cards; the rest stay a list. Most helpful when a few words keep failing, and more to scroll when many do.' },
-      { id: 'peek', name: 'Check yourself', fixes: ['mid'], tradeoff: 'Meanings hidden until tapped, so the pause is a quick recall check. Close to what the next round already does, so it can feel like drilling twice.' },
-      { id: 'auto', name: 'Keep going', fixes: ['mid'], tradeoff: 'No screen at all — fastest, but no pause and no view of which words are coming back.' },
+      { id: 'lantern', name: 'Lantern interstitial', fixes: ['mid'], recommended: true, tradeoff: 'A beat, not a screen: the lantern arrives, a headline says where you are, and the next round starts on its own — no tap, no peeking at answers. Counts are for the lesson so far, which needs the engine to carry them across rounds. The round-3 frame is hypothetical; this session clears in 3.' },
+      { id: 'list', name: 'Words to go', fixes: ['mid'], tradeoff: 'The missed words with their answers before they come back. Useful if you study between rounds; in the way if you prefer to go in blind.' },
     ],
   },
   {
@@ -143,6 +141,6 @@ export const STAGES = [
 
 export const PRESETS = {
   today: { start: 'today', round: 'today', end: 'today' },
-  recommended: { start: 'readiness', round: 'list', end: 'scored' },
-  minimalFix: { start: 'today', round: 'list', end: 'fixed' },
+  recommended: { start: 'readiness', round: 'lantern', end: 'scored' },
+  minimalFix: { start: 'today', round: 'lantern', end: 'fixed' },
 }
