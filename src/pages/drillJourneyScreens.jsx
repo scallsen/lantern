@@ -13,7 +13,7 @@ import ActionBar from '../components/ActionBar.jsx'
 import { PrimaryCard, TextbookCover, SegmentedPrimary, ActionsRow } from './homeCards.jsx'
 import './drillJourney.css'
 import {
-  FONT, TRACKING, TEXT, TEXT_MUTED, BRAND, KANJI_FONT, SUCCESS, WARNING, LANTERN_ON_HERO, LANTERN_SIZES,
+  FONT, TRACKING, TEXT, TEXT_MUTED, BRAND, KANJI_FONT, SUCCESS, WARNING, LANTERN_ON, LANTERN_SIZES,
   FS_BASE, FS_BADGE, FS_CAPTION, FS_ENTRY_WORD, FS_STAT_VALUE, FS_DISPLAY_HEADING, FS_CONTENT_HEADING,
   SPACE_4, SPACE_8, SPACE_12, SPACE_16, SPACE_24, SPACE_32,
 } from '../data/theme.js'
@@ -255,14 +255,17 @@ const ROUND_HEADLINES = [
 export function RoundLantern({ round = 1, correct = round1Clean, troubled = round1Left }) {
   return (
     <div style={{ minHeight: 560, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: SPACE_24, fontFamily: FONT, textAlign: 'center', padding: SPACE_16 }}>
-      <img
-        className="journey-lantern"
-        src={LANTERN_ON_HERO}
-        alt=""
-        height={LANTERN_SIZES.hero}
-        style={{ display: 'block', imageRendering: 'pixelated' }}
-      />
-      <div className="journey-fade-in" style={{ animationDelay: '250ms', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: SPACE_12 }}>
+      {/* Same sprite, size and pulse as CenteredLoadingMessage — this is a
+          loading beat, so it reads as the app's loading state. */}
+      <div className="journey-fade-in" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: SPACE_12 }}>
+        <img
+          className="lantern-pulse"
+          src={LANTERN_ON}
+          alt=""
+          width={LANTERN_SIZES.nav}
+          height={LANTERN_SIZES.nav}
+          style={{ display: 'block', imageRendering: 'pixelated' }}
+        />
         <div style={{ fontSize: FS_CONTENT_HEADING, color: TEXT }}>{ROUND_HEADLINES[Math.min(round, ROUND_HEADLINES.length) - 1]}</div>
         {/* Same markup as DrillHUD's stat line, minus Remaining. */}
         <div style={{ display: 'flex', gap: SPACE_8, fontSize: FS_BASE, alignItems: 'center' }}>
