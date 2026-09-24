@@ -48,6 +48,7 @@ const SCREENS = {
     scored: [
       { label: `Below target (${SESSION.firstTryPct}%)`, el: <EndLesson />, height: END_FRAME_HEIGHT, barHeight: END_BAR_HEIGHT, replay: true },
       { label: `Target reached (${READY_PCT}%)`, el: <EndLesson firstTry={READY_FIRST_TRY} />, height: END_FRAME_HEIGHT, barHeight: END_BAR_HEIGHT, replay: true },
+      { label: 'First run of a lesson', el: <EndLesson history={[]} />, height: END_FRAME_HEIGHT, barHeight: END_BAR_HEIGHT, replay: true },
     ],
     fixed: [{ label: `Below target (${SESSION.firstTryPct}%)`, el: <EndLesson priority="add" />, height: END_FRAME_HEIGHT, barHeight: END_BAR_HEIGHT, replay: true }],
   },

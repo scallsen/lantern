@@ -27,6 +27,12 @@ const HAIRLINE = 'rgba(255,255,255,0.08)'
 // The rest of the lesson in every score bar: a visible grey, not the faint
 // hairline track, since it stands for real words, not empty space.
 const REST_GREY = '#4A4A4A'
+const SCORE_COLORS = { correct: BRAND, rest: REST_GREY }
+// Previous runs are context for today's bar, so they carry the same
+// encoding, dimmed, rather than a second hue: ACCENT_SECONDARY's ramp
+// already means SRS card stages, and borrowing it would read as a
+// different kind of data.
+const HISTORY_COLORS = { correct: '#7A1F3A', rest: '#333333' }
 const MISS_TONE = n => (n >= 2 ? 'danger' : n === 1 ? 'warning' : 'success')
 
 const DECKS = {
@@ -86,12 +92,12 @@ function Note({ children, tone = TEXT_MUTED }) {
 // Right-first-time share of the lesson: red for the words answered right
 // first time, grey for the rest. Two segments with the 2px surface gap
 // between them rather than a fill over a track, since both halves are words.
-function ScoreBar({ pct, height = 12 }) {
+function ScoreBar({ pct, height = 12, colors = SCORE_COLORS }) {
   const radius = height >= 10 ? 4 : 3
   return (
     <div style={{ display: 'flex', gap: pct > 0 && pct < 100 ? 2 : 0, height }}>
-      {pct > 0 && <div style={{ flex: `${pct} 0 0`, background: BRAND, borderRadius: pct < 100 ? `${radius}px 0 0 ${radius}px` : radius }} />}
-      {pct < 100 && <div style={{ flex: `${100 - pct} 0 0`, background: REST_GREY, borderRadius: pct > 0 ? `0 ${radius}px ${radius}px 0` : radius }} />}
+      {pct > 0 && <div style={{ flex: `${pct} 0 0`, background: colors.correct, borderRadius: pct < 100 ? `${radius}px 0 0 ${radius}px` : radius }} />}
+      {pct < 100 && <div style={{ flex: `${100 - pct} 0 0`, background: colors.rest, borderRadius: pct > 0 ? `0 ${radius}px ${radius}px 0` : radius }} />}
     </div>
   )
 }
@@ -285,32 +291,39 @@ function TargetTick() {
   return <div style={{ position: 'absolute', top: -4, bottom: -4, left: `${READINESS_TARGET_PCT}%`, width: 2, background: TEXT, opacity: 0.6 }} />
 }
 
-function LessonSummary({ firstTry }) {
+function LessonSummary({ firstTry, history }) {
   const pct = pctOf(firstTry)
   const value = useFillIn(pct)
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE_32, textAlign: 'left' }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE_12 }}>
         <div style={{ fontSize: FS_DISPLAY_HEADING, color: TEXT }}>Lesson cleared</div>
-        <div style={{ fontSize: 64, lineHeight: 1, color: TEXT, fontVariantNumeric: 'tabular-nums' }}>{Math.round(value)}%</div>
+        <div style={{ fontSize: FS_DISPLAY_HEADING, lineHeight: 1, color: TEXT, fontVariantNumeric: 'tabular-nums' }}>{Math.round(value)}%</div>
         <div style={{ position: 'relative' }}>
           <ScoreBar pct={value} />
           <TargetTick />
         </div>
-        <Note>{firstTry} of {SESSION.total} right first time · target {READINESS_TARGET_PCT}%</Note>
-      </div>
-      <div>
-        <SectionHeader title="Previous sessions" />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE_12 }}>
-          {PREVIOUS_RUNS.map(run => (
-            <div key={run.whenLabel} style={{ display: 'grid', gridTemplateColumns: '112px minmax(0, 1fr) 44px', gap: SPACE_12, alignItems: 'center' }}>
-              <span style={{ fontSize: FS_BASE, color: TEXT_MUTED }}>{run.whenLabel}</span>
-              <ScoreBar pct={pctOf(run.firstTry)} height={6} />
-              <span style={{ fontSize: FS_BASE, color: TEXT_MUTED, textAlign: 'right' }}>{pctOf(run.firstTry)}%</span>
-            </div>
-          ))}
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: SPACE_12, fontSize: FS_BASE, color: TEXT_MUTED }}>
+          <span>{firstTry} of {SESSION.total} correct first time</span>
+          <span>target {READINESS_TARGET_PCT}%</span>
         </div>
       </div>
+      {/* Only this lesson's earlier runs, and none on a first run — the
+          history is dropped when a different lesson is drilled. */}
+      {history.length > 0 && (
+        <div>
+          <SectionHeader title="Previous sessions" />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE_12 }}>
+            {history.map(run => (
+              <div key={run.whenLabel} style={{ display: 'grid', gridTemplateColumns: '112px minmax(0, 1fr) 44px', gap: SPACE_12, alignItems: 'center' }}>
+                <span style={{ fontSize: FS_BASE, color: TEXT_MUTED }}>{run.whenLabel}</span>
+                <ScoreBar pct={pctOf(run.firstTry)} height={6} colors={HISTORY_COLORS} />
+                <span style={{ fontSize: FS_BASE, color: TEXT_MUTED, textAlign: 'right' }}>{pctOf(run.firstTry)}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -379,7 +392,7 @@ function EndActions({ pct, priority }) {
       tone={addFirst ? 'primary' : 'neutral'}
       label={`Add all ${SESSION.total} to review`}
       onClick={() => setAdded(SESSION.total)}
-      menuItems={[{ id: 'troubled', label: `Add ${troubledCount} troubled to review`, onClick: () => setAdded(troubledCount) }]}
+      menuItems={[{ id: 'troubled', label: `Just add ${troubledCount} troubled to review`, onClick: () => setAdded(troubledCount) }]}
     />
   )
   const again = <Button variant={addFirst ? 'quiet' : 'primary'} size="lg" fullWidth>Drill again</Button>
@@ -407,10 +420,10 @@ function EndActions({ pct, priority }) {
   )
 }
 
-export function EndLesson({ firstTry = SESSION.firstTry, priority = 'score' }) {
+export function EndLesson({ firstTry = SESSION.firstTry, priority = 'score', history = PREVIOUS_RUNS }) {
   return (
     <Screen align="left">
-      <LessonSummary firstTry={firstTry} />
+      <LessonSummary firstTry={firstTry} history={history} />
       <EndActions pct={pctOf(firstTry)} priority={priority} />
     </Screen>
   )

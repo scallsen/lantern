@@ -67,8 +67,15 @@ export const SESSION = (() => {
 
 // Earlier runs of this lesson, newest first, as first-try counts out of the
 // same 20 words. Nothing stores this today — sublists keeps one
-// { lastReviewed, correct, total } per chapter and each run overwrites it —
-// so the summary's history needs a small per-run log to exist.
+// { lastReviewed, correct, total } per chapter and each run overwrites it.
+//
+// Deliberately not a log. The proposed store is one slot for the lesson
+// currently being drilled, capped at the last HISTORY_LIMIT runs:
+//   recentRuns: { chapterId, runs: [{ at, correct, total }] }
+// Drilling a different lesson replaces the slot outright, so its size is
+// bounded no matter how long someone uses the app. The per-chapter score the
+// home card's readiness check needs already lives in sublists and survives.
+export const HISTORY_LIMIT = 2
 export const PREVIOUS_RUNS = [
   { whenLabel: '2 hours ago', firstTry: 11 },
   { whenLabel: 'Yesterday', firstTry: 7 },
@@ -126,7 +133,7 @@ export const STAGES = [
     question: 'The score, then three actions: add to review, drill again, end. Moving to the next lesson stays on the home card.',
     variants: [
       { id: 'today', name: 'Today', fixes: [], today: true, tradeoff: 'Shows the last round only (2 correct, 0 troubled), pre-selects nothing, and "End review" is the way out.' },
-      { id: 'scored', name: 'Score picks the primary', fixes: END_FIXES, recommended: true, tradeoff: `Below the target, Drill again leads; at or above it, adding to review does. The screen nudges without blocking — both stay one tap away. "Add 6 troubled" sits in the dropdown. Click through it.` },
+      { id: 'scored', name: 'Score picks the primary', fixes: END_FIXES, recommended: true, tradeoff: `Below the target, Drill again leads; at or above it, adding to review does. The screen nudges without blocking — both stay one tap away. "Just add 6 troubled" sits in the dropdown. Previous sessions are this lesson's last 2 runs only, dropped when a different lesson is drilled, so a first run shows none. Click through it.` },
       { id: 'fixed', name: 'Add always leads', fixes: ['lost', 'stats', 'decks', 'reward'], tradeoff: 'The same actions in a fixed order. Simpler, but the score is shown without steering anything, so a 40% run is nudged into Reviews like a 95% one.' },
     ],
   },
