@@ -15,7 +15,7 @@ import ActionBar from '../components/ActionBar.jsx'
 import { PrimaryCard, TextbookCover, SegmentedPrimary, ActionsRow } from './homeCards.jsx'
 import {
   FONT, TRACKING, TEXT, TEXT_MUTED, BRAND, KANJI_FONT, SUCCESS, WARNING,
-  FS_BASE, FS_BADGE, FS_CAPTION, FS_ENTRY_WORD, FS_STAT_VALUE, FS_DISPLAY_HEADING, FS_CONTENT_HEADING,
+  FS_BASE, FS_BADGE, FS_CAPTION, FS_ENTRY_WORD, FS_ENTRY_KANJI, FS_STAT_VALUE, FS_DISPLAY_HEADING, FS_CONTENT_HEADING,
   SPACE_4, SPACE_8, SPACE_12, SPACE_16, SPACE_24, SPACE_32,
 } from '../data/theme.js'
 import {
@@ -207,19 +207,105 @@ export function RoundToday() {
   return <TodayDoneScreen correct={round1Clean} troubled={round1Left} rows={rows} preselected={round1Rows.map(r => r.id)} />
 }
 
-export function RoundCheckpoint() {
+// No score bar between rounds: at the end that bar means the first-try
+// score, and showing it here would give the score away early and read as
+// "progress" — the "N to go" count carries progress instead.
+
+// Same shape as the end screen's "Lesson cleared · 70%" row.
+function RoundHeading() {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: SPACE_12, fontSize: FS_DISPLAY_HEADING, color: TEXT }}>
+      <span>Round 1 done</span>
+      <span>{round1Left} to go</span>
+    </div>
+  )
+}
+
+// Same bar layout as the end screen: the lead action full width on top.
+function RoundActions() {
+  return (
+    <ActionBar leading={(
+      <div style={{ display: 'grid', gap: SPACE_8 }}>
+        <Button size="lg" fullWidth>Drill the {round1Left} again</Button>
+        <Button variant="quiet" size="lg" fullWidth>End drill</Button>
+      </div>
+    )} />
+  )
+}
+
+export function RoundList() {
   return (
     <Screen align="left">
-      <div>
-        <div style={{ color: TEXT, fontSize: FS_DISPLAY_HEADING }}>Round 1 done</div>
-        <Note>{round1Left} words to go. They come back until you get each one right.</Note>
-      </div>
-      <ScoreBar pct={(round1Clean / ROUNDS[0].size) * 100} height={8} />
+      <RoundHeading />
+      <Note>A last look at the answers before they come back.</Note>
       <WordList rows={round1Rows} />
-      <ActionBar>
-        <Button variant="quiet" size="xl">Stop for now</Button>
-        <Button size="xl">Drill the {round1Left} again</Button>
-      </ActionBar>
+      <RoundActions />
+    </Screen>
+  )
+}
+
+function StudyCard({ word }) {
+  return (
+    <Card padding={SPACE_16} style={{ display: 'flex', alignItems: 'center', gap: SPACE_16 }}>
+      <Japanese style={{ fontFamily: KANJI_FONT, letterSpacing: 0, fontSize: FS_ENTRY_KANJI, color: TEXT, lineHeight: 1 }}>{word.kanji}</Japanese>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <Japanese as="div" style={{ fontFamily: KANJI_FONT, letterSpacing: 0, fontSize: FS_BASE, color: TEXT_MUTED }}>{word.kana}</Japanese>
+        <div style={{ fontSize: FS_BASE, color: TEXT, marginTop: SPACE_4 }}>{word.english}</div>
+      </div>
+      <Badge variant="text" tone={MISS_TONE(word.misses)}>{word.misses}×</Badge>
+    </Card>
+  )
+}
+
+export function RoundSpotlight() {
+  const repeat = round1Rows.filter(w => w.misses >= 2)
+  const once = round1Rows.filter(w => w.misses === 1)
+  return (
+    <Screen align="left">
+      <RoundHeading />
+      <div>
+        <SectionHeader title="Missed more than once" />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE_8 }}>
+          {repeat.map(w => <StudyCard key={w.id} word={w} />)}
+        </div>
+      </div>
+      <div>
+        <SectionHeader title="Missed once" />
+        <WordList rows={once} />
+      </div>
+      <RoundActions />
+    </Screen>
+  )
+}
+
+export function RoundPeek() {
+  const [revealed, setRevealed] = useState(() => new Set())
+  const toggle = row => setRevealed(prev => {
+    const next = new Set(prev)
+    if (next.has(row.id)) next.delete(row.id); else next.add(row.id)
+    return next
+  })
+  const columns = [
+    WORD_COLUMNS[0],
+    {
+      key: 'gloss', tone: 'muted', wrap: true,
+      render: row => revealed.has(row.id)
+        ? row.english
+        : <span aria-label="Hidden meaning" style={{ filter: 'blur(6px)', userSelect: 'none' }}>{row.english}</span>,
+    },
+    WORD_COLUMNS[2],
+  ]
+  return (
+    <Screen align="left">
+      <RoundHeading />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: SPACE_12 }}>
+        <Note>Recall each meaning, then tap to check.</Note>
+        <span style={{ flexShrink: 0, whiteSpace: 'nowrap' }}>
+          <Button variant="ghost-muted" size="sm" onClick={() => setRevealed(new Set(round1Rows.map(r => r.id)))}>Show all</Button>
+        </span>
+      </div>
+      <DataList columns={columns} rows={round1Rows} navigate={{ onClick: toggle }} maxWidth="100%" />
+      <RoundActions />
     </Screen>
   )
 }
@@ -228,7 +314,7 @@ export function RoundAuto() {
   return (
     <div style={{ padding: `${SPACE_24}px ${SPACE_12}px`, display: 'flex', justifyContent: 'center' }}>
       <DrillHUD streak={0} bestStreak={9} correct={round1Clean} troubled={round1Left} remaining={round1Left} canUndo={false} onUndo={fn()} showStreak={false}>
-        <Card padding={SPACE_24} style={{ width: 'min(380px, calc(100vw - 32px))', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: SPACE_12 }}>
+        <Card padding={SPACE_24} style={{ width: 'min(380px, 100%)', boxSizing: 'border-box', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: SPACE_12 }}>
           <div style={{ color: TEXT, fontSize: FS_CONTENT_HEADING }}>Round 1 done</div>
           <Note>{round1Left} words coming back · next round in 3…</Note>
           <Row><Button variant="neutral" size="sm">Pause</Button></Row>

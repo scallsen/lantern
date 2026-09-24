@@ -4,7 +4,7 @@ import Button from '../components/Button.jsx'
 import { ACTION_BAR_HEIGHT } from '../components/ActionBar.jsx'
 import {
   StartToday, StartExplicit, StartReadiness,
-  RoundToday, RoundCheckpoint, RoundAuto,
+  RoundToday, RoundList, RoundSpotlight, RoundPeek, RoundAuto,
   EndToday, EndLesson,
 } from './drillJourneyScreens.jsx'
 import { STAGES, ISSUES, PRESETS, SESSION, READINESS_TARGET_PCT, FSRS_EASY_FIRST_INTERVAL_DAYS } from './drillJourneyFixtures.js'
@@ -26,6 +26,8 @@ const BAR_FRAME_HEIGHT = 640
 // ACTION_BAR_HEIGHT's single row.
 const END_FRAME_HEIGHT = 640
 const END_BAR_HEIGHT = 150
+// Two stacked full-width buttons.
+const ROUND_BAR_HEIGHT = 130
 
 // Each variant renders one or more states — the readiness variants are only
 // meaningful shown on both sides of the target.
@@ -40,7 +42,9 @@ const SCREENS = {
   },
   round: {
     today: [{ el: <RoundToday /> }],
-    checkpoint: [{ el: <RoundCheckpoint />, height: BAR_FRAME_HEIGHT }],
+    list: [{ el: <RoundList />, height: BAR_FRAME_HEIGHT, barHeight: ROUND_BAR_HEIGHT }],
+    spotlight: [{ el: <RoundSpotlight />, height: BAR_FRAME_HEIGHT, barHeight: ROUND_BAR_HEIGHT }],
+    peek: [{ el: <RoundPeek />, height: BAR_FRAME_HEIGHT, barHeight: ROUND_BAR_HEIGHT }],
     auto: [{ el: <RoundAuto /> }],
   },
   end: {

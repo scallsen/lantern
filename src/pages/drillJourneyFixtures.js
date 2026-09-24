@@ -120,10 +120,12 @@ export const STAGES = [
   {
     id: 'round',
     title: '2 · End of a round, words still left',
-    question: 'What does the screen between rounds say and offer?',
+    question: 'What is the pause between rounds for? No score bar here — at the end it means the first-try score, so mid-loop it would give that away and read as progress.',
     variants: [
       { id: 'today', name: 'Today', fixes: [], today: true, tradeoff: '"Session complete" with 6 words to go; Restart and End review compete with the one thing you should do.' },
-      { id: 'checkpoint', name: 'Round checkpoint', fixes: ['mid'], recommended: true, tradeoff: 'One extra tap per round. The buttons sit in the sticky bottom bar, so a long list never pushes them off screen.' },
+      { id: 'list', name: 'Words to go', fixes: ['mid'], recommended: true, tradeoff: 'The missed words with their answers, hardest first — a last look right before they come back. Adds one tap per round.' },
+      { id: 'spotlight', name: 'Spotlight', fixes: ['mid'], tradeoff: 'Words missed more than once get large study cards; the rest stay a list. Most helpful when a few words keep failing, and more to scroll when many do.' },
+      { id: 'peek', name: 'Check yourself', fixes: ['mid'], tradeoff: 'Meanings hidden until tapped, so the pause is a quick recall check. Close to what the next round already does, so it can feel like drilling twice.' },
       { id: 'auto', name: 'Keep going', fixes: ['mid'], tradeoff: 'No screen at all — fastest, but no pause and no view of which words are coming back.' },
     ],
   },
@@ -141,6 +143,6 @@ export const STAGES = [
 
 export const PRESETS = {
   today: { start: 'today', round: 'today', end: 'today' },
-  recommended: { start: 'readiness', round: 'checkpoint', end: 'scored' },
-  minimalFix: { start: 'today', round: 'checkpoint', end: 'fixed' },
+  recommended: { start: 'readiness', round: 'list', end: 'scored' },
+  minimalFix: { start: 'today', round: 'list', end: 'fixed' },
 }
