@@ -129,7 +129,7 @@ export default function DashboardPage() {
   const textbookState = vocabLoading ? null : resolveTextbookState(vocabProgress, wordCountFor)
   const srs = user && !srsLoading && srsRaw ? summariseSrs(srsRaw) : null
 
-  const { gate, unsentWords, requestAdvance, skipGate, sendAndAdvance, closeGate } = useTextbookAdvance({
+  const { gate, unsentWords, suggestedDeck, requestAdvance, skipGate, sendAndAdvance, closeGate } = useTextbookAdvance({
     state: textbookState,
     vocabProgress,
     saveVocabProgress,
@@ -287,6 +287,8 @@ export default function DashboardPage() {
           onCancel={closeGate}
           onSkip={skipGate}
           onSend={sendAndAdvance}
+          decks={srsRaw?.decks ?? {}}
+          suggestedDeck={suggestedDeck}
           isMobile={isMobile}
         />
       </ModuleThemeProvider>

@@ -625,7 +625,7 @@ function VocabPageScreens() {
     [vocabProgressLoading, vocabProgress, wordCountFor],
   )
   const showTextbookScreen = !!textbookState && textbookState.hasWords
-  const { gate, unsentWords, requestAdvance, skipGate, sendAndAdvance, closeGate, setCurrent: setCurrentChapter } = useTextbookAdvance({
+  const { gate, unsentWords, suggestedDeck, requestAdvance, skipGate, sendAndAdvance, closeGate, setCurrent: setCurrentChapter } = useTextbookAdvance({
     state: textbookState,
     vocabProgress,
     saveVocabProgress,
@@ -823,16 +823,11 @@ function VocabPageScreens() {
   }
 
   function handleAddToReview(words, { deckId, newDeckName }) {
-    const current = srsData ?? { decks: {}, cards: {}, lastSession: null, totalReviews: 0, newCardDay: { date: '', count: 0 } }
-    if (newDeckName) {
-      const created = createDeck(current.decks, newDeckName)
-      const result = addWordsToSrs({ ...current, decks: created.decks }, words, created.deckId, newDeckName, poolDictEntries, poolSenseGlosses)
-      saveSrs(result.data)
-      return result
-    }
-    const suggested = reviewDeckForDrill()
-    const deckName = current.decks[deckId]?.name ?? (deckId === suggested.deckId ? suggested.deckName : 'Deck')
-    const result = addWordsToSrs(current, words, deckId, deckName, poolDictEntries, poolSenseGlosses)
+    const decks = srsData?.decks ?? {}
+    // A new deck only needs its fresh id here — addWordsToSrs creates it.
+    const targetId = newDeckName ? createDeck(decks, newDeckName).deckId : deckId
+    const deckName = newDeckName ?? decks[targetId]?.name ?? reviewDeckForDrill().deckName
+    const result = addWordsToSrs(srsData, words, targetId, deckName, poolDictEntries, poolSenseGlosses)
     saveSrs(result.data)
     return result
   }
@@ -989,6 +984,7 @@ function VocabPageScreens() {
                   key={drill.sessionId}
                   rows={finishRows}
                   previousRuns={drill.sessionPool.length === pool.length ? previousRuns : []}
+                  practice={drill.sessionPool.length < pool.length}
                   isMobile={isMobile}
                   decks={srsData?.decks ?? {}}
                   suggestedDeck={reviewDeckForDrill()}
@@ -1078,6 +1074,8 @@ function VocabPageScreens() {
         onCancel={closeGate}
         onSkip={skipGate}
         onSend={sendAndAdvance}
+        decks={srsData?.decks ?? {}}
+        suggestedDeck={suggestedDeck}
         isMobile={isMobile}
       />
       <WordExplorerModal

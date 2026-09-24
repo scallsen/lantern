@@ -1,6 +1,6 @@
 import { fn } from 'storybook/test'
 import { RoundBreak, LessonCleared } from './drillFinish.jsx'
-import { finishRows, PREVIOUS_RUNS, DECKS } from './drillFinishFixtures.js'
+import { finishRows, practiceRows, PREVIOUS_RUNS, DECKS } from './drillFinishFixtures.js'
 
 // The vocab drill's finishing screens, rendered with the real components.
 // LessonCleared's Action Bar is position: fixed, so every story renders in
@@ -11,7 +11,7 @@ export default {
     layout: 'fullscreen',
     docs: {
       story: { inline: false, iframeHeight: 720 },
-      description: { component: "The vocab drill's two finishing screens. **Round break**: between rounds while missed words are left — a lantern, where the session is, and the next round starts by itself after 2.9s. **Lesson cleared**: once every word is answered right — the first-try score against the 80% target, this lesson's previous sessions, every word ranked by misses, and the actions. At or above the target, adding the words to review leads; below it, drilling again does." },
+      description: { component: "The vocab drill's two finishing screens. **Round break**: between rounds while missed words are left — a lantern, where the session is, and the next round starts by itself after 2.9s. **Lesson cleared**: once every word is answered right — the first-try score against the 80% target, this lesson's previous sessions, every word ranked by misses, and the actions. At or above the target, adding the words to review leads; below it, drilling again does. **Practice pass**: the same screen after drilling only the troubled words — nothing is scored or saved, so it drops the score and leads with drilling the full lesson. Adding asks which deck, with the book's own deck suggested first." },
     },
   },
 }
@@ -47,6 +47,11 @@ export const ClearedTargetReached = { ...cleared, args: { ...cleared.args, rows:
 export const ClearedFirstRun = { ...cleared, args: { ...cleared.args, previousRuns: [] } }
 
 export const ClearedPerfect = { ...cleared, args: { ...cleared.args, rows: finishRows(20) } }
+
+// Drilled only the troubled words: no score, and the full lesson leads.
+export const PracticePass = { ...cleared, args: { ...cleared.args, rows: practiceRows(2), practice: true, previousRuns: [] } }
+
+export const PracticePassAllRight = { ...cleared, args: { ...cleared.args, rows: practiceRows(0), practice: true, previousRuns: [] } }
 
 export const ClearedPhone = {
   ...cleared,

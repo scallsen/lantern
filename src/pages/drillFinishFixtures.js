@@ -37,6 +37,13 @@ export function finishRows(firstTry) {
     .sort((a, b) => b.misses - a.misses)
 }
 
+// A practice pass over the 6 troubled words from finishRows(14), with the
+// hardest `missedAgain` of them missed once more.
+export function practiceRows(missedAgain) {
+  const byId = Object.fromEntries(WORDS.map(w => [w.id, w]))
+  return HARDEST.map(([id], i) => ({ id, word: byId[id], misses: i < missedAgain ? 1 : 0 }))
+}
+
 // The learner's own review decks. The book's deck isn't among them yet, so
 // the picker offers it as "Suggested · new".
 export const DECKS = {

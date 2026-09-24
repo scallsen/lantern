@@ -7,8 +7,7 @@ import ActionBar from '../components/ActionBar.jsx'
 import ScoreBar from '../components/ScoreBar.jsx'
 import Popover from '../components/Popover.jsx'
 import OptionPicker from '../components/OptionPicker.jsx'
-import { deckPickerItems } from '../components/deckPickerItems.js'
-import { isBundledDeck } from '../modules/vocab-srs/deckUtils.js'
+import { suggestedDeckItems } from '../components/deckPickerItems.js'
 import { SegmentedPrimary } from './homeCards.jsx'
 import { useDictionaryEntries, useSenseGlosses } from '../hooks/useDictionaryEntries.js'
 import { cardGloss } from '../utils/dictionaryEntryLookup.js'
@@ -151,18 +150,6 @@ function useWordColumns(rows) {
   ], [dictEntries, senseGlosses])
 }
 
-// The deck picker's rows, with the drill's own deck — the book's, or the
-// word source's — pinned first even before it exists: picking it creates
-// it, the same deck the advance gate fills.
-function reviewDeckItems(decks, suggested) {
-  const items = deckPickerItems(decks, { exclude: isBundledDeck })
-  if (!suggested) return items
-  return [
-    { id: suggested.deckId, label: suggested.deckName, meta: decks[suggested.deckId] ? 'Suggested' : 'Suggested · new' },
-    ...items.filter(item => item.id !== suggested.deckId),
-  ]
-}
-
 // `rows`: [{ id, word, misses }] for every word in the session, misses summed
 // across all its rounds. `previousRuns`: this lesson's earlier first passes,
 // newest first — empty on a first run, or when a different lesson was
@@ -173,8 +160,13 @@ function reviewDeckItems(decks, suggested) {
 // the words to review; below it, drilling again. Neither is hidden — the
 // screen nudges, it doesn't block. Moving on to the next lesson is the home
 // card's job, not this screen's.
+//
+// `practice`: the session was a subset of the lesson (its troubled words),
+// not the whole of it. Nothing about it is saved, and a score on a handful
+// of words says nothing about the lesson, so the screen drops the score and
+// the target and leads with drilling the full lesson — the run that counts.
 export function LessonCleared({
-  rows, previousRuns = [], isMobile, decks = {}, suggestedDeck,
+  rows, previousRuns = [], practice = false, isMobile, decks = {}, suggestedDeck,
   onAddToReview, onUndoAdd, onDrillAgain, onDrillTroubled, onEnd, onBarHeight,
 }) {
   const total = rows.length
@@ -188,7 +180,9 @@ export function LessonCleared({
   const addRef = useRef(null)
   const barRef = useFixedChildHeight(onBarHeight)
 
-  const addFirst = pct >= READINESS_TARGET_PCT
+  const addFirst = !practice && pct >= READINESS_TARGET_PCT
+  const missed = practice ? 'missed' : 'troubled'
+  const partial = troubledRows.length > 0 && troubledRows.length < total
   const size = isMobile ? 'lg' : 'xl'
   const fullWidth = isMobile
 
@@ -220,8 +214,8 @@ export function LessonCleared({
         label={`Add all ${total} to review`}
         menuLabel="More ways to add to review"
         onClick={() => setPicking(rows.map(r => r.word))}
-        menuItems={troubledRows.length > 0 && troubledRows.length < total
-          ? [{ id: 'troubled', label: `Just add ${troubledRows.length} troubled to review`, onClick: () => setPicking(troubledRows.map(r => r.word)) }]
+        menuItems={partial
+          ? [{ id: 'troubled', label: `Just add ${troubledRows.length} ${missed} to review`, onClick: () => setPicking(troubledRows.map(r => r.word)) }]
           : []}
       />
     </div>
@@ -231,11 +225,11 @@ export function LessonCleared({
       size={size}
       fullWidth={fullWidth}
       tone={addFirst ? 'quiet' : 'primary'}
-      label="Drill again"
+      label={practice ? 'Drill full lesson' : 'Drill again'}
       menuLabel="More ways to drill again"
       onClick={onDrillAgain}
-      menuItems={troubledRows.length > 0 && troubledRows.length < total
-        ? [{ id: 'troubled', label: `Drill ${troubledRows.length} troubled again`, onClick: () => onDrillTroubled(troubledRows.map(r => r.id)) }]
+      menuItems={(practice ? troubledRows.length > 0 : partial)
+        ? [{ id: 'troubled', label: `Drill ${troubledRows.length} ${missed} again`, onClick: () => onDrillTroubled(troubledRows.map(r => r.id)) }]
         : []}
     />
   )
@@ -270,15 +264,24 @@ export function LessonCleared({
 
   return (
     <div style={{ width: '100%', maxWidth: CONTENT_STANDARD + SPACE_24 * 2, padding: `${SPACE_32 + SPACE_16}px ${SPACE_24}px`, fontFamily: FONT, display: 'flex', flexDirection: 'column', gap: SPACE_32 }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE_12 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: SPACE_12, fontSize: FS_DISPLAY_HEADING, color: TEXT }}>
-          <span>Lesson cleared</span>
-          <span style={{ fontVariantNumeric: 'tabular-nums' }}>{Math.round(value)}%</span>
+      {practice ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE_12 }}>
+          <div style={{ fontSize: FS_DISPLAY_HEADING, color: TEXT }}>Troubled words cleared</div>
+          <div style={{ fontSize: FS_BASE, color: TEXT_MUTED }}>
+            {total} word{total === 1 ? '' : 's'} · {troubledRows.length > 0 ? `${troubledRows.length} missed again` : 'all right first time'}
+          </div>
         </div>
-        <ScoreBar pct={value} target={READINESS_TARGET_PCT} caption={`${firstTry} of ${total} correct first time`} />
-      </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE_12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: SPACE_12, fontSize: FS_DISPLAY_HEADING, color: TEXT }}>
+            <span>Lesson cleared</span>
+            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{Math.round(value)}%</span>
+          </div>
+          <ScoreBar pct={value} target={READINESS_TARGET_PCT} caption={`${firstTry} of ${total} correct first time`} />
+        </div>
+      )}
 
-      {previousRuns.length > 0 && (
+      {!practice && previousRuns.length > 0 && (
         <div>
           <SectionHeader title="Previous sessions" />
           <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE_12 }}>
@@ -314,7 +317,7 @@ export function LessonCleared({
         title={`Add ${picking?.length ?? 0} to which deck?`}
       >
         <OptionPicker
-          items={reviewDeckItems(decks, suggestedDeck)}
+          items={suggestedDeckItems(decks, suggestedDeck)}
           onSelect={deckId => add({ deckId })}
           onCreate={name => add({ newDeckName: name })}
           placeholder="Search or create a deck"

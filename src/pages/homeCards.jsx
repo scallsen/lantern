@@ -294,6 +294,9 @@ export function SegmentedPrimary({ size = 'lg', tone = 'primary', label, onClick
   // with align-items: stretch doesn't resolve reliably (the cross-axis size
   // isn't "definite" yet when the aspect-ratio width would need it, so
   // Chromium falls back to the glyph's own tiny content width instead).
+  // Only the width is fixed: the height stretches with the row, since the
+  // label's real line box can run a pixel past FS_BASE and a fixed height
+  // left the label segment overhanging the chevron at the bottom.
   const square = (size === 'xl' ? SPACE_12 : 10) * 2 + FS_BASE
   const segment = {
     background: t.background ?? accent, color: t.color, border: 'none', boxSizing: 'border-box',
@@ -329,7 +332,7 @@ export function SegmentedPrimary({ size = 'lg', tone = 'primary', label, onClick
         style={{
           ...segment,
           borderLeft: `1px solid ${t.divider}`, flexShrink: 0,
-          padding: 0, width: square, height: square, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 0, width: square, minHeight: square, display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: 20,
         }}
       >

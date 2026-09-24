@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { useDictionaryEntries, useSenseGlosses } from './useDictionaryEntries.js'
 import { unsentWordsOf } from '../lib/srsMembership.js'
 import { addWordsToSrs, textbookDeck } from '../modules/vocab-srs/addWordsToDeck.js'
+import { createDeck } from '../modules/vocab-srs/deckUtils.js'
 import { WORD_DATA } from '../data/wordData.js'
 
 const wordsOfChapter = id => WORD_DATA.filter(w => w.listKey === id && !w.isSentenceVocab)
@@ -53,9 +54,15 @@ export function useTextbookAdvance({ state, vocabProgress, saveVocabProgress, sr
     then?.()
   }
 
-  function sendAndAdvance() {
+  // `target`: the deck picked in the dialog — `{ deckId }` (an existing deck,
+  // or the book's own before it exists) or `{ newDeckName }`.
+  function sendAndAdvance(target) {
     if (!gate || !state) return
-    const { deckId, deckName } = textbookDeck(state.textbook)
+    const suggested = textbookDeck(state.textbook)
+    const decks = srsData?.decks ?? {}
+    // A new deck only needs its fresh id here — addWordsToSrs creates it.
+    const deckId = target?.newDeckName ? createDeck(decks, target.newDeckName).deckId : (target?.deckId ?? suggested.deckId)
+    const deckName = target?.newDeckName ?? decks[deckId]?.name ?? suggested.deckName
     const result = addWordsToSrs(srsData, unsentWords, deckId, deckName, dictEntries, senseGlosses)
     saveSrs(result.data)
     const { toId, then } = gate
@@ -72,6 +79,7 @@ export function useTextbookAdvance({ state, vocabProgress, saveVocabProgress, sr
 
   return {
     unsentWords,
+    suggestedDeck: state ? textbookDeck(state.textbook) : null,
     gate,
     requestAdvance,
     skipGate,
