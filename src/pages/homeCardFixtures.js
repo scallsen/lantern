@@ -9,12 +9,14 @@ const wordCountFor = id => (id.startsWith('genki') ? 0 : 20)
 // Builds the progress payload the real resolver reads, so these states are
 // resolved by production code rather than hand-shaped objects that could
 // drift from it.
-function textbookState(bookId, { drilledCount = 0, pointer = null } = {}) {
+// `firstTry` (out of 20) gives the drilled chapters a saved first-pass score;
+// without it they carry the pre-score shape, which reads as unscored.
+function textbookState(bookId, { drilledCount = 0, pointer = null, firstTry } = {}) {
   const book = getTextbook(bookId)
   if (!book) throw new Error(`homeCardFixtures references unknown textbook "${bookId}"`)
   const sublists = {}
   for (const chapter of book.chapters.slice(0, drilledCount)) {
-    sublists[chapter.id] = { 'kanji-front': { lastReviewed: '2026-09-01T00:00:00Z', correct: 18, total: 20 } }
+    sublists[chapter.id] = { 'kanji-front': { lastReviewed: '2026-09-01T00:00:00Z', correct: firstTry ?? 18, total: 20, ...(firstTry != null && { firstTry }) } }
   }
   return resolveTextbookState({ textbook: { id: bookId, currentChapterId: pointer }, sublists }, wordCountFor)
 }
@@ -24,6 +26,8 @@ export const NEW_CARD_STATES = {
   empty: { state: null },
   fresh: { state: textbookState('nsm-n3-kanji') },
   inProgress: { state: textbookState('nsm-n3-kanji', { drilledCount: 4, pointer: 'nsm-n3-kanji-w1d4' }) },
+  belowTarget: { state: textbookState('nsm-n3-kanji', { drilledCount: 4, pointer: 'nsm-n3-kanji-w1d4', firstTry: 14 }) },
+  targetReached: { state: textbookState('nsm-n3-kanji', { drilledCount: 4, pointer: 'nsm-n3-kanji-w1d4', firstTry: 18 }) },
   nextUntouched: { state: textbookState('nsm-n3-kanji', { drilledCount: 5 }) },
   complete: { state: textbookState('nsm-n3-kanji', { drilledCount: 36 }) },
   noWords: { state: textbookState('genki-1') },

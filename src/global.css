@@ -578,3 +578,27 @@ button, input, select, textarea {
 @media (prefers-reduced-motion: reduce) {
   .lantern-pulse { animation: none; filter: none; }
 }
+
+/* Vocab drill's between-rounds beat (drillFinish.jsx's RoundBreak): the
+   message fades up, then a thin line fills over 2.5s and the next round
+   starts when it's full — ROUND_BREAK_MS is the 400ms delay plus the fill,
+   so change both together. Reduced-motion: no fade, line shown full; the
+   round still starts on the same timer. */
+@keyframes drill-round-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes drill-round-countdown {
+  from { width: 0; }
+  to   { width: 100%; }
+}
+.drill-round-fade-in {
+  animation: drill-round-fade-in 400ms ease-out both;
+}
+.drill-round-countdown {
+  animation: drill-round-countdown 2500ms linear 400ms both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .drill-round-fade-in { animation: none; }
+  .drill-round-countdown { animation: none; width: 100%; }
+}

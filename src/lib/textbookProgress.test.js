@@ -54,4 +54,16 @@ describe('resolveTextbookState', () => {
     expect(s.hasWords).toBe(false)
     expect(s.current.label).toBe('Lesson 1')
   })
+
+  it('exposes the first-try score only for scored entries', () => {
+    const s = resolveTextbookState({
+      textbook: { id: 'nsm-n3', currentChapterId: 'nsm-n3-w1d2' },
+      sublists: {
+        'nsm-n3-w1d1': { 'kanji-front': { lastReviewed: '2026-09-01T00:00:00Z', correct: 2, total: 20 } },
+        'nsm-n3-w1d2': { 'kanji-front': { lastReviewed: '2026-09-02T00:00:00Z', correct: 14, total: 20, firstTry: 14 } },
+      },
+    }, count)
+    expect(s.chapters[0].scorePct).toBeNull()
+    expect(s.current.scorePct).toBe(70)
+  })
 })

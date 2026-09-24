@@ -1,4 +1,5 @@
 import { getTextbook } from '../data/textbooks.js'
+import { chapterScorePct } from './drillScore.js'
 
 // Pure resolver for the "New" card and the chapters page. Takes the
 // `vocab-flashcard` progress payload and returns everything the UI needs to
@@ -34,6 +35,8 @@ export function resolveTextbookState(progress, wordCountFor) {
     wordCount: wordCountFor(ch.id),
     drilled: !!sublists[ch.id],
     lastReviewed: lastReviewedOf(sublists[ch.id]),
+    // First-try % of the latest scored first pass (drillScore.js), or null.
+    scorePct: chapterScorePct(sublists[ch.id]),
   }))
 
   const pointer = progress.textbook.currentChapterId
