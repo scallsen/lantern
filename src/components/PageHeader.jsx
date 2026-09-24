@@ -146,11 +146,12 @@ export default function PageHeader({ crumbs = [], rightSlot, subtitle, noBorder,
         )}
         {rightSlot && <div style={{ marginLeft: 'auto' }}>{rightSlot}</div>}
       </div>
-      {/* Overlaid on the bottom border rather than in flow: the slot holds a
-          loading bar that comes and goes, and in flow it pushed the page
-          down 3px while loading and snapped it back up when done. */}
+      {/* Absolute rather than in flow: the slot holds a loading bar that
+          comes and goes, and in flow it pushed the page down 3px while
+          loading and snapped it back up when done. bottom: 0 sits it just
+          above the border line, where it used to render, not across it. */}
       {children && (
-        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1 }}>
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}>
           {children}
         </div>
       )}
