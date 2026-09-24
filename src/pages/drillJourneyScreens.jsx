@@ -23,7 +23,6 @@ import {
   PREVIOUS_RUNS, READINESS_TARGET_PCT,
 } from './drillJourneyFixtures.js'
 
-const HAIRLINE = 'rgba(255,255,255,0.08)'
 // The rest of the lesson in every score bar: a visible grey, not the faint
 // hairline track, since it stands for real words, not empty space.
 const REST_GREY = '#4A4A4A'
@@ -155,29 +154,13 @@ export function StartReadiness({ pct = SESSION.firstTryPct }) {
         <ActionsRow>
           {ready
             ? <SegmentedPrimary label={`Start ${NEXT_CHAPTER.label}`} onClick={fn()} menuItems={[{ id: 'redo', label: `Drill ${CHAPTER.label} again`, onClick: fn() }]} />
-            : <SegmentedPrimary label={`Drill ${CHAPTER.label} again`} onClick={fn()} menuItems={[{ id: 'next', label: `Start ${NEXT_CHAPTER.label} anyway`, onClick: fn() }]} />}
+            : <SegmentedPrimary label={`Drill ${CHAPTER.label} again`} onClick={fn()} menuItems={[{ id: 'next', label: `Start ${NEXT_CHAPTER.label}`, onClick: fn() }]} />}
           <Button variant="quiet" size="lg">View all</Button>
         </ActionsRow>
       )}
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE_8 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: FS_BASE }}>
-          <span style={{ color: TEXT }}>{CHAPTER.label} · {pct}% first try</span>
-          <span style={{ color: ready ? SUCCESS : TEXT_MUTED }}>{ready ? 'Ready to move on' : `Aim for ${READINESS_TARGET_PCT}%`}</span>
-        </div>
-        <TargetBar pct={pct} />
-      </div>
+      <ScoreSummary pct={pct} left={`${pct}% correct first time`} height={8} />
     </PrimaryCard>
-  )
-}
-
-function TargetBar({ pct }) {
-  const ready = pct >= READINESS_TARGET_PCT
-  return (
-    <div style={{ position: 'relative', height: 6, borderRadius: 3, background: HAIRLINE }}>
-      <div style={{ height: '100%', width: `${pct}%`, borderRadius: 3, background: ready ? SUCCESS : BRAND }} />
-      <div style={{ position: 'absolute', top: -3, bottom: -3, left: `${READINESS_TARGET_PCT}%`, width: 2, background: TEXT_MUTED }} />
-    </div>
   )
 }
 
@@ -291,6 +274,23 @@ function TargetTick() {
   return <div style={{ position: 'absolute', top: -4, bottom: -4, left: `${READINESS_TARGET_PCT}%`, width: 2, background: TEXT, opacity: 0.6 }} />
 }
 
+// The score bar with its target tick and the line under it — one piece so
+// the home card and the end-of-lesson screen can't drift apart.
+function ScoreSummary({ pct, left, height }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE_12 }}>
+      <div style={{ position: 'relative' }}>
+        <ScoreBar pct={pct} height={height} />
+        <TargetTick />
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: SPACE_12, fontSize: FS_BASE, color: TEXT_MUTED }}>
+        <span>{left}</span>
+        <span>Target {READINESS_TARGET_PCT}%</span>
+      </div>
+    </div>
+  )
+}
+
 function LessonSummary({ firstTry, history }) {
   const pct = pctOf(firstTry)
   const value = useFillIn(pct)
@@ -301,14 +301,7 @@ function LessonSummary({ firstTry, history }) {
           <span>Lesson cleared</span>
           <span style={{ fontVariantNumeric: 'tabular-nums' }}>{Math.round(value)}%</span>
         </div>
-        <div style={{ position: 'relative' }}>
-          <ScoreBar pct={value} />
-          <TargetTick />
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: SPACE_12, fontSize: FS_BASE, color: TEXT_MUTED }}>
-          <span>{firstTry} of {SESSION.total} correct first time</span>
-          <span>target {READINESS_TARGET_PCT}%</span>
-        </div>
+        <ScoreSummary pct={value} left={`${firstTry} of ${SESSION.total} correct first time`} />
       </div>
       {/* Only this lesson's earlier runs, and none on a first run — the
           history is dropped when a different lesson is drilled. */}
@@ -326,8 +319,23 @@ function LessonSummary({ firstTry, history }) {
           </div>
         </div>
       )}
+      <div>
+        <SectionHeader title="Words" />
+        <WordList rows={wordsByTrouble(firstTry)} />
+      </div>
     </div>
   )
+}
+
+// Misses summed across every round, most first; ties keep lesson order.
+// Frames showing a different score than the fixture session keep only its
+// hardest words as troubled, so the list and the "troubled" count agree
+// with the percentage above them.
+function wordsByTrouble(firstTry) {
+  const troubled = new Set(SESSION.struggled.slice(0, SESSION.total - firstTry).map(w => w.id))
+  return WORDS
+    .map(w => ({ ...w, misses: troubled.has(w.id) ? SESSION.cumulative[w.id] : 0 }))
+    .sort((a, b) => b.misses - a.misses)
 }
 
 // SegmentedPrimary's split-button shape with a tone, since here the add
@@ -376,11 +384,9 @@ function SplitButton({ tone, label, onClick, menuItems }) {
   )
 }
 
-const troubledCount = SESSION.struggled.length
-
 // `priority: 'score'` puts the add action first once the target is reached
 // and Drill again first below it; 'add' always leads with the add action.
-function EndActions({ pct, priority }) {
+function EndActions({ pct, troubledCount, priority }) {
   const [added, setAdded] = useState(null)
   const addFirst = priority === 'add' || pct >= READINESS_TARGET_PCT
 
@@ -426,7 +432,7 @@ export function EndLesson({ firstTry = SESSION.firstTry, priority = 'score', his
   return (
     <Screen align="left">
       <LessonSummary firstTry={firstTry} history={history} />
-      <EndActions pct={pctOf(firstTry)} priority={priority} />
+      <EndActions pct={pctOf(firstTry)} troubledCount={SESSION.total - firstTry} priority={priority} />
     </Screen>
   )
 }
