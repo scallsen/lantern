@@ -1,0 +1,8 @@
+{
+  "setup": [
+    "npm install",
+    "[ -f \"$SUPERSET_ROOT_PATH/.env\" ] || { echo \"No .env in $SUPERSET_ROOT_PATH - Supabase would be unconfigured in this workspace\"; exit 1; }",
+    "ln -sf \"$SUPERSET_ROOT_PATH/.env\" \"$SUPERSET_WORKSPACE_PATH/.env\""
+  ],
+  "run": ["npm run dev"]
+}

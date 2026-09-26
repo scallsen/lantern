@@ -14,6 +14,8 @@ When working in a git worktree (`.claude/worktrees/<name>/`), two things must be
 
 Both issues have occurred in previous sessions and caused confusing bugs (search failures, edits appearing to have no effect).
 
+**Superset workspaces do both automatically** — `.superset/config.json`'s `setup` runs `npm install` and symlinks `.env` from the main checkout when a workspace is created (failing loudly if that `.env` is missing, rather than leaving a dangling link), and its `run` is `npm run dev` from the workspace. The manual steps above are still needed for Claude Code's own `.claude/worktrees/`, which Superset's lifecycle scripts never see.
+
 ## Conventions
 - **Inline styles only** — no CSS modules, no Tailwind. CSS files only for things that can't be expressed inline (e.g. keyframe animations, scrollbar styles, `:hover` / `:focus` pseudo-selectors).
 - **Never use `useState` for hover** — the app runs in React StrictMode which double-invokes renders; `onMouseEnter`/`onMouseLeave` + `useState` causes crashes in dev. Use a CSS class + a `:hover` rule in `global.css` instead.
