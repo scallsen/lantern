@@ -31,6 +31,8 @@ import { useProgress } from '../hooks/useProgress.js'
 import { useAudioGenerationStatus } from '../hooks/useAudioGenerationStatus.js'
 import { useDictionaryEntries, useSenseGlosses } from '../hooks/useDictionaryEntries.js'
 import { useSentencesForWords } from '../hooks/useSentenceForWord.js'
+import { useTurnedOn } from '../hooks/useTurnedOn.js'
+import { fetchSentencesFor } from '../utils/sentenceLookup.js'
 import { speechTextOf } from '../lib/displayForm.js'
 import { safeLocalStorageGet, safeLocalStorageSet } from '../utils/storage.js'
 import * as SimpleQueue from '../engines/simpleQueue.js'
@@ -160,12 +162,10 @@ function ActiveDrill({ drill, audioSource, playOnFront, playOnBack, playSentence
     if (reading) tts.speak(reading)
   }
 
-  async function playSentenceAudio(word) {
-    const url = voicevoxUrlForSentence(word)
-    if (!url || !await voicevox.play(url, { delay: SENTENCE_GAP })) {
-      const text = sentenceTextFor(word)
-      if (text) tts.speak(text)
-    }
+  async function playSentenceText(text, { delay = SENTENCE_GAP } = {}) {
+    const speakerId = speakerIdFromAudioSource(audioSource)
+    const url = speakerId ? getVoicevoxAudioUrl(speakerId, text) : null
+    if (!url || !await voicevox.play(url, { delay })) tts.speak(text)
   }
 
   async function playWordAudio(word, { withSentence = false } = {}) {
@@ -174,7 +174,8 @@ function ActiveDrill({ drill, audioSource, playOnFront, playOnBack, playSentence
     // No clip for this word — the backup voice reads it, rather than the
     // silence you got unless you had picked the old 'Browser TTS' source.
     if (!url) { speakWord(word); return }
-    const onEnded = withSentence && sentenceTextFor(word) ? () => playSentenceAudio(word) : undefined
+    const sentenceText = withSentence ? sentenceTextFor(word) : null
+    const onEnded = sentenceText ? () => playSentenceText(sentenceText) : undefined
     // Falls through to speech synthesis when a clip has not been generated yet,
     // which is what the old voicevoxVoices check was really guarding against.
     if (!await voicevox.play(url, { onEnded })) speakWord(word)
@@ -269,6 +270,19 @@ function ActiveDrill({ drill, audioSource, playOnFront, playOnBack, playSentence
   // be heard — whatever the per-face autoplay says. Only a change between two
   // recorded voices counts: audio turning on also changes audioSource (from
   // 'none'), and playing the word then would give away the front.
+  // Switching Sentence audio on plays the sentence straight away, so the
+  // setting can be heard. Back face only: on the front it would give the word
+  // away. The lookup is awaited directly because the setting being off kept
+  // nearbySentences from fetching it.
+  useTurnedOn(playSentence, async () => {
+    const id = currentCard.word.jmdictId
+    if (!isFlippedRef.current || !id) return
+    const text = (await fetchSentencesFor([id]))[id]?.japanese
+    if (!text || !isFlippedRef.current) return
+    tts.cancel()
+    playSentenceText(text, { delay: 0 })
+  })
+
   const prevAudioSourceRef = useRef(audioSource)
   useEffect(() => {
     const prev = prevAudioSourceRef.current

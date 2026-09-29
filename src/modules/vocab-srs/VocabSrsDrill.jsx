@@ -20,6 +20,8 @@ import { kanjiCharsOf } from '../../utils/kanjiMeaningLookup.js'
 import { useDictionaryEntry } from '../../hooks/useDictionaryEntries.js'
 import { briefGloss } from '../../utils/dictionaryEntryLookup.js'
 import { useSentenceForWord } from '../../hooks/useSentenceForWord.js'
+import { useTurnedOn } from '../../hooks/useTurnedOn.js'
+import { fetchSentencesFor } from '../../utils/sentenceLookup.js'
 import AttributionFooter from '../../components/AttributionFooter.jsx'
 import { getMainTextScale, getSecondaryTextScale, cqw } from '../../utils/cardTextFit.js'
 
@@ -283,14 +285,17 @@ export default function VocabSrsDrill({
   // The clip first, the backup voice when there is no clip or it fails to
   // load. `sequence` also plays the sentence after the word, when the Sentence
   // audio setting is on.
+  async function playSentenceText(text, { delay = SENTENCE_GAP } = {}) {
+    const speakerId = speakerIdFromAudioSource(audioSource)
+    const url = speakerId ? getVoicevoxAudioUrl(speakerId, text) : null
+    if (!url || !await voicevox.play(url, { delay })) tts.speak(text)
+  }
+
   async function speakCard(card, urls, { sequence } = {}) {
     if (!card) return
     if (!urls.word) { voicevox.stop(); tts.speak(card.kana ?? card.front ?? ''); return }
     const chainSentence = sequence && playSentence && urls.sentenceText
-      ? async () => {
-        const played = urls.sentence && await voicevox.play(urls.sentence, { delay: SENTENCE_GAP })
-        if (!played) tts.speak(urls.sentenceText)
-      }
+      ? () => playSentenceText(urls.sentenceText)
       : undefined
     const played = await voicevox.play(urls.word, { onEnded: chainSentence })
     if (!played) tts.speak(card.kana ?? card.front ?? '')
@@ -454,6 +459,26 @@ export default function VocabSrsDrill({
   // be heard — whatever the per-face autoplay says. Only a change between two
   // recorded voices counts: audio turning on also changes audioSource (from
   // 'none'), and playing the word then would give away the front.
+  // Switching an audio setting on plays what it would play, so it can be heard:
+  // front Audio the word, back Audio the word (and sentence) when flipped,
+  // Sentence audio the sentence when flipped. Back-face settings stay silent
+  // on the front, where they would give the word away. The sentence lookup is
+  // awaited directly because the setting being off kept it from fetching.
+  useTurnedOn(autoplayFront, () => {
+    speakCard(currentCardForMemo, resolveAudioUrl(currentCardForMemo))
+  })
+  useTurnedOn(autoplayBack, () => {
+    if (flippedRef.current) speakCard(currentCardForMemo, resolveAudioUrl(currentCardForMemo), { sequence: true })
+  })
+  useTurnedOn(playSentence, async () => {
+    const card = currentCardForMemo
+    if (!flippedRef.current || !card?.jmdictId) return
+    const text = (await fetchSentencesFor([card.jmdictId]))[card.jmdictId]?.japanese
+    if (!text || !flippedRef.current || getCurrentCard(sessionRef.current)?.id !== card.id) return
+    tts.cancel()
+    playSentenceText(text, { delay: 0 })
+  })
+
   const prevAudioSourceRef = useRef(audioSource)
   useEffect(() => {
     const prev = prevAudioSourceRef.current
