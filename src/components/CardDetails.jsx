@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useRef, useEffect, useLayoutEffect } from 'react'
+import { detailsSlot, DETAILS_HIDDEN_HEIGHT } from './cardDetailsSlot.js'
 import Japanese from './Japanese.jsx'
 import WordPopup from './WordPopup.jsx'
 import { FONT, TEXT, TEXT_MUTED, BORDER, TRACKING, BRAND_TEXT } from '../data/theme.js'
@@ -34,7 +35,6 @@ const PAPER_PALETTE = {
   footerBg: 'rgba(0,0,0,0.035)',
   footerBorder: 'rgba(0,0,0,0.12)',
   divider: 'rgba(0,0,0,0.09)',
-  openTint: 'rgba(255,0,77,0.08)',
   // Transparent, not none: the dark panel's hairline is 1px, and without the
   // same 1px here every word shifted a pixel when switching between the two.
   border: '1px solid transparent',
@@ -56,7 +56,6 @@ const OUTLINE_PALETTE = {
   footerBg: 'transparent',
   footerBorder: 'rgba(255,255,255,0.10)',
   divider: 'rgba(255,255,255,0.08)',
-  openTint: 'rgba(255,92,138,0.12)',
   border: '1px solid rgba(255,255,255,0.14)',
   shadow: 'none',
 }
@@ -76,20 +75,6 @@ const CORNER_BTN = 30
 const POPOVER_CAP = 3
 const EMPTY = new Set()
 
-// Reserved room under the card, [desktop, phone], by which halves are on:
-// two lines of sentence plus its translation and the kanji tiles, measured
-// from the rendered panel (1px border included) so a panel exactly that tall
-// doesn't nudge the buttons by a pixel or two. The panel hugs its content at
-// the top of the slot, so the card and the buttons below hold still from
-// card to card. A sentence longer than two lines steps its type down to fit
-// (useFitLines) rather than grow the panel.
-// On a phone that's also room for a longer sentence at its smallest step,
-// which still takes three narrow lines.
-const SLOT = {
-  both: [225, 207],
-  sentence: [166, 150],
-  kanji: [80, 76],
-}
 const SENTENCE_LINES = 2
 const MIN_FIT = 0.8
 
@@ -268,11 +253,11 @@ function groupsFor(ch, form, related, lessonLabel) {
   ].filter(g => g.items.length > 0)
 }
 
-function KanjiFooter({ chars, meanings, form, related, lessonLabel, mobile, revealed, standalone, open, onOpen, jaFont }) {
+function KanjiFooter({ chars, meanings, form, related, lessonLabel, mobile, edgeToEdge, revealed, standalone, open, onOpen, jaFont }) {
   const pal = usePalette()
   // Kanji-only: the tiles are the whole panel, so they take its corners and a
   // little more room than as a footer under a sentence.
-  const r = mobile ? 0 : 6
+  const r = edgeToEdge ? 0 : 6
   return (
     <div style={{ display: 'flex', borderTop: standalone ? 'none' : `1px solid ${pal.footerBorder}`, background: standalone ? 'transparent' : pal.footerBg, borderRadius: standalone ? r : `0 0 ${r}px ${r}px` }}>
       {chars.map((ch, i) => {
@@ -291,7 +276,7 @@ function KanjiFooter({ chars, meanings, form, related, lessonLabel, mobile, reve
               style={{
                 width: '100%', border: 'none', cursor: revealed ? 'pointer' : 'default',
                 padding: standalone ? (mobile ? '12px 6px 13px' : '14px 8px 15px') : mobile ? '7px 6px 8px' : '8px 8px 9px',
-                background: isOpen ? pal.openTint : 'transparent',
+                background: 'transparent',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
                 // Kanji only, the corner buttons' column takes the right-hand
                 // corners, so only the first tile rounds (on its left).
@@ -387,7 +372,7 @@ function Corner({ top, right, revealed, onPlay, dark, onToggleTheme, onHide, sta
 
 // ── Panel ─────────────────────────────────────────────────────────────────
 
-function Panel({ word, sentence, showSentence, showKanji, chars, meanings, related, lessonLabel, settings, knownIds, revealed, leaving, mobile, jaFont, srsData, saveSrs, onHide, onToggleTheme, onPlaySentence }) {
+function Panel({ word, sentence, showSentence, showKanji, chars, meanings, related, lessonLabel, settings, knownIds, revealed, leaving, mobile, edgeToEdge, jaFont, srsData, saveSrs, onHide, onToggleTheme, onPlaySentence }) {
   const pal = usePalette()
   // The tapped word: its index in the sentence and where it sits on screen,
   // for the word lookup to anchor to.
@@ -419,15 +404,15 @@ function Panel({ word, sentence, showSentence, showKanji, chars, meanings, relat
   const sentenceRef = useRef(null)
   const fit = useFitLines(sentenceRef, SENTENCE_LH * m.size, SENTENCE_LINES, [mobile, settings.readingPosition, sentence?.japanese])
 
-  const radius = mobile ? 0 : 6
+  const radius = edgeToEdge ? 0 : 6
   const box = {
     position: 'relative', boxSizing: 'border-box', width: '100%',
     background: pal.bg, color: pal.ink, borderRadius: radius, boxShadow: pal.shadow, textAlign: 'left',
     '--details-hover': pal.hover,
-    // Edge to edge on a phone: a border on the screen's own edges is noise.
+    // Edge to edge on the narrowest phones: a border on the screen's own edges is noise.
     // Longhands only — React warns when a shorthand and its longhands mix.
     borderTop: pal.border, borderBottom: pal.border,
-    borderLeft: mobile ? 'none' : pal.border, borderRight: mobile ? 'none' : pal.border,
+    borderLeft: edgeToEdge ? 'none' : pal.border, borderRight: edgeToEdge ? 'none' : pal.border,
   }
   const dark = settings.detailsTheme !== 'light'
   // Between cards the words go before the card does: they fade out with the
@@ -437,7 +422,7 @@ function Panel({ word, sentence, showSentence, showKanji, chars, meanings, relat
   const footer = showKanji && (
     <KanjiFooter
       chars={chars} meanings={meanings} form={word.form} related={related} lessonLabel={lessonLabel}
-      mobile={mobile} revealed={revealed} standalone={!showSentence} open={open} jaFont={jaFont}
+      mobile={mobile} edgeToEdge={edgeToEdge} revealed={revealed} standalone={!showSentence} open={open} jaFont={jaFont}
       onOpen={ch => { setOpen(ch); setTok(null) }}
     />
   )
@@ -533,7 +518,7 @@ function Panel({ word, sentence, showSentence, showKanji, chars, meanings, relat
  */
 export default function CardDetails({
   word, cardKey, sentence, settings, knownIds, related, lessonLabel = 'This lesson',
-  revealed, leaving = false, mobile, jaFont, onChangeSetting, onPlaySentence, palette, kanjiMeanings, onReady, srsData, saveSrs, reserve = true,
+  revealed, leaving = false, mobile, edgeToEdge = false, jaFont, onChangeSetting, onPlaySentence, palette, kanjiMeanings, onReady, srsData, saveSrs, reserve = true,
 }) {
   const shown = settings.details && (settings.sentence || settings.kanjiMeanings)
   const chars = kanjiCharsOf(word.form)
@@ -548,11 +533,10 @@ export default function CardDetails({
   const onReadyRef = useRef(onReady)
   onReadyRef.current = onReady
   useEffect(() => { if (complete) onReadyRef.current?.() }, [complete])
-  const config = !settings.sentence ? 'kanji' : !settings.kanjiMeanings ? 'sentence' : 'both'
 
   if (!shown) {
     return (
-      <div style={{ minHeight: 36, display: 'flex', justifyContent: 'center', alignItems: 'flex-start' }}>
+      <div style={{ minHeight: DETAILS_HIDDEN_HEIGHT, display: 'flex', justifyContent: 'center', alignItems: 'flex-start' }}>
         <button
           type="button"
           className="details-show"
@@ -573,8 +557,8 @@ export default function CardDetails({
 
   return (
     <div style={{
-      minHeight: reserve ? SLOT[config][mobile ? 1 : 0] : 0,
-      width: mobile ? '100cqw' : 'min(620px, calc(100cqw - 32px))',
+      minHeight: reserve ? detailsSlot(settings, mobile) : 0,
+      width: edgeToEdge ? '100cqw' : 'min(620px, calc(100cqw - 32px))',
       // The panel hugs its content at the top of the slot; the reserve is
       // invisible room under it, which keeps the card where it is from card
       // to card (the drill's buttons sit in its bottom bar, so nothing below
@@ -587,7 +571,7 @@ export default function CardDetails({
           key={cardKey}
           word={word} sentence={sentence} showSentence={showSentence} showKanji={showKanji}
           chars={chars} meanings={meanings} related={related} lessonLabel={lessonLabel}
-          settings={settings} knownIds={knownIds ?? EMPTY} revealed={revealed} leaving={leaving} mobile={mobile} jaFont={jaFont}
+          settings={settings} knownIds={knownIds ?? EMPTY} revealed={revealed} leaving={leaving} mobile={mobile} edgeToEdge={edgeToEdge} jaFont={jaFont}
           srsData={srsData} saveSrs={saveSrs}
           onHide={() => onChangeSetting('details', false)}
           onToggleTheme={() => onChangeSetting('detailsTheme', settings.detailsTheme === 'light' ? 'dark' : 'light')}

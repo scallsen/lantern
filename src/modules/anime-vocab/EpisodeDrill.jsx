@@ -5,6 +5,7 @@ import { useTTS } from '../../hooks/useTTS.js'
 import { useSFX } from '../../hooks/useSFX.js'
 import VocabCard from '../../components/VocabCard.jsx'
 import CardDetails from '../../components/CardDetails.jsx'
+import { useDrillCardSize } from '../../hooks/useDrillCardSize.js'
 import { useCardSentence } from '../../hooks/useCardSentence.js'
 import { wordItem } from '../../hooks/useKnownWords.js'
 import { useDrillEntrance } from '../../hooks/useDrillEntrance.js'
@@ -34,6 +35,7 @@ function ActiveEpisodeDrill({
 }) {
   const [flippedCardId, setFlippedCardId] = useState(null)
   const [transitioning, setTransitioning] = useState(false)
+  const { edgeToEdge } = useDrillCardSize()
   const { currentCard, streak, bestStreak, correct, troubled, remaining, canUndo, onUndo } = drill
   const isFlipped = flippedCardId === currentCard.id
   const tts = useTTS(ttsVoice)
@@ -150,7 +152,7 @@ function ActiveEpisodeDrill({
             showTranslation={showTranslation}
             readingPosition={settings.readingPosition}
             pixelFont={pixelFont}
-            edgeToEdge={isMobile}
+            edgeToEdge={edgeToEdge}
           />
           <CardDetails
             cardKey={currentCard.id}
@@ -161,6 +163,7 @@ function ActiveEpisodeDrill({
             lessonLabel="This episode"
             revealed={isFlipped}
             mobile={isMobile}
+            edgeToEdge={edgeToEdge}
             jaFont={pixelFont ? FONT : 'system-ui, sans-serif'}
             onChangeSetting={onChangeSetting}
             onPlaySentence={playSentence}

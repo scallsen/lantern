@@ -47,6 +47,8 @@ import { getVoicevoxAudioUrl, getVoicevoxCredit, speakerIdFromAudioSource } from
 import AttributionFooter from '../components/AttributionFooter.jsx'
 import { renderAttributionSegments } from '../utils/attributionSegments.jsx'
 import { useIsMobile } from '../hooks/useIsMobile.js'
+import { useDrillCardSize } from '../hooks/useDrillCardSize.js'
+import { detailsSlot } from '../components/cardDetailsSlot.js'
 import { useTextbookAdvance } from '../hooks/useTextbookAdvance.js'
 import { resolveTextbookState } from '../lib/textbookProgress.js'
 import { getTextbook, TEXTBOOKS } from '../data/textbooks.js'
@@ -121,6 +123,7 @@ const AUDIO_PRELOAD_COUNT = 3
 
 function ActiveDrill({ drill, audioSource, playOnFront, playOnBack, sfxEnabled, ttsVoice, showStreak, reviewMode, showFurigana, showTranslation, pixelFont, showVisualEffects, onPulse, isShort, isMobile, settings, onChangeSetting, knownIds, related, srsData, saveSrs, barSlot }) {
   const [flippedCardId, setFlippedCardId] = useState(null)
+  const { edgeToEdge } = useDrillCardSize()
   const [transitioning, setTransitioning] = useState(false)
   const [exitDir, setExitDir] = useState(null)
   const [undoEntering, setUndoEntering] = useState(false)
@@ -380,7 +383,7 @@ function ActiveDrill({ drill, audioSource, playOnFront, playOnBack, sfxEnabled, 
               showTranslation={showTranslation}
               readingPosition={settings.readingPosition}
               pixelFont={pixelFont}
-              edgeToEdge={isMobile}
+              edgeToEdge={edgeToEdge}
             />
           </div>
           {currentForm && (
@@ -394,6 +397,7 @@ function ActiveDrill({ drill, audioSource, playOnFront, playOnBack, sfxEnabled, 
               revealed={isFlipped}
               leaving={!!exitDir}
               mobile={isMobile}
+              edgeToEdge={edgeToEdge}
               jaFont={pixelFont ? FONT : 'system-ui, sans-serif'}
               onChangeSetting={onChangeSetting}
               onPlaySentence={playSentence}
@@ -742,6 +746,7 @@ function VocabPageScreens() {
   const headerRef   = useRef(null)
   const isMobile = useIsMobile()
   const isShort  = useIsShort()
+  const { width: cardWidth } = useDrillCardSize()
   const jaVoices = useJaVoices()
   const { isProcessing: audioProcessing } = useAudioGenerationStatus()
 
@@ -992,6 +997,14 @@ function VocabPageScreens() {
     )
   }
 
+  // Half the room left over once the card, its gap and the details panel's
+  // reserved slot are placed. The percentage resolves against the stage area's
+  // flexed height; when the area is only as tall as its content it resolves to
+  // nothing, so the spacer never adds scroll. Built from the reserve rather
+  // than the panel's own height, so the card holds still from card to card.
+  const stageReserve = `calc(${cardWidth} * 280 / 380 + ${isShort ? 8 : 15}px + ${detailsSlot(settings, true)}px)`
+  const phoneStageSpacer = <div aria-hidden="true" style={{ flexShrink: 0, height: `max(0px, calc((100% - ${stageReserve}) / 2))` }} />
+
   return (
     <div style={{
       display: 'flex',
@@ -1055,11 +1068,15 @@ function VocabPageScreens() {
         }}>
           <div style={{
             flex: 1, width: '100%',
-            // A phone pins the stage to the top, which keeps the card still
-            // without reserving room under the details panel (see CardDetails'
-            // `reserve`); desktop centres it.
-            display: 'flex', alignItems: isDrilling && !isMobile ? 'center' : 'flex-start', justifyContent: 'center',
-            paddingTop: isDrilling && isMobile ? 12 : 0, boxSizing: 'border-box',
+            // Desktop centres the stage, whose details panel keeps its reserved
+            // room under it. A phone can't spare that room (on a short phone it
+            // was most of what made the page scroll), so the panel hugs its
+            // content and a spacer (phoneStageSpacer) centres the card as if the
+            // room were there, shrinking to nothing when it doesn't fit.
+            display: 'flex', boxSizing: 'border-box',
+            ...(isDrilling && isMobile
+              ? { flexDirection: 'column', alignItems: 'center', paddingTop: 12 }
+              : { alignItems: isDrilling ? 'center' : 'flex-start', justifyContent: 'center' }),
             minHeight: 'min-content',
           }}>
             {isDrilling ? (
@@ -1096,6 +1113,8 @@ function VocabPageScreens() {
                   onBarHeight={setFinishBarHeight}
                 />
               ) : (
+                <>
+                {isMobile && phoneStageSpacer}
                 <ActiveDrill
                   drill={drill}
                   audioSource={audioSource}
@@ -1120,6 +1139,7 @@ function VocabPageScreens() {
                   saveSrs={saveSrs}
                   barSlot={barSlot}
                 />
+                </>
               )
             ) : vocabProgressLoading ? (
               <CenteredLoadingMessage text="Loading" />

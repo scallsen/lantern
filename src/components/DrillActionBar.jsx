@@ -16,12 +16,19 @@ export default function DrillActionBar({ isMobile, correct, troubled, remaining,
   const counts = <DrillCounts correct={correct} troubled={troubled} remaining={remaining} />
   if (isMobile) {
     return (
-      <ActionBar inFlow gutter={SPACE_16}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: SPACE_8, width: '100%' }}>
-          {children}
-          {counts}
-        </div>
-      </ActionBar>
+      // The stack goes in the leading slot, which takes the bar's full width,
+      // so it centres under the card (on a tablet too) rather than sitting at
+      // the end like the bar's own buttons.
+      <ActionBar
+        inFlow
+        gutter={SPACE_16}
+        leading={
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: SPACE_8 }}>
+            {children}
+            {counts}
+          </div>
+        }
+      />
     )
   }
   return (

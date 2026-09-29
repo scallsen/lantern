@@ -4,6 +4,7 @@ import { FONT } from '../data/theme.js'
 import { useDictionaryEntry, useSenseGlosses } from '../hooks/useDictionaryEntries.js'
 import { cardGloss } from '../utils/dictionaryEntryLookup.js'
 import { cardFormOf } from '../lib/displayForm.js'
+import { DRILL_CARD_WIDTH } from '../hooks/useDrillCardSize.js'
 import { getMainTextScale, getSecondaryTextScale, cqw } from '../utils/cardTextFit.js'
 
 const CARD_BG = '#E8E4DE'
@@ -100,9 +101,6 @@ function BackContent({ word, displayForm, reading, resolvedEnglish, showTranslat
 
 // Desktop: 380px, corners rounded to match the details panel under it. On a
 // phone the card runs edge to edge, square, like the panel.
-function cardWidth(edgeToEdge) {
-  return edgeToEdge ? '100cqw' : 'min(380px, calc(100vw - 32px), calc(var(--card-max-h, 9999px) * 380 / 280))'
-}
 
 export default function VocabCard({ word, flipped, onFlip, animate, reviewMode, showFurigana, showTranslation, readingPosition = 'below', pixelFont, edgeToEdge = false }) {
   // Dictionary is the source of truth for the definition — and, whenever the
@@ -114,7 +112,7 @@ export default function VocabCard({ word, flipped, onFlip, animate, reviewMode, 
   const senseGlosses = useSenseGlosses([word])
   const resolvedEnglish = cardGloss(word, dictEntry, senseGlosses) ?? word.english
   const { form: displayForm, reading } = cardFormOf(word, dictEntry)
-  const width = cardWidth(edgeToEdge)
+  const width = edgeToEdge ? '100cqw' : DRILL_CARD_WIDTH
 
   // dictLoading is only ever true while a dictionary fetch is genuinely in
   // flight (see useDictionaryEntry) — once it resolves, or immediately for a

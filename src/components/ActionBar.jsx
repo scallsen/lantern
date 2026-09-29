@@ -30,9 +30,11 @@ export default function ActionBar({ leading, maxWidth = CONTENT_STANDARD, inFlow
     }}>
       <div style={{ maxWidth, margin: '0 auto', display: 'flex', alignItems: 'center', gap: SPACE_12, flexWrap: 'wrap' }}>
         {leading && <div style={{ flex: 1, minWidth: 0 }}>{leading}</div>}
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: SPACE_12, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-          {children}
-        </div>
+        {children && (
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: SPACE_12, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            {children}
+          </div>
+        )}
       </div>
     </div>
   )

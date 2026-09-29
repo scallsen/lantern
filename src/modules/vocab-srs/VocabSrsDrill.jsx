@@ -21,6 +21,8 @@ import { useDictionaryEntry } from '../../hooks/useDictionaryEntries.js'
 import { briefGloss } from '../../utils/dictionaryEntryLookup.js'
 import { useCardSentence, usePrefetchCardDetails } from '../../hooks/useCardSentence.js'
 import { useDrillEntrance } from '../../hooks/useDrillEntrance.js'
+import { useDrillCardSize } from '../../hooks/useDrillCardSize.js'
+import { detailsSlot } from '../../components/cardDetailsSlot.js'
 import AttributionFooter from '../../components/AttributionFooter.jsx'
 import { getMainTextScale, getSecondaryTextScale, cqw } from '../../utils/cardTextFit.js'
 
@@ -137,6 +139,7 @@ export default function VocabSrsDrill({
   const [session, setSession] = useState(initialSession)
   const [localCards, setLocalCards] = useState(initialCards)
   const [flipped, setFlipped] = useState(false)
+  const { edgeToEdge, width: cardWidth } = useDrillCardSize()
   const ACCENT = useAccent()
   const [leechNotice, setLeechNotice] = useState(null)
   const [transitioning, setTransitioning] = useState(false)
@@ -451,6 +454,14 @@ export default function VocabSrsDrill({
     else if (transitioning) cardClass = 'card-entering'
   }
 
+  // Half the room left over once the card, its gap and the details panel's
+  // reserved slot are placed, as a percentage of the stage's flexed height:
+  // built from the reserve, not the panel's own height, so the card holds
+  // still from card to card, and nothing when the stage is only as tall as
+  // its content, so it never adds scroll. Same as Vocab Drill's.
+  const stageReserve = `calc(${cardWidth} * 280 / 380 + 16px + ${settings ? detailsSlot(settings, true) : 0}px)`
+  const phoneStageSpacer = <div aria-hidden="true" style={{ flexShrink: 0, height: `max(0px, calc((100% - ${stageReserve}) / 2))` }} />
+
   return (
     <div style={{
       height: '100%',
@@ -510,13 +521,13 @@ export default function VocabSrsDrill({
           alignItems: 'center',
           // `safe`: on a screen too short for the stage, overflow runs off
           // the bottom (scrollable) rather than off the top (not). A phone
-          // pins the stage to the top instead, which keeps the card still
-          // without reserving room under the details panel (CardDetails'
-          // `reserve`).
+          // can't spare the room reserved under the details panel
+          // (CardDetails' `reserve`), so the stage starts at the top and
+          // phoneStageSpacer centres the card as if the room were there.
           justifyContent: isMobile ? 'flex-start' : 'safe center',
-          // Edge to edge on a phone, like the details panel under the card.
           padding: isMobile ? '12px 0 16px' : '16px',
         }}>
+        {isMobile && phoneStageSpacer}
         <div data-drill-stage="" className={entered ? 'drill-stage-in' : 'drill-stage-waiting'}>
           <DrillHUD
             streak={stats.streak}
@@ -534,7 +545,7 @@ export default function VocabSrsDrill({
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
               <div key={currentCard.id} className={cardClass} style={{ position: 'relative' }}>
                 <div style={{
-                  width: isMobile ? '100cqw' : 'min(380px, calc(100vw - 32px), calc(var(--card-max-h, 9999px) * 380 / 280))',
+                  width: cardWidth,
                   aspectRatio: '380 / 280',
                   containerType: 'size',
                 }}>
@@ -543,7 +554,7 @@ export default function VocabSrsDrill({
                     back={back}
                     width="100%"
                     height="100%"
-                    className={isMobile ? '' : 'fc-rounded'}
+                    className={edgeToEdge ? '' : 'fc-rounded'}
                     flipped={flipped}
                     onFlip={(next) => {
                       if (transitioningRef.current) return
@@ -585,6 +596,7 @@ export default function VocabSrsDrill({
                   revealed={flipped}
                   leaving={!!exitDir}
                   mobile={isMobile}
+                  edgeToEdge={edgeToEdge}
                   jaFont={pixelFont ? FONT : 'system-ui, sans-serif'}
                   onChangeSetting={onChangeSetting}
                   onPlaySentence={playSentence}
