@@ -20,14 +20,14 @@ Env vars required: `SUPABASE_URL` (or `VITE_SUPABASE_URL`), `SUPABASE_SERVICE_RO
 
 ## Running automatically
 
-`.github/workflows/generate-vocab-audio.yml` runs this script on every push to `main` touching `src/data/words/**`, or via manual `workflow_dispatch`. It spins up the official headless `voicevox/voicevox_engine` Docker image for the duration of the job — no persistent server needed. Generated audio filenames get committed straight back to `main`.
+`.github/workflows/generate-vocab-audio.yml` runs this script on every push to `main` touching `src/data/words/**`, **nightly at 03:30 UTC**, and via manual `workflow_dispatch`. The nightly run is the one that matters for personal lists and SRS decks: those live in the database, so adding a word or a card never pushes anything. Before generating it links any unlinked list words and SRS cards to the dictionary (`backfill-custom-words-jmdict.mjs`, then `backfill-srs-jmdict.mjs`), since an unlinked word has no Tanaka sentence to record. It spins up the official headless `voicevox/voicevox_engine` Docker image for the duration of the job — no persistent server needed, and a night with nothing new costs only the engine start-up.
 
 ## What it does
 
-1. Reads `src/data/words/*.json` plus every learner's `custom_words`.
+1. Reads `src/data/words/*.json`, every learner's `custom_words`, and every learner's Vocab SRS cards (a card says its own `cardSpeechText`, which may differ from any list word's).
 2. Collects the texts to speak: each word's reading, and the example sentence its card shows — the Tanaka pick from the `best_sentences` SQL function (a word's own `sentence` field is ignored) (the same function the app calls, so the recorded sentence is the displayed one).
 3. For each text with no clip yet, synthesizes audio (via `/audio_query` + `/synthesis`), converts WAV→MP3 with `ffmpeg`, and uploads to Supabase Storage at `audio/voicevox/<speakerId>/<audioKeyFor(text)>.mp3`. Words and sentences share the folder.
-4. Reconciles each voice folder against that text set and deletes anything orphaned — removing a word from the JSON automatically prunes its stored audio (and its sentence's) on the next run.
+4. Reconciles each voice folder against that text set (skipped entirely if `custom_words` or the SRS cards could not be read, rather than pruning on a partial set) and deletes anything orphaned — removing a word from the JSON automatically prunes its stored audio (and its sentence's) on the next run.
 5. Flips the single-row `audio_generation_status` Supabase table to `'processing'`/`'idle'` around the run, which the frontend polls to show an "Audio is being generated" note.
 
 ## One-time setup required (not automated)

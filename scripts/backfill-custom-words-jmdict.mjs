@@ -8,6 +8,15 @@
  * longer exist, so it silently skips them rather than failing. This is the
  * equivalent pass against the table those files became.
  *
+ * Matches the word as the class list prints it — 深刻（な）, ～製 — by stripping
+ * that decoration first (resolveDecoratedMatches). The first version matched
+ * the printed text as-is, which left every decorated word (175 of 1,815)
+ * unlinked, with no sentence and no audio of its own.
+ *
+ * Runs nightly from generate-vocab-audio.yml before the audio is generated, so
+ * a word added to a list is linked, and therefore recorded, without anyone
+ * having to remember this script.
+ *
  * Only fills jmdictId where it's currently absent — never overwrites or
  * clears an existing value. Unlike a repo file, a wrong deletion here is a
  * learner's own account data with no source list left to regenerate it from.
@@ -23,7 +32,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { writeFileSync } from 'fs'
-import { resolveJmdictMatches, matchKey } from '../src/lib/dictionaryLookup.js'
+import { resolveDecoratedMatches, matchKey } from '../src/lib/dictionaryLookup.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY
@@ -61,11 +70,13 @@ async function main() {
 
   // isSentenceVocab rows (sentence-vocab.json) carry jmdictId directly and have
   // no kanji/kana of their own to match against — nothing to do for those.
-  const candidates = rows.filter(r => !r.payload.jmdictId && r.payload.kanji)
+  // noJmdict marks a word checked by hand and found to have no entry (or only a
+  // homograph's), so it is left alone rather than re-matched every night.
+  const candidates = rows.filter(r => !r.payload.jmdictId && !r.payload.noJmdict && r.payload.kanji)
   console.log(`${candidates.length} rows missing jmdictId with a form to match`)
 
   const words = candidates.map(r => ({ form: r.payload.kanji, kana: r.payload.kana ?? r.payload.kanji }))
-  const matches = await resolveJmdictMatches(supabase, words)
+  const matches = await resolveDecoratedMatches(supabase, words)
 
   const report = []
   const updates = []
