@@ -662,52 +662,54 @@ export default function VocabSrsDrill({
         </div>
         </div>
         <AttributionFooter compact sources={footerSources} />
-        {/* The buttons and counts, pinned: the card, panel and credit scroll
-            under this bar, and the buttons never move. */}
-        <div style={{ position: 'sticky', bottom: 0, zIndex: 5, flexShrink: 0 }}>
-          <DrillActionBar isMobile={isMobile} correct={stats.correctCount} troubled={stats.troubledCount} remaining={stats.remaining}>
-            {!flipped ? (
-              <DrillButtonRow undo={undo}>
-                <DrillFlipButton onClick={() => handleFlipRef.current()} hint={isMobile ? null : 'Space'} disabled={transitioning} />
-              </DrillButtonRow>
-            ) : (
-              <DrillButtonRow undo={undo}>
+      </div>
+      {/* The buttons and counts, pinned under the scroll area rather than
+          sticky inside it: a scroller's reserved scrollbar gutters are
+          outside its content box, so a bar inside one stops short of both
+          edges. */}
+      <div style={{ flexShrink: 0 }}>
+        <DrillActionBar isMobile={isMobile} correct={stats.correctCount} troubled={stats.troubledCount} remaining={stats.remaining}>
+          {!flipped ? (
+            <DrillButtonRow undo={undo}>
+              <DrillFlipButton onClick={() => handleFlipRef.current()} hint={isMobile ? null : 'Space'} disabled={transitioning} />
+            </DrillButtonRow>
+          ) : (
+            <DrillButtonRow undo={undo}>
+              <DrillButton
+                label="Again"
+                hint={isMobile ? null : '1'}
+                color={DRILL_COLORS.again}
+                onClick={() => handleAnswerRef.current(Rating.Again)}
+                disabled={transitioning}
+              />
+              {showHardEasy && (
                 <DrillButton
-                  label="Again"
-                  hint={isMobile ? null : '1'}
-                  color={DRILL_COLORS.again}
-                  onClick={() => handleAnswerRef.current(Rating.Again)}
+                  label="Hard"
+                  hint={isMobile ? null : '2'}
+                  color={DRILL_COLORS.hard}
+                  onClick={() => handleAnswerRef.current(Rating.Hard)}
                   disabled={transitioning}
                 />
-                {showHardEasy && (
-                  <DrillButton
-                    label="Hard"
-                    hint={isMobile ? null : '2'}
-                    color={DRILL_COLORS.hard}
-                    onClick={() => handleAnswerRef.current(Rating.Hard)}
-                    disabled={transitioning}
-                  />
-                )}
+              )}
+              <DrillButton
+                label="Good"
+                hint={isMobile ? null : (showHardEasy ? '3' : '2')}
+                color={DRILL_COLORS.good}
+                onClick={() => handleAnswerRef.current(Rating.Good)}
+                disabled={transitioning}
+              />
+              {showHardEasy && (
                 <DrillButton
-                  label="Good"
-                  hint={isMobile ? null : (showHardEasy ? '3' : '2')}
-                  color={DRILL_COLORS.good}
-                  onClick={() => handleAnswerRef.current(Rating.Good)}
+                  label="Easy"
+                  hint={isMobile ? null : '4'}
+                  color={DRILL_COLORS.easy}
+                  onClick={() => handleAnswerRef.current(Rating.Easy)}
                   disabled={transitioning}
                 />
-                {showHardEasy && (
-                  <DrillButton
-                    label="Easy"
-                    hint={isMobile ? null : '4'}
-                    color={DRILL_COLORS.easy}
-                    onClick={() => handleAnswerRef.current(Rating.Easy)}
-                    disabled={transitioning}
-                  />
-                )}
-              </DrillButtonRow>
-            )}
-          </DrillActionBar>
-        </div>
+              )}
+            </DrillButtonRow>
+          )}
+        </DrillActionBar>
       </div>
     </div>
   )

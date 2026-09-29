@@ -14,9 +14,8 @@ export const ACTION_BAR_HEIGHT = 72
 // children are the buttons, right-aligned, wrapping on narrow screens.
 //
 // `inFlow`: a plain block instead of `position: fixed`, for a caller that
-// pins it itself — the card drills put it in a `position: sticky` slot at
-// the end of their own scroll area, so it spans that area (not the settings
-// sidebar beside it) and the page scrolls under it.
+// pins it itself — the card drills put it in a slot under their own scroll
+// area, so it spans that area (not the settings sidebar beside it).
 // `gutter` is the side padding — a phone drill bar narrows it to 16 so its
 // full-width button row (DRILL_ROW_WIDTH) fits.
 export default function ActionBar({ leading, maxWidth = CONTENT_STANDARD, inFlow = false, gutter = SPACE_24, children }) {

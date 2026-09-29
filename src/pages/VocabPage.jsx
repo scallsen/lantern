@@ -450,7 +450,7 @@ function ActiveDrill({ drill, audioSource, playOnFront, playOnBack, playSentence
           )}
         </div>
         {/* The buttons and counts live in the bottom bar, rendered into the
-            page's sticky slot at the end of its scroll area. */}
+            page's slot under its scroll area. */}
         {barSlot && createPortal(
           <DrillActionBar isMobile={isMobile} correct={correct} troubled={troubled} remaining={remaining}>
             <SpeedModeControls
@@ -779,10 +779,10 @@ function VocabPageScreens() {
     const s = safeLocalStorageGet('vocab-include-sentence-vocab'); return s === null ? false : s === 'true'
   })
   const [pulseColor,       setPulseColor]       = useState(null)
-  // The drill's bottom bar (DrillActionBar) renders into this sticky slot at
-  // the end of the scroll area. It's in the flow, so the usual flex footer
-  // layout holds: the stage takes the height left over, the credit line sits
-  // just above the bar, and the page only scrolls when the stage needs it.
+  // The drill's bottom bar (DrillActionBar) renders into this slot under the
+  // scroll area. The stage takes the height left over, the credit line sits
+  // at the foot of the scroll area just above the bar, and the page only
+  // scrolls when the stage needs it.
   const [barSlot, setBarSlot] = useState(null)
   const [headerHeight,     setHeaderHeight]     = useState(72)
   const headerRef   = useRef(null)
@@ -1095,10 +1095,15 @@ function VocabPageScreens() {
           )}
         </div>
 
-        {/* Center content */}
+        {/* Center content, with the drill's bar slot under it */}
         <div style={{
           position: 'absolute', top: headerHeight, left: 0, right: 0,
           height: `calc(100dvh - ${headerHeight}px)`,
+          display: 'flex', flexDirection: 'column',
+          zIndex: 2,
+        }}>
+        <div style={{
+          flex: 1, minHeight: 0,
           overflowY: 'auto', scrollbarGutter: 'stable both-edges',
           display: 'flex', flexDirection: 'column', alignItems: 'center',
           paddingBottom: isDrilling ? finishBarHeight : 0, boxSizing: 'border-box',
@@ -1106,7 +1111,6 @@ function VocabPageScreens() {
           // not the viewport, so an open settings sidebar can't push them wider
           // than the room left beside it.
           containerType: 'inline-size',
-          zIndex: 2,
         }}>
           <div style={{
             flex: 1, width: '100%',
@@ -1214,9 +1218,13 @@ function VocabPageScreens() {
             'tanaka-corpus',
             ...(speakerIdFromAudioSource(audioSource) ? ['voicevox'] : []),
           ]} />
-          {showingDrillSettings && !(personalSource && customWordsLoading) && (
-            <div ref={setBarSlot} style={{ position: 'sticky', bottom: 0, zIndex: 5, width: '100%', flexShrink: 0 }} />
-          )}
+        </div>
+        {/* Under the scroll area, not sticky inside it: a scroller's reserved
+            scrollbar gutters are outside its content box, so a bar inside one
+            stops short of both edges. */}
+        {showingDrillSettings && !(personalSource && customWordsLoading) && (
+          <div ref={setBarSlot} style={{ flexShrink: 0 }} />
+        )}
         </div>
       </div>
 
