@@ -1,0 +1,141 @@
+/* Drill Context lab only — hover/focus states and the two entrance animations
+   the concepts use. Hover is CSS, never useState (StrictMode rule). */
+
+.lab-tok {
+  cursor: pointer;
+  border-radius: 3px;
+  transition: background 120ms ease;
+}
+.lab-tok:hover {
+  background: rgba(0, 0, 0, 0.07);
+}
+.lab-tok--dark:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.lab-tab {
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+.lab-tab:hover {
+  background: rgba(0, 0, 0, 0.06) !important;
+}
+
+.lab-chip {
+  transition: filter 120ms ease, background 120ms ease;
+}
+.lab-chip:hover {
+  filter: brightness(0.96);
+}
+
+.lab-icon-btn {
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+.lab-icon-btn:hover {
+  background: rgba(0, 0, 0, 0.08) !important;
+}
+.lab-icon-btn--dark:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.lab-ctl {
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.lab-ctl:hover {
+  border-color: rgba(255, 255, 255, 0.35) !important;
+}
+
+.lab-kanji-tile {
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+.lab-kanji-tile:hover {
+  background: rgba(0, 0, 0, 0.06) !important;
+}
+
+@keyframes lab-slide-down {
+  from { transform: translateY(-14px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+.lab-slide-down {
+  animation: lab-slide-down 220ms ease-out both;
+}
+
+@keyframes lab-fade-up {
+  from { transform: translateY(6px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+.lab-fade-up {
+  animation: lab-fade-up 200ms ease-out both;
+}
+
+.lab-feedback:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.4) !important;
+}
+
+/* Band v2: secondary actions stay quiet until the band is pointed at. */
+.lab-quiet {
+  opacity: 0.45;
+  transition: opacity 150ms ease;
+}
+.lab-band:hover .lab-quiet,
+.lab-quiet:focus-within {
+  opacity: 1;
+}
+
+.lab-text-tab {
+  cursor: pointer;
+  transition: color 120ms ease;
+}
+.lab-text-tab:hover {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.lab-dot {
+  cursor: pointer;
+}
+.lab-dot:hover span {
+  background: rgba(0, 0, 0, 0.45) !important;
+}
+
+.lab-kword {
+  cursor: pointer;
+  border-radius: 3px;
+  transition: background 120ms ease;
+}
+.lab-kword:hover {
+  background: rgba(0, 0, 0, 0.07);
+}
+
+/* Details panel v3: the paper-side tabs and the quiet speaker. */
+.lab-paper-tab:hover {
+  color: #444 !important;
+}
+
+.lab-speaker {
+  opacity: 0.45;
+  transition: opacity 150ms ease, background 150ms ease;
+}
+.lab-speaker:hover,
+.lab-speaker:focus-visible {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.06) !important;
+}
+
+/* v7: the flip card takes the details panel's corner radius (6px on desktop,
+   none on a phone, where both run edge to edge). FlipCard itself is square;
+   this rounds its faces and its shadow for the lab only. */
+.lab-card-r .fc-face,
+.lab-card-r .fc-shadow {
+  border-radius: var(--card-r, 0);
+  overflow: hidden;
+}
+
+/* Translation, blurred until tapped. */
+.lab-blur-reveal {
+  cursor: pointer;
+  transition: filter 250ms ease;
+}

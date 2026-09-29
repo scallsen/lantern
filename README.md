@@ -30,10 +30,15 @@ No `.env` or database is needed. The one lab that showed dictionary data (Textbo
 | Tracked Stat | Shapes for a shared per-module "tracked" stat |
 | Segment Colors | Palettes for the card-state colours |
 | Accent Polish | Accent-red text legibility and loading-pulse variants |
+| Drill Card Context (`#/dev/drill-context`) | Seven directions for giving the drill card's example sentence and kanji room |
+| Context Band v2, Details Panel v3–v7, Details Panel Dark | Iterations on the details panel under the drill card, through to the version that shipped |
+| Drill Screen Height (`#/dev/drill-context/height`) | Keeping the card at full size on short windows — pinning the buttons to the bottom won |
 | Voice Lab (`/voice-lab/`) | Eight Voicevox voices reading 20 Genki words and their Tanaka sentences, to replace the female voice (波音リツ won) |
 | Sentence Speed Lab (`/voice-lab/speed/`) | Slower sentence audio: pre-generated Voicevox speeds vs browser playback rate (which lowers the pitch) |
 
 The two voice labs are plain HTML pages with their audio committed alongside, served as files by the dev server rather than routed. Their `generate.mjs` scripts are kept as a record but only run from a `main` checkout with a local Voicevox engine and `.env` — they import app code and query Supabase, neither of which is on this branch.
+
+The drill card context labs (`src/labs/drill-context/`) were Storybook stories on `main` rather than routed pages. They render the real drill components (card, details panel, settings drawer, action bar), copied here with them, and read frozen fixtures; `src/lib/supabase.js` is a null client, which that app code already treats as not configured.
 
 Only the labs and the shared components, data and helpers they import were kept; everything else (the app itself, Supabase, scripts) was removed. The Style Guide and Home Cards labs moved to Storybook on `main` and are not here.
 

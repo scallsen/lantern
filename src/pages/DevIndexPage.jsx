@@ -17,6 +17,15 @@ const LAB_PAGES = [
   { href: '/dev/tracked-stat', title: 'Tracked Stat', description: 'Candidate shapes for a shared per-module "tracked" stat component.' },
   { href: '/dev/segment-colors', title: 'Segment Colors', description: 'Candidate palettes for the card-state colours (Distribution Bar).' },
   { href: '/dev/accent-polish', title: 'Accent Polish', description: 'Accent-red text legibility before/after, and loading-pulse variants.' },
+  { href: '/dev/drill-context', title: 'Drill Card Context', description: "Seven directions for giving the drill card's example sentence and kanji real room, each on a desktop and a phone frame." },
+  { href: '/dev/drill-context/band-v2', title: 'Context Band v2', description: 'The context band again: two tabs, a sentence-first pane, three lighter kanji views.' },
+  { href: '/dev/drill-context/details-v3', title: 'Details Panel v3', description: 'Four designs for the tab/hide bar, a single-sentence pane, and the rename to Details.' },
+  { href: '/dev/drill-context/details-v4', title: 'Details Panel v4', description: 'Four layouts showing the sentence and kanji at once, and four ways to reserve the panel before the flip.' },
+  { href: '/dev/drill-context/details-v5', title: 'Details Panel v5', description: 'The locked panel (sentence above, kanji footer), related-word lists, and five pre-flip states.' },
+  { href: '/dev/drill-context/details-v6', title: 'Details Panel v6', description: 'The settled panel: a redacted front that fades to the real content on the flip.' },
+  { href: '/dev/drill-context/details-v7', title: 'Details Panel v7', description: 'The reveal timed to the flip, sentence-only and kanji-only states, and the reading below the word.' },
+  { href: '/dev/drill-context/dark-panel', title: 'Details Panel Dark', description: 'The details panel in four dark palettes beside the light one.' },
+  { href: '/dev/drill-context/height', title: 'Drill Screen Height', description: 'Keeping the card at 380 × 280 on short windows — pinning the buttons to the bottom won.' },
   // Plain HTML pages under voice-lab/, served by the dev server as files
   // rather than routed by App.jsx.
   { href: '/voice-lab/', static: true, title: 'Voice Lab', description: 'Eight Voicevox voices reading 20 Genki words and their example sentences — picked the female voice.' },

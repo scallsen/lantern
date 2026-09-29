@@ -53,7 +53,7 @@ export const CAP = '#C2C3C7'    // metal caps + hanging loop — PICO-8 6
 // real PICO-8 palette colours (10 yellow, 9 orange, 4 brown) — same
 // discipline BRAND itself follows (PICO-8 8). Used where an ordinal "how far
 // along" ramp needs more range than grey alone — today, just
-// SEGMENT_COLORS below. Explored at #/dev/segment-colors against a
+// SEGMENT_COLORS below. Explored at SegmentColorLabPage (archive/design-labs) against a
 // brand-forward (all-red) ramp, a cool blue ramp, and single-hue-only EMBER
 // and GLOW ramps before landing on this three-step blend.
 //
@@ -137,6 +137,24 @@ export const SPACE_12 = 12  // THE DEFAULT — the standard gap/padding. Use thi
 export const SPACE_16 = 16  // standard card/section padding
 export const SPACE_24 = 24  // page-level padding, section separation
 export const SPACE_32 = 32  // large section breaks
+
+// Content column widths — the maxWidth every page/module wraps its centered
+// content in below PageHeader (which is always full-bleed). Before these
+// existed, nine near-duplicate literals (480/560/600/640/680/700/760/820/900)
+// had spread across the app with no stated reason for the differences. Three
+// buckets, each anchored on whichever real value already had the most call
+// sites agreeing on it — not invented:
+export const CONTENT_NARROW = 560    // centered stat/summary screens (done screens)
+export const CONTENT_STANDARD = 640  // row-list/browse pages (word lists, episode lists, dictionary, deck browse)
+export const CONTENT_READING = 760   // long-form Japanese prose + furigana (Story, Immersion reader)
+// Deliberately outside this system: DashboardPage's grid width (a multi-column
+// card grid, not a text column), VocabSrsModule's drill-screen wrapper (fits a
+// card+button widget, not prose/list content), GrammarMapModule's full-bleed
+// canvas, and 820 — the home-screen/dashboard width shared by VocabSrsModule's
+// Reviews home and VocabPage's TextbookHomeScreen, already consistent between
+// its real call sites (and rehearsed at the same value in the
+// TextbookFlowLabPage/HomeFlowLabPage explorations on archive/design-labs) —
+// a legitimate 4th bucket candidate, just not part of this pass.
 
 // Semantic tones (Tailwind-derived light tints for dark text — see the
 // DRILL_COLORS note below for why the drill palette is NOT these). Badge and

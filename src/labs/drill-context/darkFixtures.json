@@ -1,0 +1,983 @@
+{
+ "words": [
+  {
+   "id": "nsm-n3-kanji-w3d2-001",
+   "jmdictId": "1484620",
+   "form": "費用",
+   "reading": "ひよう",
+   "gloss": "cost; expense",
+   "sentence": {
+    "japanese": "設定料金に労務費用は含みません。",
+    "english": "The stated price does not include labor charges.",
+    "entries": {
+     "1216880": {
+      "id": "1216880",
+      "primary_form": "含む",
+      "preferred_form": null,
+      "kana_forms": [
+       "ふくむ",
+       "くくむ"
+      ],
+      "gloss_en": "to contain; to comprise; to have",
+      "misc0": null
+     },
+     "1386060": {
+      "id": "1386060",
+      "primary_form": "設定",
+      "preferred_form": null,
+      "kana_forms": [
+       "せってい"
+      ],
+      "gloss_en": "establishment; creation; posing (a problem)",
+      "misc0": null
+     },
+     "1484620": {
+      "id": "1484620",
+      "primary_form": "費用",
+      "preferred_form": null,
+      "kana_forms": [
+       "ひよう"
+      ],
+      "gloss_en": "cost; expense",
+      "misc0": null
+     },
+     "1554280": {
+      "id": "1554280",
+      "primary_form": "料金",
+      "preferred_form": null,
+      "kana_forms": [
+       "りょうきん"
+      ],
+      "gloss_en": "fee; charge; fare",
+      "misc0": null
+     },
+     "1560610": {
+      "id": "1560610",
+      "primary_form": "労務",
+      "preferred_form": null,
+      "kana_forms": [
+       "ろうむ"
+      ],
+      "gloss_en": "labor; labour; work",
+      "misc0": null
+     },
+     "2028920": {
+      "id": "2028920",
+      "primary_form": "は",
+      "preferred_form": null,
+      "kana_forms": [
+       "は"
+      ],
+      "gloss_en": "indicates sentence topic; indicates contrast with another option (stated or unstated); adds emphasis",
+      "misc0": null
+     },
+     "2028990": {
+      "id": "2028990",
+      "primary_form": "に",
+      "preferred_form": null,
+      "kana_forms": [
+       "に"
+      ],
+      "gloss_en": "at (place, time); in; on",
+      "misc0": null
+     }
+    }
+   },
+   "meanings": {
+    "費": "expense",
+    "用": "utilize"
+   }
+  },
+  {
+   "id": "nsm-n3-kanji-w3d2-002",
+   "jmdictId": "1350300",
+   "form": "消費者",
+   "reading": "しょうひしゃ",
+   "gloss": "consumer (of a product, service, etc.); customer",
+   "sentence": {
+    "japanese": "多くの消費者は消費税反対に立ち上がった。",
+    "english": "Many consumers rose up against the consumption tax.",
+    "entries": {
+     "1350300": {
+      "id": "1350300",
+      "primary_form": "消費者",
+      "preferred_form": null,
+      "kana_forms": [
+       "しょうひしゃ"
+      ],
+      "gloss_en": "consumer (of a product, service, etc.); customer; (end) user",
+      "misc0": null
+     },
+     "1350320": {
+      "id": "1350320",
+      "primary_form": "消費税",
+      "preferred_form": null,
+      "kana_forms": [
+       "しょうひぜい"
+      ],
+      "gloss_en": "consumption tax (incl. sales tax, VAT, excise duty, etc.)",
+      "misc0": null
+     },
+     "1469800": {
+      "id": "1469800",
+      "primary_form": "乃",
+      "preferred_form": "の",
+      "kana_forms": [
+       "の"
+      ],
+      "gloss_en": "indicates possessive; nominalizes verbs and adjectives; substitutes for \"ga\" in subordinate phrases",
+      "misc0": null
+     },
+     "1480670": {
+      "id": "1480670",
+      "primary_form": "反対",
+      "preferred_form": null,
+      "kana_forms": [
+       "はんたい"
+      ],
+      "gloss_en": "opposition; resistance; antagonism",
+      "misc0": null
+     },
+     "1551370": {
+      "id": "1551370",
+      "primary_form": "立ち上がる",
+      "preferred_form": null,
+      "kana_forms": [
+       "たちあがる"
+      ],
+      "gloss_en": "to stand up; to get up; to rise (to one's feet)",
+      "misc0": null
+     },
+     "1861770": {
+      "id": "1861770",
+      "primary_form": "多く",
+      "preferred_form": null,
+      "kana_forms": [
+       "おおく"
+      ],
+      "gloss_en": "many; much; plenty",
+      "misc0": null
+     },
+     "2028920": {
+      "id": "2028920",
+      "primary_form": "は",
+      "preferred_form": null,
+      "kana_forms": [
+       "は"
+      ],
+      "gloss_en": "indicates sentence topic; indicates contrast with another option (stated or unstated); adds emphasis",
+      "misc0": null
+     }
+    }
+   },
+   "meanings": {
+    "消": "extinguish",
+    "費": "expense",
+    "者": "someone"
+   }
+  },
+  {
+   "id": "nsm-n3-kanji-w3d2-005",
+   "jmdictId": "1220550",
+   "form": "期間",
+   "reading": "きかん",
+   "gloss": "period; term",
+   "sentence": {
+    "japanese": "春休みはどれくらいの期間ですか。",
+    "english": "How long is your spring vacation?",
+    "entries": {
+     "1220550": {
+      "id": "1220550",
+      "primary_form": "期間",
+      "preferred_form": null,
+      "kana_forms": [
+       "きかん"
+      ],
+      "gloss_en": "period; term; interval",
+      "misc0": null
+     },
+     "1341080": {
+      "id": "1341080",
+      "primary_form": "春休み",
+      "preferred_form": null,
+      "kana_forms": [
+       "はるやすみ"
+      ],
+      "gloss_en": "spring break; spring vacation",
+      "misc0": null
+     },
+     "1469800": {
+      "id": "1469800",
+      "primary_form": "乃",
+      "preferred_form": "の",
+      "kana_forms": [
+       "の"
+      ],
+      "gloss_en": "indicates possessive; nominalizes verbs and adjectives; substitutes for \"ga\" in subordinate phrases",
+      "misc0": null
+     },
+     "2028920": {
+      "id": "2028920",
+      "primary_form": "は",
+      "preferred_form": null,
+      "kana_forms": [
+       "は"
+      ],
+      "gloss_en": "indicates sentence topic; indicates contrast with another option (stated or unstated); adds emphasis",
+      "misc0": null
+     },
+     "2457920": {
+      "id": "2457920",
+      "primary_form": "ですか",
+      "preferred_form": null,
+      "kana_forms": [
+       "ですか"
+      ],
+      "gloss_en": "indicates question",
+      "misc0": [
+       "pol"
+      ]
+     }
+    }
+   },
+   "meanings": {
+    "期": "period",
+    "間": "interval"
+   }
+  },
+  {
+   "id": "nsm-n3-kanji-w3d2-007",
+   "jmdictId": "1429850",
+   "form": "長期",
+   "reading": "ちょうき",
+   "gloss": "long-term",
+   "sentence": {
+    "japanese": "長期予報によると、暖冬だそうだ。",
+    "english": "The long-range forecast says we will have a mild winter.",
+    "entries": {
+     "1006650": {
+      "id": "1006650",
+      "primary_form": "そうだ",
+      "preferred_form": null,
+      "kana_forms": [
+       "そうだ",
+       "そだ"
+      ],
+      "gloss_en": "that is so; that is right; it looks to me",
+      "misc0": null
+     },
+     "1009670": {
+      "id": "1009670",
+      "primary_form": "に依ると",
+      "preferred_form": "によると",
+      "kana_forms": [
+       "によると"
+      ],
+      "gloss_en": "according to (someone)",
+      "misc0": [
+       "uk"
+      ]
+     },
+     "1419850": {
+      "id": "1419850",
+      "primary_form": "暖冬",
+      "preferred_form": null,
+      "kana_forms": [
+       "だんとう"
+      ],
+      "gloss_en": "mild winter; warm winter",
+      "misc0": null
+     },
+     "1429850": {
+      "id": "1429850",
+      "primary_form": "長期",
+      "preferred_form": null,
+      "kana_forms": [
+       "ちょうき"
+      ],
+      "gloss_en": "long-term",
+      "misc0": null
+     },
+     "1543630": {
+      "id": "1543630",
+      "primary_form": "予報",
+      "preferred_form": null,
+      "kana_forms": [
+       "よほう"
+      ],
+      "gloss_en": "forecast; prediction",
+      "misc0": null
+     },
+     "2089020": {
+      "id": "2089020",
+      "primary_form": "だ",
+      "preferred_form": null,
+      "kana_forms": [
+       "だ"
+      ],
+      "gloss_en": "be; is",
+      "misc0": null
+     }
+    }
+   },
+   "meanings": {
+    "長": "long",
+    "期": "period"
+   }
+  },
+  {
+   "id": "nsm-n3-kanji-w3d2-011",
+   "jmdictId": "1264640",
+   "form": "限る",
+   "reading": "かぎる",
+   "gloss": "to restrict; to limit",
+   "sentence": {
+    "japanese": "暑い日は冷たいビールに限る。",
+    "english": "There is nothing like cold beer on a hot day.",
+    "entries": {
+     "1264640": {
+      "id": "1264640",
+      "primary_form": "限る",
+      "preferred_form": null,
+      "kana_forms": [
+       "かぎる"
+      ],
+      "gloss_en": "to restrict; to limit; to confine",
+      "misc0": null
+     },
+     "1343460": {
+      "id": "1343460",
+      "primary_form": "暑い",
+      "preferred_form": null,
+      "kana_forms": [
+       "あつい",
+       "あづい",
+       "あぢぃ",
+       "あぢー",
+       "あぢい",
+       "あっつい",
+       "アツイ",
+       "アツい"
+      ],
+      "gloss_en": "hot; warm; sultry",
+      "misc0": null
+     },
+     "1463770": {
+      "id": "1463770",
+      "primary_form": "日",
+      "preferred_form": null,
+      "kana_forms": [
+       "ひ"
+      ],
+      "gloss_en": "day; days; sun",
+      "misc0": null
+     },
+     "1556730": {
+      "id": "1556730",
+      "primary_form": "冷たい",
+      "preferred_form": null,
+      "kana_forms": [
+       "つめたい",
+       "つべたい"
+      ],
+      "gloss_en": "cold (to the touch); chilly; icy",
+      "misc0": null
+     },
+     "2028920": {
+      "id": "2028920",
+      "primary_form": "は",
+      "preferred_form": null,
+      "kana_forms": [
+       "は"
+      ],
+      "gloss_en": "indicates sentence topic; indicates contrast with another option (stated or unstated); adds emphasis",
+      "misc0": null
+     },
+     "2028990": {
+      "id": "2028990",
+      "primary_form": "に",
+      "preferred_form": null,
+      "kana_forms": [
+       "に"
+      ],
+      "gloss_en": "at (place, time); in; on",
+      "misc0": null
+     },
+     "2796520": {
+      "id": "2796520",
+      "primary_form": "ビール",
+      "preferred_form": null,
+      "kana_forms": [
+       "ビール"
+      ],
+      "gloss_en": "beer",
+      "misc0": null
+     }
+    }
+   },
+   "meanings": {
+    "限": "limit"
+   }
+  },
+  {
+   "id": "nsm-n3-kanji-w3d2-014",
+   "jmdictId": "1380760",
+   "form": "製品",
+   "reading": "せいひん",
+   "gloss": "manufactured goods; finished goods",
+   "sentence": {
+    "japanese": "この製品はイタリア製だ。",
+    "english": "This product is made in Italy.",
+    "entries": {
+     "1021360": {
+      "id": "1021360",
+      "primary_form": "伊太利",
+      "preferred_form": "イタリア",
+      "kana_forms": [
+       "イタリア",
+       "イタリヤ"
+      ],
+      "gloss_en": "Italy",
+      "misc0": [
+       "uk"
+      ]
+     },
+     "1380580": {
+      "id": "1380580",
+      "primary_form": "製",
+      "preferred_form": null,
+      "kana_forms": [
+       "せい"
+      ],
+      "gloss_en": "make; manufacture; -made",
+      "misc0": null
+     },
+     "1380760": {
+      "id": "1380760",
+      "primary_form": "製品",
+      "preferred_form": null,
+      "kana_forms": [
+       "せいひん"
+      ],
+      "gloss_en": "manufactured goods; finished goods; product",
+      "misc0": null
+     },
+     "1582920": {
+      "id": "1582920",
+      "primary_form": "此の",
+      "preferred_form": "この",
+      "kana_forms": [
+       "この",
+       "こん"
+      ],
+      "gloss_en": "this; last (couple of years, etc.); these",
+      "misc0": [
+       "uk"
+      ]
+     },
+     "2028920": {
+      "id": "2028920",
+      "primary_form": "は",
+      "preferred_form": null,
+      "kana_forms": [
+       "は"
+      ],
+      "gloss_en": "indicates sentence topic; indicates contrast with another option (stated or unstated); adds emphasis",
+      "misc0": null
+     },
+     "2089020": {
+      "id": "2089020",
+      "primary_form": "だ",
+      "preferred_form": null,
+      "kana_forms": [
+       "だ"
+      ],
+      "gloss_en": "be; is",
+      "misc0": null
+     }
+    }
+   },
+   "meanings": {
+    "製": "made in...",
+    "品": "goods"
+   }
+  },
+  {
+   "id": "nsm-n3-kanji-w3d2-018",
+   "jmdictId": "1351980",
+   "form": "賞味期限",
+   "reading": "しょうみきげん",
+   "gloss": "best-before date (on food); use-by date",
+   "sentence": {
+    "japanese": "このパンって賞味期限大丈夫か？",
+    "english": "Is this bread's best-by OK?",
+    "entries": {
+     "1103090": {
+      "id": "1103090",
+      "primary_form": "パン",
+      "preferred_form": null,
+      "kana_forms": [
+       "パン"
+      ],
+      "gloss_en": "bread; (sweet) pastry; staff of life",
+      "misc0": null
+     },
+     "1351980": {
+      "id": "1351980",
+      "primary_form": "賞味期限",
+      "preferred_form": null,
+      "kana_forms": [
+       "しょうみきげん"
+      ],
+      "gloss_en": "best-before date (on food); use-by date; expiry date",
+      "misc0": null
+     },
+     "1414150": {
+      "id": "1414150",
+      "primary_form": "大丈夫",
+      "preferred_form": null,
+      "kana_forms": [
+       "だいじょうぶ",
+       "だいじょぶ",
+       "だいじょーぶ"
+      ],
+      "gloss_en": "safe; secure; sound",
+      "misc0": null
+     },
+     "1582920": {
+      "id": "1582920",
+      "primary_form": "此の",
+      "preferred_form": "この",
+      "kana_forms": [
+       "この",
+       "こん"
+      ],
+      "gloss_en": "this; last (couple of years, etc.); these",
+      "misc0": [
+       "uk"
+      ]
+     },
+     "2028970": {
+      "id": "2028970",
+      "primary_form": "か",
+      "preferred_form": null,
+      "kana_forms": [
+       "か"
+      ],
+      "gloss_en": "indicates a question; indicates an embedded question; indicates an indirect question",
+      "misc0": null
+     },
+     "2086960": {
+      "id": "2086960",
+      "primary_form": "って",
+      "preferred_form": null,
+      "kana_forms": [
+       "って",
+       "て"
+      ],
+      "gloss_en": "you said; he said; she said",
+      "misc0": null
+     }
+    }
+   },
+   "meanings": {
+    "賞": "prize",
+    "味": "flavor",
+    "期": "period",
+    "限": "limit"
+   }
+  },
+  {
+   "id": "nsm-n3-kanji-w3d2-024",
+   "jmdictId": "1221950",
+   "form": "気温",
+   "reading": "きおん",
+   "gloss": "(air) temperature",
+   "sentence": {
+    "japanese": "今年の冬は気温が平均以上だ。",
+    "english": "The temperature is above average this winter.",
+    "entries": {
+     "1155120": {
+      "id": "1155120",
+      "primary_form": "以上",
+      "preferred_form": null,
+      "kana_forms": [
+       "いじょう"
+      ],
+      "gloss_en": "not less than ...; ... and over; ... and above",
+      "misc0": null
+     },
+     "1221950": {
+      "id": "1221950",
+      "primary_form": "気温",
+      "preferred_form": null,
+      "kana_forms": [
+       "きおん"
+      ],
+      "gloss_en": "(air) temperature",
+      "misc0": null
+     },
+     "1446070": {
+      "id": "1446070",
+      "primary_form": "冬",
+      "preferred_form": null,
+      "kana_forms": [
+       "ふゆ"
+      ],
+      "gloss_en": "winter",
+      "misc0": null
+     },
+     "1469800": {
+      "id": "1469800",
+      "primary_form": "乃",
+      "preferred_form": "の",
+      "kana_forms": [
+       "の"
+      ],
+      "gloss_en": "indicates possessive; nominalizes verbs and adjectives; substitutes for \"ga\" in subordinate phrases",
+      "misc0": null
+     },
+     "1579130": {
+      "id": "1579130",
+      "primary_form": "今年",
+      "preferred_form": null,
+      "kana_forms": [
+       "ことし",
+       "こんねん"
+      ],
+      "gloss_en": "this year",
+      "misc0": null
+     },
+     "1583870": {
+      "id": "1583870",
+      "primary_form": "平均",
+      "preferred_form": null,
+      "kana_forms": [
+       "へいきん",
+       "へいぎん"
+      ],
+      "gloss_en": "average; mean; balance",
+      "misc0": null
+     },
+     "2028920": {
+      "id": "2028920",
+      "primary_form": "は",
+      "preferred_form": null,
+      "kana_forms": [
+       "は"
+      ],
+      "gloss_en": "indicates sentence topic; indicates contrast with another option (stated or unstated); adds emphasis",
+      "misc0": null
+     },
+     "2028930": {
+      "id": "2028930",
+      "primary_form": "が",
+      "preferred_form": null,
+      "kana_forms": [
+       "が",
+       "ヶ",
+       "ケ"
+      ],
+      "gloss_en": "indicates the subject of a sentence; indicates possession; but",
+      "misc0": null
+     },
+     "2089020": {
+      "id": "2089020",
+      "primary_form": "だ",
+      "preferred_form": null,
+      "kana_forms": [
+       "だ"
+      ],
+      "gloss_en": "be; is",
+      "misc0": null
+     }
+    }
+   },
+   "meanings": {
+    "気": "spirit",
+    "温": "warm"
+   }
+  },
+  {
+   "id": "nsm-n3-kanji-w3d2-025",
+   "jmdictId": "1586420",
+   "form": "温かい",
+   "reading": "あたたかい",
+   "gloss": "warm; mild",
+   "sentence": {
+    "japanese": "ぽかぽかと暖かい。",
+    "english": "It's balmy today.",
+    "entries": {
+     "1011930": {
+      "id": "1011930",
+      "primary_form": "ぽかぽか",
+      "preferred_form": null,
+      "kana_forms": [
+       "ぽかぽか",
+       "ポカポカ",
+       "ぽっかぽか",
+       "ポッカポカ"
+      ],
+      "gloss_en": "pleasantly warm; nice and warm; repeatedly (hitting someone)",
+      "misc0": [
+       "on-mim"
+      ]
+     },
+     "1586420": {
+      "id": "1586420",
+      "primary_form": "暖かい",
+      "preferred_form": null,
+      "kana_forms": [
+       "あたたかい",
+       "あったかい",
+       "あったけー"
+      ],
+      "gloss_en": "warm; mild; (pleasantly) hot",
+      "misc0": null
+     }
+    }
+   },
+   "meanings": {
+    "温": "warm"
+   }
+  }
+ ],
+ "knownIds": [
+  "1480670",
+  "1009670",
+  "1343460",
+  "1463770",
+  "1556730",
+  "2796520",
+  "1582920",
+  "1103090",
+  "1414150",
+  "1579130",
+  "1446070",
+  "1221950",
+  "2028930",
+  "1586420"
+ ],
+ "related": {
+  "known": [
+   {
+    "form": "用事",
+    "gloss": "business; things to do; engagement"
+   },
+   {
+    "form": "信用",
+    "gloss": "confidence; trust; faith"
+   },
+   {
+    "form": "消す",
+    "gloss": "to erase; to rub out; to rub off"
+   },
+   {
+    "form": "消える",
+    "gloss": "to disappear; to vanish; to go out of sight"
+   },
+   {
+    "form": "消防",
+    "gloss": "fire fighting; fire department; fire brigade"
+   },
+   {
+    "form": "消しゴム",
+    "gloss": "eraser; rubber"
+   },
+   {
+    "form": "医者",
+    "gloss": "doctor; physician"
+   },
+   {
+    "form": "怠け者",
+    "gloss": "lazy person; lazy fellow; slothful person"
+   },
+   {
+    "form": "来学期",
+    "gloss": "next semester"
+   },
+   {
+    "form": "期末試験",
+    "gloss": "final exam; term-end examination; end-of-term examination"
+   },
+   {
+    "form": "時間",
+    "gloss": "time; hour; period"
+   },
+   {
+    "form": "一時間",
+    "gloss": "one hour"
+   },
+   {
+    "form": "間",
+    "gloss": "space (between); gap; interval"
+   },
+   {
+    "form": "この間",
+    "gloss": "the other day; lately; recently"
+   },
+   {
+    "form": "間違い",
+    "gloss": "mistake; error; blunder"
+   },
+   {
+    "form": "間違える",
+    "gloss": "to make a mistake (in); to commit an error; to get wrong"
+   },
+   {
+    "form": "間に合う",
+    "gloss": "to be in time (for); to serve (suit, meet) the purpose"
+   },
+   {
+    "form": "長い",
+    "gloss": "long (distance, length); long (time); protracted"
+   },
+   {
+    "form": "社長",
+    "gloss": "company president; manager; director"
+   },
+   {
+    "form": "部長",
+    "gloss": "head (chief, director) of a section or department"
+   },
+   {
+    "form": "返品",
+    "gloss": "returned goods; returning purchased goods"
+   },
+   {
+    "form": "意味",
+    "gloss": "meaning; significance; sense"
+   },
+   {
+    "form": "趣味",
+    "gloss": "hobby; pastime; tastes"
+   },
+   {
+    "form": "天気",
+    "gloss": "weather; fair weather; fine weather"
+   },
+   {
+    "form": "元気",
+    "gloss": "lively; full of spirit; energetic"
+   },
+   {
+    "form": "電気",
+    "gloss": "electricity; (electric) light"
+   },
+   {
+    "form": "空気",
+    "gloss": "air; atmosphere; mood"
+   },
+   {
+    "form": "天気予報",
+    "gloss": "weather forecast; weather report"
+   },
+   {
+    "form": "病気",
+    "gloss": "illness (usu. excluding minor ailments, e.g. common cold)"
+   },
+   {
+    "form": "人気がある",
+    "gloss": "to be popular"
+   },
+   {
+    "form": "気温",
+    "gloss": "(air) temperature"
+   },
+   {
+    "form": "温泉",
+    "gloss": "hot spring; onsen; hot spring resort"
+   }
+  ],
+  "lesson": [
+   {
+    "form": "費用",
+    "gloss": "cost; expense"
+   },
+   {
+    "form": "消費者",
+    "gloss": "consumer (of a product, service, etc.); customer; (end) user"
+   },
+   {
+    "form": "旅費",
+    "gloss": "travel expenses"
+   },
+   {
+    "form": "会費",
+    "gloss": "membership fee"
+   },
+   {
+    "form": "期間",
+    "gloss": "period; term; interval"
+   },
+   {
+    "form": "定期券",
+    "gloss": "commuter pass; season ticket"
+   },
+   {
+    "form": "長期",
+    "gloss": "long-term"
+   },
+   {
+    "form": "短期",
+    "gloss": "short-term"
+   },
+   {
+    "form": "期限",
+    "gloss": "term; period; time frame"
+   },
+   {
+    "form": "賞味期限",
+    "gloss": "best-before date (on food); use-by date; expiry date"
+   },
+   {
+    "form": "限度",
+    "gloss": "limit; bounds"
+   },
+   {
+    "form": "限る",
+    "gloss": "to restrict; to limit; to confine"
+   },
+   {
+    "form": "限定",
+    "gloss": "limit; restriction"
+   },
+   {
+    "form": "製品",
+    "gloss": "manufactured goods; finished goods; product"
+   },
+   {
+    "form": "製造",
+    "gloss": "manufacture; production"
+   },
+   {
+    "form": "賞品",
+    "gloss": "prize; trophy"
+   },
+   {
+    "form": "賞",
+    "gloss": "prize; award"
+   },
+   {
+    "form": "賞金",
+    "gloss": "prize money; monetary award; reward"
+   },
+   {
+    "form": "気温",
+    "gloss": "(air) temperature"
+   },
+   {
+    "form": "温度",
+    "gloss": "temperature"
+   },
+   {
+    "form": "温かい",
+    "gloss": "warm; mild; (pleasantly) hot"
+   },
+   {
+    "form": "常温",
+    "gloss": "normal temperature; room temperature; constant temperature"
+   }
+  ]
+ }
+}
