@@ -74,7 +74,7 @@ const CUSTOM_WORDS_KEY = '<custom_words>'
 
 // Keep in sync with VOICEVOX_VOICES in src/utils/voicevoxAudio.js
 const VOICES = [
-  { id: 2, name: 'shikoku-metan' },
+  { id: 9, name: 'namine-ritsu' },
   { id: 11, name: 'kurono-takehiro' },
 ]
 

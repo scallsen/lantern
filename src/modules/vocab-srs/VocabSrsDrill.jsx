@@ -223,7 +223,7 @@ export default function VocabSrsDrill({
   showTranslation = true, showFurigana = true, showSentence = true, sentenceSource = 'custom', showKanjiMeaning = false,
   pixelFont = true, showVisualEffects = true, showStreak = false,
   audioEnabled = true, autoplayFront = true, autoplayBack = true,
-  audioSource = 'voicevox-2', sfxEnabled = true, ttsVoice = '',
+  audioSource = 'voicevox-9', sfxEnabled = true, ttsVoice = '',
   showHardEasy = true, leechThreshold = 8,
   isMobile = false, onShowOptions,
   crumbs = [{ label: 'Lantern', href: '#/' }],

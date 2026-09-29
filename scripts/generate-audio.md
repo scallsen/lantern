@@ -4,7 +4,7 @@ Pre-generates neural TTS audio for the vocab word lists via [Voicevox](https://v
 
 ## Voices
 
-- Speaker id `2` — 四国めたん (Shikoku Metan), Normal
+- Speaker id `9` — 波音リツ (Namine Ritsu), Normal
 - Speaker id `11` — 玄野武宏 (Kurono Takehiro), Normal
 
 ## Running locally

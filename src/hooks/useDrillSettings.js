@@ -35,7 +35,7 @@ export const DRILL_SETTINGS_DEFAULTS = {
 // 'male'/'female' -> the audio-source string the drills and voicevoxAudio.js
 // still speak. The panel names voices; the storage layer names speakers.
 export function audioSourceForVoice(voice) {
-  return voice === 'female' ? 'voicevox-2' : 'voicevox-11'
+  return voice === 'female' ? 'voicevox-9' : 'voicevox-11'
 }
 
 const BOOL_KEYS = {

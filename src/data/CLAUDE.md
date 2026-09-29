@@ -98,7 +98,7 @@ Each word object in an older `src/data/words/*.json` file:
   "english": "fish",          // meaning — shown on back of card (concise, 1–5 words)
   "sentence": "...",          // optional example sentence — shown on back when "Show sentence" is on
   "listKey": "nsm-n3-w1d1",  // must match a source id (flat) or sublist id (hierarchical)
-  "voicevoxVoices": [2, 11], // set by scripts/generate-audio.mjs — speaker ids with generated audio; absent/empty until generated
+  "voicevoxVoices": [9, 11], // set by scripts/generate-audio.mjs — speaker ids with generated audio; absent/empty until generated
   "jmdictId": "1426920"      // set by scripts/backfill-vocab-jmdict.mjs — links to the `dictionary` table row for this word; absent if unmatched (see Dictionary linkage section)
 }
 ```

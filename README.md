@@ -49,6 +49,6 @@ Explore supporting tools to find new vocabulary from anime or the news, or gener
 - [JMdict/EDICT](https://www.edrdg.org/jmdict/j_jmdict.html) and [KANJIDIC2](https://www.edrdg.org/wiki/index.php/KANJIDIC_Project) — dictionary and kanji data (EDRDG, CC BY-SA)
 - [Tanaka Corpus](https://edrdg.org/wiki/index.php/Tanaka_Corpus) — example sentences (EDRDG, CC BY)
 - [yomitan-jlpt-vocab](https://github.com/stephenmk/yomitan-jlpt-vocab) — community-estimated JLPT level tagging (CC BY-SA 4.0)
-- [Voicevox](https://voicevox.hiroshiba.jp/) — text-to-speech voices (四国めたん, 玄野武宏)
+- [Voicevox](https://voicevox.hiroshiba.jp/) — text-to-speech voices (波音リツ, 玄野武宏)
 
 In-app attribution is shown on every screen that renders text or audio from these sources.
