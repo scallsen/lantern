@@ -448,7 +448,20 @@ export default function VocabSrsDrill({
     }, 50)
     return () => clearTimeout(t)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentCardForMemo?.id, audioSource])
+  }, [currentCardForMemo?.id])
+
+  // Switching voice replays the current face in the new one, so the choice can
+  // be heard — whatever the per-face autoplay says. Only a change between two
+  // recorded voices counts: audio turning on also changes audioSource (from
+  // 'none'), and playing the word then would give away the front.
+  const prevAudioSourceRef = useRef(audioSource)
+  useEffect(() => {
+    const prev = prevAudioSourceRef.current
+    prevAudioSourceRef.current = audioSource
+    if (prev === audioSource || !speakerIdFromAudioSource(prev) || !speakerIdFromAudioSource(audioSource)) return
+    speakCard(currentCardForMemo, resolveAudioUrl(currentCardForMemo), { sequence: flippedRef.current })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [audioSource])
 
   const drillCrumbs = [...crumbs, { label: 'Review' }]
 

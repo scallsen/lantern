@@ -253,7 +253,7 @@ function ActiveDrill({ drill, audioSource, playOnFront, playOnBack, playSentence
     }
     return () => stopWordAudio()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isFlipped, currentCard.id, audioSource, playOnBack])
+  }, [isFlipped, currentCard.id, playOnBack])
 
   // Front audio speaks the word as the card arrives. Off by default for this
   // drill: the front is the kanji and the reading is what you are recalling,
@@ -263,7 +263,20 @@ function ActiveDrill({ drill, audioSource, playOnFront, playOnBack, playSentence
     playWordAudio(currentCard.word)
     return () => stopWordAudio()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentCard.id, audioSource, playOnFront])
+  }, [currentCard.id, playOnFront])
+
+  // Switching voice replays the current face in the new one, so the choice can
+  // be heard — whatever the per-face autoplay says. Only a change between two
+  // recorded voices counts: audio turning on also changes audioSource (from
+  // 'none'), and playing the word then would give away the front.
+  const prevAudioSourceRef = useRef(audioSource)
+  useEffect(() => {
+    const prev = prevAudioSourceRef.current
+    prevAudioSourceRef.current = audioSource
+    if (prev === audioSource || !speakerIdFromAudioSource(prev) || !speakerIdFromAudioSource(audioSource)) return
+    playWordAudio(currentCard.word, { withSentence: isFlipped && playSentence })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [audioSource])
 
   useEffect(() => { setFlippedCardId(null) }, [currentCard.id])
 
