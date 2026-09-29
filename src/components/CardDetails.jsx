@@ -10,7 +10,8 @@ import { kanjiCharsOf } from '../utils/kanjiMeaningLookup.js'
 // The details panel under a drill card: the example sentence (words tappable,
 // furigana by what the learner already knows, translation off / blurred / on)
 // and the card word's kanji, each opening the other words the learner has met
-// that share it. Explored in the Drill Card Context labs (iterations 1–7).
+// that share it. Explored in the Drill Card Context labs (iterations 1–7),
+// now on the archive/design-labs branch.
 //
 // One panel for both faces. Before the flip every word is a redaction bar in
 // the exact shape of the real text; on the flip the bars fade out as the words
@@ -20,8 +21,7 @@ import { kanjiCharsOf } from '../utils/kanjiMeaningLookup.js'
 // The panel's colours. Dark by default — an outline on the page, no fill — so
 // the card above is the one light thing on screen; the sun in the panel's
 // corner switches it to paper, like the card (the `detailsTheme` setting).
-// Chosen in the Details Panel Dark lab, which also passes `palette` to try
-// other colours without a second copy of the panel.
+// Chosen in the Details Panel Dark lab (archive/design-labs).
 const PAPER_PALETTE = {
   bg: '#E8E4DE',
   ink: '#222',
@@ -500,9 +500,8 @@ function Panel({ word, sentence, showSentence, showKanji, chars, meanings, relat
  *                                panel's words fade with it
  * @param {function} onChangeSetting (key, value) — the panel's × and the
  *                                Show details button write `details`
- * @param {object}  palette       overrides for the panel's colours (labs only)
  * @param {object}  kanjiMeanings { [kanji]: meaning } instead of fetching them
- *                                (stories and labs with frozen data)
+ *                                (stories with frozen data)
  * @param {object}  srsData       the drill's `vocab-srs` progress, and `saveSrs`
  *                                its save — a tapped word can be added to a
  *                                review deck from its lookup (WordPopup)
@@ -518,7 +517,7 @@ function Panel({ word, sentence, showSentence, showKanji, chars, meanings, relat
  */
 export default function CardDetails({
   word, cardKey, sentence, settings, knownIds, related, lessonLabel = 'This lesson',
-  revealed, leaving = false, mobile, edgeToEdge = false, jaFont, onChangeSetting, onPlaySentence, palette, kanjiMeanings, onReady, srsData, saveSrs, reserve = true,
+  revealed, leaving = false, mobile, edgeToEdge = false, jaFont, onChangeSetting, onPlaySentence, kanjiMeanings, onReady, srsData, saveSrs, reserve = true,
 }) {
   const shown = settings.details && (settings.sentence || settings.kanjiMeanings)
   const chars = kanjiCharsOf(word.form)
@@ -566,7 +565,7 @@ export default function CardDetails({
       display: 'flex', justifyContent: 'center', alignItems: 'flex-start',
     }}>
       {!sentencePending && (showSentence || showKanji) && (
-        <PaletteContext.Provider value={palette ? { ...PAPER_PALETTE, ...palette } : settings.detailsTheme === 'light' ? PAPER_PALETTE : OUTLINE_PALETTE}>
+        <PaletteContext.Provider value={settings.detailsTheme === 'light' ? PAPER_PALETTE : OUTLINE_PALETTE}>
         <Panel
           key={cardKey}
           word={word} sentence={sentence} showSentence={showSentence} showKanji={showKanji}
