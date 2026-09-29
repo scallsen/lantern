@@ -124,6 +124,7 @@ export default function DrillSettingsPanel({
         {boolRow('kanjiMeanings', 'Kanji breakdown')}
         {boolRow('sentence', 'Sentence')}
         {boolRow('backAudio', 'Audio')}
+        {showVoice && settings.backAudio && boolRow('sentenceAudio', 'Sentence audio')}
       </Group>
 
       {(showVoice || showBackupVoice) && (

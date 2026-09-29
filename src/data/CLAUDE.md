@@ -96,9 +96,8 @@ Each word object in an older `src/data/words/*.json` file:
   "kanji": "魚",              // display form (front of card); use kana if no kanji form
   "kana": "さかな",           // full hiragana/katakana reading — spoken by TTS on flip
   "english": "fish",          // meaning — shown on back of card (concise, 1–5 words)
-  "sentence": "...",          // optional example sentence — shown on back when "Show sentence" is on
   "listKey": "nsm-n3-w1d1",  // must match a source id (flat) or sublist id (hierarchical)
-  "voicevoxVoices": [2, 11], // set by scripts/generate-audio.mjs — speaker ids with generated audio; absent/empty until generated
+  "voicevoxVoices": [9, 11], // set by scripts/generate-audio.mjs — speaker ids with generated audio; absent/empty until generated
   "jmdictId": "1426920"      // set by scripts/backfill-vocab-jmdict.mjs — links to the `dictionary` table row for this word; absent if unmatched (see Dictionary linkage section)
 }
 ```
@@ -124,7 +123,7 @@ Third-party data/asset credits (JMdict/EDICT, KANJIDIC2, Tanaka Corpus, Voicevox
 ### Personal word lists (`custom_words`)
 
 A learner's own course material — one class's re-chunking of a book, with its
-own example sentences and review markers — belongs to an account, not to the
+own review markers — belongs to an account, not to the
 bundle. It lives in `custom_words` (one row per word, `payload` holding the word
 itself) rather than in `src/data/words/`, so it is not downloaded by every
 visitor: moving 5,277 of these words out took 1.1 MB of JSON off the bundle.

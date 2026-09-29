@@ -5,7 +5,7 @@ import { ATTRIBUTIONS } from '../data/attributions.js'
 import { audioKeyFor } from '../lib/displayForm.js'
 
 export const VOICEVOX_VOICES = [
-  { id: 2, name: 'shikoku-metan', label: 'Female (Shikoku Metan)', credit: ATTRIBUTIONS['voicevox-2'] },
+  { id: 9, name: 'namine-ritsu', label: 'Female (Namine Ritsu)', credit: ATTRIBUTIONS['voicevox-9'] },
   { id: 11, name: 'kurono-takehiro', label: 'Male (Kurono Takehiro)', credit: ATTRIBUTIONS['voicevox-11'] },
 ]
 
@@ -28,7 +28,7 @@ export function getVoicevoxAudioUrl(speakerId, speechText) {
   return speakerId && key && VOICEVOX_AUDIO_BASE ? `${VOICEVOX_AUDIO_BASE}/${speakerId}/${key}.mp3` : null
 }
 
-// 'voicevox-2' -> 2, 'browser' / 'none' -> null
+// 'voicevox-9' -> 9, 'browser' / 'none' -> null
 export function speakerIdFromAudioSource(audioSource) {
   const match = audioSource?.match(/^voicevox-(\d+)$/)
   return match ? Number(match[1]) : null

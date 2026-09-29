@@ -13,13 +13,15 @@ import { answerCard, undoLastAnswer, isComplete, getSessionStats, getCurrentCard
 import { useTTS } from '../../hooks/useTTS.js'
 import { useSFX } from '../../hooks/useSFX.js'
 import { useGamepad } from '../../hooks/useGamepad.js'
-import { useVoicevoxPlayer } from '../../hooks/useVoicevoxPlayer.js'
+import { useVoicevoxPlayer, SENTENCE_GAP } from '../../hooks/useVoicevoxPlayer.js'
 import { useKanjiMeanings } from '../../hooks/useKanjiMeanings.js'
 import { getVoicevoxAudioUrl, speakerIdFromAudioSource } from '../../utils/voicevoxAudio.js'
 import { kanjiCharsOf } from '../../utils/kanjiMeaningLookup.js'
 import { useDictionaryEntry } from '../../hooks/useDictionaryEntries.js'
 import { briefGloss } from '../../utils/dictionaryEntryLookup.js'
 import { useSentenceForWord } from '../../hooks/useSentenceForWord.js'
+import { useTurnedOn } from '../../hooks/useTurnedOn.js'
+import { fetchSentencesFor } from '../../utils/sentenceLookup.js'
 import AttributionFooter from '../../components/AttributionFooter.jsx'
 import { getMainTextScale, getSecondaryTextScale, cqw } from '../../utils/cardTextFit.js'
 
@@ -69,7 +71,7 @@ function KanjiMeaningBar({ chars, meanings, jaFont, scale }) {
   )
 }
 
-function SrsCardFace({ text, kana, isBack, backText, jmdictId, sentence, sentenceEnglish, showFurigana, showTranslation, showSentence, sentenceSource, showKanjiMeaning, pixelFont }) {
+function SrsCardFace({ text, kana, isBack, backText, jmdictId, showFurigana, showTranslation, showSentence, showKanjiMeaning, pixelFont }) {
   const cardFont = pixelFont ? FONT : 'system-ui, sans-serif'
   const showReading = kana && kana !== text && (isBack || showFurigana)
 
@@ -84,13 +86,9 @@ function SrsCardFace({ text, kana, isBack, backText, jmdictId, sentence, sentenc
   const { entry: dictEntry } = useDictionaryEntry(jmdictId, true)
   const resolvedBackText = briefGloss(dictEntry) ?? backText
 
-  // The card's own sentence wins by default ('custom'); a Tanaka Corpus
-  // sentence fills the gap when there isn't one, or takes priority outright
-  // when sentenceSource is 'tanaka'.
   const tanakaSentence = useSentenceForWord(jmdictId, isBack && showSentence)
-  const useTanaka = sentenceSource === 'tanaka' ? !!tanakaSentence : (!sentence && !!tanakaSentence)
-  const resolvedSentence = useTanaka ? tanakaSentence.japanese : sentence
-  const resolvedSentenceEnglish = useTanaka ? tanakaSentence.english : sentenceEnglish
+  const resolvedSentence = tanakaSentence?.japanese ?? null
+  const resolvedSentenceEnglish = tanakaSentence?.english ?? null
 
   const mainScale = getMainTextScale(text)
   const secondaryScale = getSecondaryTextScale({
@@ -220,10 +218,10 @@ function DoneScreen({ stats, onDone }) {
 
 export default function VocabSrsDrill({
   initialCards, initialSession, onCardSave, onDone,
-  showTranslation = true, showFurigana = true, showSentence = true, sentenceSource = 'custom', showKanjiMeaning = false,
+  showTranslation = true, showFurigana = true, showSentence = true, showKanjiMeaning = false,
   pixelFont = true, showVisualEffects = true, showStreak = false,
-  audioEnabled = true, autoplayFront = true, autoplayBack = true,
-  audioSource = 'voicevox-2', sfxEnabled = true, ttsVoice = '',
+  audioEnabled = true, autoplayFront = true, autoplayBack = true, playSentence = false,
+  audioSource = 'voicevox-9', sfxEnabled = true, ttsVoice = '',
   showHardEasy = true, leechThreshold = 8,
   isMobile = false, onShowOptions,
   crumbs = [{ label: 'Lantern', href: '#/' }],
@@ -250,17 +248,17 @@ export default function VocabSrsDrill({
 
   // Priority: real recorded audio (imported Anki decks) > generated Voicevox audio > browser TTS.
   function resolveAudioUrl(card) {
-    if (!card) return { word: null, sentence: null }
-    if (card.wordAudio) return { word: getAudioUrl(card.wordAudio), sentence: getAudioUrl(card.sentenceAudio) }
+    if (!card) return { word: null, sentence: null, sentenceText: null }
+    // Resolved only for the current card, which is the only one that plays.
+    const sentenceText = (card.jmdictId && card.jmdictId === currentCardForMemo?.jmdictId ? currentTanakaSentence?.japanese : null) ?? null
     // Generated clips are keyed by what is spoken, so a card derives its own
     // URL from its reading and needs no record of which clips exist. A card
     // whose clip has not been generated 404s and falls back to TTS.
     const speakerId = speakerIdFromAudioSource(audioSource)
-    if (speakerId) {
-      const reading = card.kana ?? card.front
-      return { word: getVoicevoxAudioUrl(speakerId, reading), sentence: null }
-    }
-    return { word: null, sentence: null }
+    const sentence = speakerId && sentenceText ? getVoicevoxAudioUrl(speakerId, sentenceText) : null
+    if (card.wordAudio) return { word: getAudioUrl(card.wordAudio), sentence, sentenceText }
+    if (speakerId) return { word: getVoicevoxAudioUrl(speakerId, card.kana ?? card.front), sentence, sentenceText }
+    return { word: null, sentence: null, sentenceText }
   }
 
   const seenRef = useRef(new Set())
@@ -285,11 +283,20 @@ export default function VocabSrsDrill({
   // the imported-audio bucket (via getAudioUrl) and the voicevox bucket (via getVoicevoxAudioUrl).
 
   // The clip first, the backup voice when there is no clip or it fails to
-  // load. `sequence` also plays the sentence clip after the word one.
+  // load. `sequence` also plays the sentence after the word, when the Sentence
+  // audio setting is on.
+  async function playSentenceText(text, { delay = SENTENCE_GAP } = {}) {
+    const speakerId = speakerIdFromAudioSource(audioSource)
+    const url = speakerId ? getVoicevoxAudioUrl(speakerId, text) : null
+    if (!url || !await voicevox.play(url, { delay })) tts.speak(text)
+  }
+
   async function speakCard(card, urls, { sequence } = {}) {
     if (!card) return
     if (!urls.word) { voicevox.stop(); tts.speak(card.kana ?? card.front ?? ''); return }
-    const chainSentence = sequence && urls.sentence ? () => voicevox.play(urls.sentence) : undefined
+    const chainSentence = sequence && playSentence && urls.sentenceText
+      ? () => playSentenceText(urls.sentenceText)
+      : undefined
     const played = await voicevox.play(urls.word, { onEnded: chainSentence })
     if (!played) tts.speak(card.kana ?? card.front ?? '')
   }
@@ -424,14 +431,16 @@ export default function VocabSrsDrill({
 
   // Must be before the isComplete early return — hooks cannot be called conditionally.
   const currentCardForMemo = getCurrentCard(session)
+  const currentTanakaSentence = useSentenceForWord(currentCardForMemo?.jmdictId, playSentence)
 
-  // Preload the current card's word audio as soon as the card appears.
+  // Preload the current card's audio as soon as the card appears.
   useEffect(() => {
-    const url = resolveAudioUrl(currentCardForMemo).word
-    voicevox.trimPreload(url ? [url] : [])
-    if (url) voicevox.preload(url)
+    const urls = resolveAudioUrl(currentCardForMemo)
+    const desired = [urls.word, playSentence ? urls.sentence : null].filter(Boolean)
+    voicevox.trimPreload(desired)
+    desired.forEach(url => voicevox.preload(url))
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentCardForMemo?.id, audioSource])
+  }, [currentCardForMemo?.id, audioSource, playSentence, currentTanakaSentence])
 
   // Auto-play word audio on the front when a new card appears.
   useEffect(() => {
@@ -444,7 +453,40 @@ export default function VocabSrsDrill({
     }, 50)
     return () => clearTimeout(t)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentCardForMemo?.id, audioSource])
+  }, [currentCardForMemo?.id])
+
+  // Switching voice replays the current face in the new one, so the choice can
+  // be heard — whatever the per-face autoplay says. Only a change between two
+  // recorded voices counts: audio turning on also changes audioSource (from
+  // 'none'), and playing the word then would give away the front.
+  // Switching an audio setting on plays what it would play, so it can be heard:
+  // front Audio the word, back Audio the word (and sentence) when flipped,
+  // Sentence audio the sentence when flipped. Back-face settings stay silent
+  // on the front, where they would give the word away. The sentence lookup is
+  // awaited directly because the setting being off kept it from fetching.
+  useTurnedOn(autoplayFront, () => {
+    speakCard(currentCardForMemo, resolveAudioUrl(currentCardForMemo))
+  })
+  useTurnedOn(autoplayBack, () => {
+    if (flippedRef.current) speakCard(currentCardForMemo, resolveAudioUrl(currentCardForMemo), { sequence: true })
+  })
+  useTurnedOn(playSentence, async () => {
+    const card = currentCardForMemo
+    if (!flippedRef.current || !card?.jmdictId) return
+    const text = (await fetchSentencesFor([card.jmdictId]))[card.jmdictId]?.japanese
+    if (!text || !flippedRef.current || getCurrentCard(sessionRef.current)?.id !== card.id) return
+    tts.cancel()
+    playSentenceText(text, { delay: 0 })
+  })
+
+  const prevAudioSourceRef = useRef(audioSource)
+  useEffect(() => {
+    const prev = prevAudioSourceRef.current
+    prevAudioSourceRef.current = audioSource
+    if (prev === audioSource || !speakerIdFromAudioSource(prev) || !speakerIdFromAudioSource(audioSource)) return
+    speakCard(currentCardForMemo, resolveAudioUrl(currentCardForMemo), { sequence: flippedRef.current })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [audioSource])
 
   const drillCrumbs = [...crumbs, { label: 'Review' }]
 
@@ -496,10 +538,10 @@ export default function VocabSrsDrill({
   const isRequeue = currentCard && seenRef.current.has(currentCard.id)
 
   const front = currentCard
-    ? <SrsCardFace text={currentCard.front} kana={currentCard.kana} isBack={false} showFurigana={showFurigana} backText={currentCard.back} jmdictId={currentCard.jmdictId} sentence={currentCard.sentence} sentenceEnglish={currentCard.sentenceEnglish} showTranslation={showTranslation} showSentence={showSentence} sentenceSource={sentenceSource} showKanjiMeaning={showKanjiMeaning} pixelFont={pixelFont} />
+    ? <SrsCardFace text={currentCard.front} kana={currentCard.kana} isBack={false} showFurigana={showFurigana} backText={currentCard.back} jmdictId={currentCard.jmdictId} showTranslation={showTranslation} showSentence={showSentence} showKanjiMeaning={showKanjiMeaning} pixelFont={pixelFont} />
     : null
   const back = currentCard
-    ? <SrsCardFace text={currentCard.front} kana={currentCard.kana} isBack={true} showFurigana={showFurigana} backText={currentCard.back} jmdictId={currentCard.jmdictId} sentence={currentCard.sentence} sentenceEnglish={currentCard.sentenceEnglish} showTranslation={showTranslation} showSentence={showSentence} sentenceSource={sentenceSource} showKanjiMeaning={showKanjiMeaning} pixelFont={pixelFont} />
+    ? <SrsCardFace text={currentCard.front} kana={currentCard.kana} isBack={true} showFurigana={showFurigana} backText={currentCard.back} jmdictId={currentCard.jmdictId} showTranslation={showTranslation} showSentence={showSentence} showKanjiMeaning={showKanjiMeaning} pixelFont={pixelFont} />
     : null
 
   let cardClass = ''

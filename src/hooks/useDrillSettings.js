@@ -24,6 +24,7 @@ export const DRILL_SETTINGS_DEFAULTS = {
   kanjiMeanings: true,
   sentence: true,
   backAudio: true,
+  sentenceAudio: false,
   voice: 'male',
   backupVoice: '',
   sfx: true,
@@ -35,7 +36,7 @@ export const DRILL_SETTINGS_DEFAULTS = {
 // 'male'/'female' -> the audio-source string the drills and voicevoxAudio.js
 // still speak. The panel names voices; the storage layer names speakers.
 export function audioSourceForVoice(voice) {
-  return voice === 'female' ? 'voicevox-2' : 'voicevox-11'
+  return voice === 'female' ? 'voicevox-9' : 'voicevox-11'
 }
 
 const BOOL_KEYS = {
@@ -45,6 +46,7 @@ const BOOL_KEYS = {
   kanjiMeanings: 'show-kanji-meaning',
   sentence: 'show-sentence',
   backAudio: 'back-audio',
+  sentenceAudio: 'sentence-audio',
   sfx: 'sfx-enabled',
   pixelFont: 'pixel-font',
   visualEffects: 'visual-effects',

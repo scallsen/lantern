@@ -25,11 +25,14 @@ import { WORD_SOURCES, visibleSources } from '../data/wordLists.js'
 import { useDrill } from '../hooks/useDrill.js'
 import { useTTS, useJaVoices } from '../hooks/useTTS.js'
 import { useSFX } from '../hooks/useSFX.js'
-import { useVoicevoxPlayer } from '../hooks/useVoicevoxPlayer.js'
+import { useVoicevoxPlayer, SENTENCE_GAP } from '../hooks/useVoicevoxPlayer.js'
 import { useGamepad } from '../hooks/useGamepad.js'
 import { useProgress } from '../hooks/useProgress.js'
 import { useAudioGenerationStatus } from '../hooks/useAudioGenerationStatus.js'
 import { useDictionaryEntries, useSenseGlosses } from '../hooks/useDictionaryEntries.js'
+import { useSentencesForWords } from '../hooks/useSentenceForWord.js'
+import { useTurnedOn } from '../hooks/useTurnedOn.js'
+import { fetchSentencesFor } from '../utils/sentenceLookup.js'
 import { speechTextOf } from '../lib/displayForm.js'
 import { safeLocalStorageGet, safeLocalStorageSet } from '../utils/storage.js'
 import * as SimpleQueue from '../engines/simpleQueue.js'
@@ -113,7 +116,7 @@ function toggle(arr, val) {
 
 const AUDIO_PRELOAD_COUNT = 3
 
-function ActiveDrill({ drill, audioSource, playOnFront, playOnBack, sfxEnabled, ttsVoice, showStreak, reviewMode, showFurigana, showTranslation, showSentence, showKanjiMeaning, pixelFont, showVisualEffects, onPulse, isShort }) {
+function ActiveDrill({ drill, audioSource, playOnFront, playOnBack, playSentence, sfxEnabled, ttsVoice, showStreak, reviewMode, showFurigana, showTranslation, showSentence, showKanjiMeaning, pixelFont, showVisualEffects, onPulse, isShort }) {
   const [flippedCardId, setFlippedCardId] = useState(null)
   const [transitioning, setTransitioning] = useState(false)
   const [exitDir, setExitDir] = useState(null)
@@ -128,6 +131,7 @@ function ActiveDrill({ drill, audioSource, playOnFront, playOnBack, sfxEnabled, 
     [currentCard, upcoming]
   )
   const { entries: nearbyDictEntries } = useDictionaryEntries(nearbyJmdictIds, true)
+  const nearbySentences = useSentencesForWords(nearbyJmdictIds, playSentence)
 
   function resolveReading(word) {
     return word.kana ?? (word.jmdictId ? nearbyDictEntries[word.jmdictId]?.kana_forms?.[0] : undefined)
@@ -143,20 +147,38 @@ function ActiveDrill({ drill, audioSource, playOnFront, playOnBack, sfxEnabled, 
     return getVoicevoxAudioUrl(speakerId, speechTextOf(word, entry) ?? word.kana)
   }
 
+  function sentenceTextFor(word) {
+    return nearbySentences[word.jmdictId]?.japanese ?? null
+  }
+
+  function voicevoxUrlForSentence(word) {
+    const speakerId = speakerIdFromAudioSource(audioSource)
+    const text = sentenceTextFor(word)
+    return speakerId && text ? getVoicevoxAudioUrl(speakerId, text) : null
+  }
+
   function speakWord(word) {
     const reading = resolveReading(word)
     if (reading) tts.speak(reading)
   }
 
-  async function playWordAudio(word) {
+  async function playSentenceText(text, { delay = SENTENCE_GAP } = {}) {
+    const speakerId = speakerIdFromAudioSource(audioSource)
+    const url = speakerId ? getVoicevoxAudioUrl(speakerId, text) : null
+    if (!url || !await voicevox.play(url, { delay })) tts.speak(text)
+  }
+
+  async function playWordAudio(word, { withSentence = false } = {}) {
     voicevox.stop()
     const url = voicevoxUrlForWord(word)
     // No clip for this word — the backup voice reads it, rather than the
     // silence you got unless you had picked the old 'Browser TTS' source.
     if (!url) { speakWord(word); return }
+    const sentenceText = withSentence ? sentenceTextFor(word) : null
+    const onEnded = sentenceText ? () => playSentenceText(sentenceText) : undefined
     // Falls through to speech synthesis when a clip has not been generated yet,
     // which is what the old voicevoxVoices check was really guarding against.
-    if (!await voicevox.play(url)) speakWord(word)
+    if (!await voicevox.play(url, { onEnded })) speakWord(word)
   }
 
   function stopWordAudio() {
@@ -168,12 +190,12 @@ function ActiveDrill({ drill, audioSource, playOnFront, playOnBack, sfxEnabled, 
   // doesn't wait on a network fetch. Cache is trimmed to the current window each run.
   useEffect(() => {
     const desiredUrls = [currentCard, ...upcoming.slice(0, AUDIO_PRELOAD_COUNT)]
-      .map(c => voicevoxUrlForWord(c.word))
+      .flatMap(c => [voicevoxUrlForWord(c.word), playSentence ? voicevoxUrlForSentence(c.word) : null])
       .filter(Boolean)
     voicevox.trimPreload(desiredUrls)
     desiredUrls.forEach(url => voicevox.preload(url))
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentCard.id, audioSource])
+  }, [currentCard.id, audioSource, playSentence, nearbySentences])
 
   const [localStreak,     setLocalStreak]     = useState(streak)
   const [localBestStreak, setLocalBestStreak] = useState(bestStreak)
@@ -226,13 +248,13 @@ function ActiveDrill({ drill, audioSource, playOnFront, playOnBack, sfxEnabled, 
 
   useEffect(() => {
     if (isFlipped && playOnBack) {
-      playWordAudio(currentCard.word)
+      playWordAudio(currentCard.word, { withSentence: playSentence })
     } else {
       stopWordAudio()
     }
     return () => stopWordAudio()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isFlipped, currentCard.id, audioSource, playOnBack])
+  }, [isFlipped, currentCard.id, playOnBack])
 
   // Front audio speaks the word as the card arrives. Off by default for this
   // drill: the front is the kanji and the reading is what you are recalling,
@@ -242,7 +264,33 @@ function ActiveDrill({ drill, audioSource, playOnFront, playOnBack, sfxEnabled, 
     playWordAudio(currentCard.word)
     return () => stopWordAudio()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentCard.id, audioSource, playOnFront])
+  }, [currentCard.id, playOnFront])
+
+  // Switching voice replays the current face in the new one, so the choice can
+  // be heard — whatever the per-face autoplay says. Only a change between two
+  // recorded voices counts: audio turning on also changes audioSource (from
+  // 'none'), and playing the word then would give away the front.
+  // Switching Sentence audio on plays the sentence straight away, so the
+  // setting can be heard. Back face only: on the front it would give the word
+  // away. The lookup is awaited directly because the setting being off kept
+  // nearbySentences from fetching it.
+  useTurnedOn(playSentence, async () => {
+    const id = currentCard.word.jmdictId
+    if (!isFlippedRef.current || !id) return
+    const text = (await fetchSentencesFor([id]))[id]?.japanese
+    if (!text || !isFlippedRef.current) return
+    tts.cancel()
+    playSentenceText(text, { delay: 0 })
+  })
+
+  const prevAudioSourceRef = useRef(audioSource)
+  useEffect(() => {
+    const prev = prevAudioSourceRef.current
+    prevAudioSourceRef.current = audioSource
+    if (prev === audioSource || !speakerIdFromAudioSource(prev) || !speakerIdFromAudioSource(audioSource)) return
+    playWordAudio(currentCard.word, { withSentence: isFlipped && playSentence })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [audioSource])
 
   useEffect(() => { setFlippedCardId(null) }, [currentCard.id])
 
@@ -1001,6 +1049,7 @@ function VocabPageScreens() {
                   audioSource={audioSource}
                   playOnFront={settings.frontAudio}
                   playOnBack={settings.backAudio}
+                  playSentence={settings.sentenceAudio}
                   sfxEnabled={settings.sfx}
                   ttsVoice={settings.backupVoice}
                   showStreak={settings.streak}

@@ -3,26 +3,25 @@ import { supabase } from '../lib/supabase.js'
 const cache = new Map()
 const attempted = new Set()
 
-const SELECT = 'id, japanese, english, dictionary_ids, quality'
-
-function pickBestSentence(rows) {
-  if (!rows.length) return null
-  // Prefer sentences flagged as a recommended example, then shorter/simpler ones.
-  return rows.slice().sort((a, b) => (b.quality === true) - (a.quality === true) || a.japanese.length - b.japanese.length)[0]
-}
+// The pick (quality-flagged, then shortest, then lowest id) lives in the
+// best_sentences SQL function, not here: common words match more rows than a
+// query returns, so a client-side pick saw an arbitrary subset and could change
+// between sessions. generate-audio.mjs calls the same function, which is what
+// keeps a card's sentence and its pre-recorded clip in step.
+const BATCH = 500
 
 // Returns { [jmdictId]: sentenceRow|null } for every id already resolved (found or not).
 export async function fetchSentencesFor(ids) {
   const unique = [...new Set(ids)].filter(Boolean)
   const missing = unique.filter(id => !attempted.has(id))
   if (missing.length > 0 && supabase) {
-    const { data } = await supabase.from('sentences').select(SELECT).overlaps('dictionary_ids', missing)
     missing.forEach(id => attempted.add(id))
-    if (data) {
-      for (const id of missing) {
-        const candidates = data.filter(row => row.dictionary_ids.includes(id))
-        cache.set(id, pickBestSentence(candidates))
-      }
+    for (let i = 0; i < missing.length; i += BATCH) {
+      const batch = missing.slice(i, i + BATCH)
+      const { data } = await supabase.rpc('best_sentences', { ids: batch })
+      if (!data) continue
+      const byId = new Map(data.map(row => [row.dictionary_id, row]))
+      for (const id of batch) cache.set(id, byId.get(id) ?? null)
     }
   }
   const result = {}

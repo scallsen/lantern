@@ -193,7 +193,7 @@ function BackContent({ word, displayForm, reading, resolvedEnglish, sentenceText
   )
 }
 
-export default function VocabCard({ word, flipped, onFlip, animate, reviewMode, showFurigana, showTranslation, showSentence, showKanjiMeaning, pixelFont, sentenceSource = 'custom' }) {
+export default function VocabCard({ word, flipped, onFlip, animate, reviewMode, showFurigana, showTranslation, showSentence, showKanjiMeaning, pixelFont }) {
   // Dictionary is the source of truth for the definition — and, whenever the
   // word doesn't carry its own kanji/kana override, for the display form and
   // reading too — when this word is linked (word.jmdictId). The word's own
@@ -204,12 +204,7 @@ export default function VocabCard({ word, flipped, onFlip, animate, reviewMode, 
   const resolvedEnglish = cardGloss(word, dictEntry, senseGlosses) ?? word.english
   const { form: displayForm, reading } = cardFormOf(word, dictEntry)
 
-  // The word's own curated sentence wins by default ('custom'); a Tanaka
-  // Corpus sentence fills the gap when there isn't one, or takes priority
-  // outright when sentenceSource is 'tanaka'.
-  const tanakaSentence = useSentenceForWord(word.jmdictId, showSentence)
-  const useTanaka = sentenceSource === 'tanaka' ? !!tanakaSentence : (!word.sentence && !!tanakaSentence)
-  const sentenceText = useTanaka ? tanakaSentence.japanese : word.sentence
+  const sentenceText = useSentenceForWord(word.jmdictId, showSentence)?.japanese ?? null
 
   // dictLoading is only ever true while a dictionary fetch is genuinely in
   // flight (see useDictionaryEntry) — once it resolves, or immediately for a

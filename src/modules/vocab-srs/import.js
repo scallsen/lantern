@@ -19,6 +19,9 @@ function extractSound(field) {
 //                        (empty) \t sentence \t sentence+furi \t kanaTranscript \t englishSentence \t
 //                        cloze \t sentenceAudio \t stepLabel \t pos \t n \t n
 //
+// The sentence columns are read past, not imported: a card's example sentence
+// is always the Tanaka Corpus one for its dictionary entry.
+//
 // existingIds should be the keys of the current cards{} object to skip duplicates.
 export function parseAnkiExport(tsvString, existingIds = []) {
   const existingSet = new Set(existingIds)
@@ -39,15 +42,11 @@ export function parseAnkiExport(tsvString, existingIds = []) {
       const kana = stripHtml(cols[3])
       back = stripHtml(cols[4])
       const wordAudio = extractSound(cols[5])
-      const sentence = stripHtml(cols[11])
-      const sentenceAudio = extractSound(cols[13])
 
       if (!front || !back) continue
       id = `anki-${noteId}`
       if (kana && kana !== front) extras.kana = kana
       if (wordAudio) extras.wordAudio = wordAudio
-      if (sentenceAudio) extras.sentenceAudio = sentenceAudio
-      if (sentence) extras.sentence = sentence
     } else {
       // Simple 2-column layout
       const tabIdx = trimmed.indexOf('\t')
