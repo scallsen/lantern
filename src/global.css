@@ -602,3 +602,106 @@ button, input, select, textarea {
   .drill-round-fade-in { animation: none; }
   .drill-round-countdown { animation: none; width: 100%; }
 }
+
+/* ── Drill card details panel (CardDetails) ─────────────────────────────── */
+.details-tok {
+  cursor: pointer;
+  border-radius: 3px;
+  transition: background 120ms ease;
+}
+.details-tok:hover {
+  background: var(--details-hover, rgba(0, 0, 0, 0.07));
+}
+
+/* The tile sets its own background inline (the open tint). */
+.details-tile {
+  transition: background 120ms ease;
+}
+.details-tile:hover {
+  background: var(--details-hover, rgba(0, 0, 0, 0.06)) !important;
+}
+
+/* Replay and hide stay quiet until pointed at. */
+.details-corner {
+  opacity: 0.45;
+  transition: opacity 150ms ease, background 150ms ease;
+}
+.details-corner:hover,
+.details-corner:focus-visible {
+  opacity: 1;
+  background: var(--details-hover, rgba(0, 0, 0, 0.06)) !important;
+}
+
+.details-blur {
+  cursor: pointer;
+}
+
+.details-show:hover {
+  color: rgba(255, 255, 255, 0.75) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+@keyframes details-pop-in {
+  from { opacity: 0; translate: 0 6px; }
+  to   { opacity: 1; translate: 0 0; }
+}
+.details-pop {
+  animation: details-pop-in 200ms ease-out both;
+}
+
+/* A new card's panel content arrives with the card. `backwards`, not `both`:
+   once it has run, the inline opacity (the fade-out as the card leaves)
+   takes over again. */
+@keyframes details-content-in {
+  from { opacity: 0; }
+}
+.details-content-in {
+  animation: details-content-in 240ms ease-out backwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .details-content-in, .details-pop { animation: none; }
+}
+
+/* A drill's opening screen, once its first card is ready (useDrillEntrance). */
+@keyframes drill-stage-in {
+  from { opacity: 0; translate: 0 10px; }
+  to   { opacity: 1; translate: 0 0; }
+}
+/* `backwards`, not `both`: a translate left behind after the animation makes
+   this wrapper the containing block for position: fixed, and the word lookup
+   inside the drill (Popover) would be placed relative to it. */
+.drill-stage-in {
+  animation: drill-stage-in 380ms cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+}
+.drill-stage-waiting {
+  opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .drill-stage-in { animation: none; }
+}
+
+/* Undo, as a square leading the drill's button row (DrillUndoButton). The
+   background is inline, hence !important. */
+.drill-undo {
+  transition: background 120ms ease, color 120ms ease;
+}
+.drill-undo:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #fff !important;
+}
+
+/* The compact credit line's Show more / Show less (AttributionFooter). */
+.attribution-toggle {
+  background: none;
+  border: none;
+  padding: 0 2px;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.attribution-toggle:hover {
+  color: #E8E8E8;
+}

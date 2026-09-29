@@ -5,6 +5,7 @@ export { displayFormOf }
 
 const cache = new Map()
 const attempted = new Set()
+const LOOKUP_CHUNK = 150
 
 // `misc0` is only sense 0's misc array, not the whole `senses` blob — it costs
 // a few bytes per row and carries the `uk` flag `displayFormOf` needs. The full
@@ -15,14 +16,28 @@ const attempted = new Set()
 // through fetchSenseGlosses below instead.
 const SELECT = 'id, primary_form, preferred_form, kana_forms, gloss_en, pos, common, jlpt_level, jlpt_level_inferred, misc0:senses->0->misc'
 
+// The already-resolved subset, synchronously — lets a hook that mounts
+// fresh for every card (the drill card is keyed per card) render cached data
+// on its first frame instead of flashing an empty state while the async
+// lookup resolves from cache.
+export function peekDictionaryEntries(ids) {
+  const result = {}
+  for (const id of ids) if (attempted.has(id)) result[id] = cache.get(id) ?? null
+  return result
+}
+
 // Returns { [jmdictId]: row|null } for every id already resolved (found or not).
 export async function fetchDictionaryEntries(ids) {
   const unique = [...new Set(ids)].filter(Boolean)
   const missing = unique.filter(id => !attempted.has(id))
   if (missing.length > 0 && supabase) {
-    const { data } = await supabase.from('dictionary').select(SELECT).in('id', missing)
+    // Chunked: the ids travel in the URL, and a caller resolving every word
+    // the learner has met (the details panel's kanji tiles) passes hundreds.
+    const chunks = []
+    for (let i = 0; i < missing.length; i += LOOKUP_CHUNK) chunks.push(missing.slice(i, i + LOOKUP_CHUNK))
+    const results = await Promise.all(chunks.map(chunk => supabase.from('dictionary').select(SELECT).in('id', chunk)))
     missing.forEach(id => attempted.add(id))
-    if (data) for (const row of data) cache.set(row.id, row)
+    for (const { data } of results) if (data) for (const row of data) cache.set(row.id, row)
   }
   const result = {}
   for (const id of unique) {

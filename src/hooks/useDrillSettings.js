@@ -17,13 +17,26 @@ import { safeLocalStorageGet, safeLocalStorageSet } from '../utils/storage.js'
 // audio — and the back giving everything, so a card tests you once and then
 // explains itself. Interface keeps the feedback that reacts to an answer and
 // drops the two decorations.
+//
+// The example sentence and the kanji breakdown live in the details panel
+// under the card rather than on its back: `details` shows the panel at all,
+// `sentence` and `kanjiMeanings` are its two halves (at least one stays on —
+// DrillSettingsPanel enforces that), and the sentence's own translation,
+// furigana and audio are settings of their own. `detailsTheme` is the panel's
+// own light / dark switch (the sun in its corner): dark by default, keeping
+// light for the card being tested.
 export const DRILL_SETTINGS_DEFAULTS = {
   furigana: false,
   frontAudio: false,
+  readingPosition: 'below',
   translation: true,
-  kanjiMeanings: true,
-  sentence: true,
   backAudio: true,
+  details: true,
+  detailsTheme: 'dark',
+  sentence: true,
+  kanjiMeanings: true,
+  sentenceTranslation: 'blur',
+  sentenceFurigana: 'new',
   sentenceAudio: false,
   voice: 'male',
   backupVoice: '',
@@ -46,6 +59,7 @@ const BOOL_KEYS = {
   kanjiMeanings: 'show-kanji-meaning',
   sentence: 'show-sentence',
   backAudio: 'back-audio',
+  details: 'show-details',
   sentenceAudio: 'sentence-audio',
   sfx: 'sfx-enabled',
   pixelFont: 'pixel-font',
@@ -56,7 +70,14 @@ const BOOL_KEYS = {
 const STRING_KEYS = {
   voice: 'voice',
   backupVoice: 'backup-voice',
+  readingPosition: 'reading-position',
+  detailsTheme: 'details-theme',
+  sentenceTranslation: 'sentence-translation',
+  sentenceFurigana: 'sentence-furigana',
 }
+
+// String settings that are new enough to have nothing to migrate from.
+const PLAIN_STRING_KEYS = ['readingPosition', 'detailsTheme', 'sentenceTranslation', 'sentenceFurigana']
 
 function readBool(key, fallback) {
   const raw = safeLocalStorageGet(key)
@@ -114,6 +135,9 @@ function readInitial(prefix) {
   settings.backupVoice = safeLocalStorageGet(`${prefix}-${STRING_KEYS.backupVoice}`)
     ?? safeLocalStorageGet(`${prefix}-tts-voice`)
     ?? DRILL_SETTINGS_DEFAULTS.backupVoice
+  for (const name of PLAIN_STRING_KEYS) {
+    settings[name] = safeLocalStorageGet(`${prefix}-${STRING_KEYS[name]}`) ?? DRILL_SETTINGS_DEFAULTS[name]
+  }
 
   return settings
 }

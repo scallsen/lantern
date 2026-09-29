@@ -14,7 +14,7 @@ function render(props) {
 describe('DrillSettingsPanel', () => {
   it('groups every setting under the part of the card it changes', () => {
     const html = render({ backupVoices: VOICES })
-    for (const group of ['Card front', 'Card back', 'Audio', 'Interface']) {
+    for (const group of ['Card front', 'Card back', 'Details', 'Sentence', 'Audio', 'Interface']) {
       expect(html).toContain(`>${group}<`)
     }
     // One audio row per face, plus the group heading of the same name.
@@ -31,10 +31,32 @@ describe('DrillSettingsPanel', () => {
     expect(render({ backupVoices: [] })).not.toContain('>Backup voice<')
   })
 
-  it('drops the audio group entirely when neither voice row applies', () => {
+  it('drops the audio group when neither voice row applies', () => {
     const html = render({ backupVoices: [], hasRecordedVoices: false })
-    // Only the two per-face rows remain — no heading, so no third match.
     expect(html.match(/>Audio</g)).toHaveLength(2)
+  })
+
+  it('offers Sentence audio under the back’s Audio, only while that is on', () => {
+    expect(render({})).toContain('aria-label="Sentence audio"')
+    expect(render({ settings: { ...DRILL_SETTINGS_DEFAULTS, backAudio: false } })).not.toContain('aria-label="Sentence audio"')
+  })
+
+  it('drops the sentence group while the sentence is off, but keeps Sentence audio', () => {
+    const html = render({ settings: { ...DRILL_SETTINGS_DEFAULTS, sentence: false } })
+    expect(html).not.toContain('>Translation<')
+    expect(html).toContain('aria-label="Sentence audio"')
+  })
+
+  it('keeps at least one half of the details panel on', () => {
+    const html = render({ settings: { ...DRILL_SETTINGS_DEFAULTS, kanjiMeanings: false } })
+    expect(html).toMatch(/aria-label="Sentence" disabled=""/)
+    expect(html).not.toMatch(/aria-label="Kanji" disabled=""/)
+  })
+
+  it('hides the panel’s halves with the panel', () => {
+    const html = render({ settings: { ...DRILL_SETTINGS_DEFAULTS, details: false } })
+    expect(html).toContain('>Show under card<')
+    expect(html).not.toContain('aria-label="Kanji"')
   })
 
   it('reports switch state to assistive tech', () => {

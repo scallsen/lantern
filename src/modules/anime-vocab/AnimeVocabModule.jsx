@@ -224,8 +224,9 @@ export default function AnimeVocabModule({ initialMediaId }) {
                 showStreak={settings.streak}
                 showFurigana={settings.furigana}
                 showTranslation={settings.translation}
-                showSentence={settings.sentence}
-                showKanjiMeaning={settings.kanjiMeanings}
+                settings={settings}
+                onChangeSetting={setSetting}
+                isMobile={isMobile}
                 pixelFont={settings.pixelFont}
                 showVisualEffects={settings.visualEffects}
               />

@@ -17,12 +17,36 @@ import {
 //
 // Every row sits at the same indent. A setting that only applies sometimes is
 // sequenced by position and by appearing at all — a deck with no recordings
-// has no Voice row, a device with no speech voices has no Backup voice row —
-// so there is no explanatory text under any row.
+// has no Voice row, a device with no speech voices has no Backup voice row,
+// the Sentence group only exists while the sentence is shown — so there is no
+// explanatory text under any row; Sentence audio, which follows the word, only
+// appears under the back's Audio while that's on. One row is disabled rather
+// than hidden, because it's the same row a moment later: the last of Sentence
+// / Kanji still on (the details panel always shows at least one).
+// Sentence audio doesn't depend on the details panel showing the sentence:
+// it's the word's Tanaka sentence either way, and with no recording the
+// backup voice reads it.
 
 const VOICE_OPTIONS = [
   { value: 'male', label: 'Male' },
   { value: 'female', label: 'Female' },
+]
+
+const READING_OPTIONS = [
+  { value: 'below', label: 'Below' },
+  { value: 'above', label: 'Above' },
+]
+
+const TRANSLATION_OPTIONS = [
+  { value: 'off', label: 'Off' },
+  { value: 'blur', label: 'Blurred' },
+  { value: 'on', label: 'On' },
+]
+
+const SENTENCE_FURIGANA_OPTIONS = [
+  { value: 'off', label: 'Off' },
+  { value: 'new', label: 'New' },
+  { value: 'all', label: 'All' },
 ]
 
 // Exported for other settings-style panels (VocabSrsModule's overview) that
@@ -95,22 +119,38 @@ export default function DrillSettingsPanel({
   extraInterfaceRows,
 }) {
   function toggle(key) {
-    return () => onChange(key, !settings[key])
+    return () => {
+      onChange(key, !settings[key])
+      // Turning the panel back on with both halves off (an older install
+      // could have both) would show nothing, so the sentence comes back too.
+      if (key === 'details' && !settings.details && !settings.sentence && !settings.kanjiMeanings) onChange('sentence', true)
+    }
   }
 
-  function boolRow(key, label) {
+  function boolRow(key, label, { checked = settings[key], disabled = false } = {}) {
     return (
       <Row
         key={key}
         label={label}
-        onActivate={toggle(key)}
-        control={<Switch checked={settings[key]} onChange={toggle(key)} label={label} />}
+        onActivate={disabled ? undefined : toggle(key)}
+        control={<Switch checked={checked} disabled={disabled} onChange={toggle(key)} label={label} />}
+      />
+    )
+  }
+
+  function chipRow(key, label, options) {
+    return (
+      <Row
+        key={key}
+        label={label}
+        control={<ChipSelector mode="single" value={settings[key]} onChange={v => onChange(key, v)} options={options} />}
       />
     )
   }
 
   const showVoice = hasRecordedVoices
   const showBackupVoice = backupVoices.length > 0
+  const sentenceShown = settings.details && settings.sentence
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE_24 }}>
@@ -120,37 +160,43 @@ export default function DrillSettingsPanel({
       </Group>
 
       <Group label="Card back">
+        {chipRow('readingPosition', 'Reading', READING_OPTIONS)}
         {boolRow('translation', 'Meaning')}
-        {boolRow('kanjiMeanings', 'Kanji breakdown')}
-        {boolRow('sentence', 'Sentence')}
         {boolRow('backAudio', 'Audio')}
-        {showVoice && settings.backAudio && boolRow('sentenceAudio', 'Sentence audio')}
+        {settings.backAudio && boolRow('sentenceAudio', 'Sentence audio')}
       </Group>
 
-      {(showVoice || showBackupVoice) && (
-        <Group label="Audio" footnote={audioFootnote}>
-          {showVoice && (
-            <Row
-              key="voice"
-              label="Voice"
-              control={<ChipSelector mode="single" value={settings.voice} onChange={v => onChange('voice', v)} options={VOICE_OPTIONS} />}
-            />
-          )}
-          {showBackupVoice && (
-            <Row
-              key="backupVoice"
-              label="Backup voice"
-              control={
-                <Select
-                  value={settings.backupVoice}
-                  onChange={v => onChange('backupVoice', v)}
-                  options={[{ value: '', label: 'Device default' }, ...backupVoices.map(v => ({ value: v.name, label: v.name }))]}
-                  label="Backup voice"
-                />
-              }
-            />
-          )}
+      <Group label="Details">
+        {boolRow('details', 'Show under card')}
+        {settings.details && boolRow('sentence', 'Sentence', { disabled: settings.sentence && !settings.kanjiMeanings })}
+        {settings.details && boolRow('kanjiMeanings', 'Kanji', { disabled: settings.kanjiMeanings && !settings.sentence })}
+      </Group>
+
+      {sentenceShown && (
+        <Group label="Sentence">
+          {chipRow('sentenceTranslation', 'Translation', TRANSLATION_OPTIONS)}
+          {chipRow('sentenceFurigana', 'Furigana', SENTENCE_FURIGANA_OPTIONS)}
         </Group>
+      )}
+
+      {(showVoice || showBackupVoice) && (
+      <Group label="Audio" footnote={audioFootnote}>
+        {showVoice && chipRow('voice', 'Voice', VOICE_OPTIONS)}
+        {showBackupVoice && (
+          <Row
+            key="backupVoice"
+            label="Backup voice"
+            control={
+              <Select
+                value={settings.backupVoice}
+                onChange={v => onChange('backupVoice', v)}
+                options={[{ value: '', label: 'Device default' }, ...backupVoices.map(v => ({ value: v.name, label: v.name }))]}
+                label="Backup voice"
+              />
+            }
+          />
+        )}
+      </Group>
       )}
 
       <Group label="Interface">

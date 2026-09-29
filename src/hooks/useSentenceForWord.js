@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { fetchSentencesFor } from '../utils/sentenceLookup.js'
+import { useEffect, useMemo, useState } from 'react'
+import { fetchSentencesFor, peekSentences } from '../utils/sentenceLookup.js'
 
 // Returns the best Tanaka Corpus sentence for a jmdictId, or null if there
 // isn't one (or the id/lookup is disabled).
@@ -25,5 +25,10 @@ export function useSentencesForWords(ids, enabled = true) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, enabled])
 
-  return sentences
+  // Stable between renders unless something new resolved, so callers can
+  // keep memoizing on it.
+  const peeked = peekSentences(filtered)
+  const peekedCount = Object.keys(peeked).length
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  return useMemo(() => ({ ...peeked, ...sentences }), [key, peekedCount, sentences])
 }

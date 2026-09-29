@@ -1,9 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const rpc = vi.fn()
-vi.mock('../lib/supabase.js', () => ({ supabase: { rpc: (...args) => rpc(...args) } }))
+// best_sentences doesn't return a sentence's dictionary_ids; they're read
+// from the table in the same request.
+const WORDS = [{ id: 's1', dictionary_ids: ['1', '1008910'] }]
+vi.mock('../lib/supabase.js', () => ({
+  supabase: {
+    rpc: (...args) => rpc(...args),
+    from: () => ({ select: () => ({ in: async () => ({ data: WORDS }) }) }),
+  },
+}))
 
-const ROW = { dictionary_id: '1', id: 's1', japanese: '頼りにしている。', english: 'I rely on you.', quality: true }
+const BEST = { dictionary_id: '1', id: 's1', japanese: '頼りにしている。', english: 'I rely on you.', quality: true }
+const ROW = { ...BEST, dictionary_ids: ['1', '1008910'] }
 
 // The module caches across calls, so each test gets a fresh copy.
 async function freshLookup() {
@@ -25,7 +34,7 @@ describe('fetchSentencesFor', () => {
 
     const first = fetchSentencesFor(['1'])
     const second = fetchSentencesFor(['1'])
-    respond({ data: [ROW] })
+    respond({ data: [BEST] })
 
     expect(await first).toEqual({ 1: ROW })
     expect(await second).toEqual({ 1: ROW })
@@ -41,7 +50,7 @@ describe('fetchSentencesFor', () => {
   })
 
   it('retries after a failed request instead of caching the failure', async () => {
-    rpc.mockResolvedValueOnce({ data: null, error: { message: 'offline' } }).mockResolvedValueOnce({ data: [ROW] })
+    rpc.mockResolvedValueOnce({ data: null, error: { message: 'offline' } }).mockResolvedValueOnce({ data: [BEST] })
     const fetchSentencesFor = await freshLookup()
     expect(await fetchSentencesFor(['1'])).toEqual({})
     expect(await fetchSentencesFor(['1'])).toEqual({ 1: ROW })

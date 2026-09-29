@@ -1,13 +1,9 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import PageHeader from '../../components/PageHeader.jsx'
 import AuthSlot from '../../components/AuthSlot.jsx'
-import { WordPopup } from '../../components/JapaneseReader.jsx'
+import WordPopup from '../../components/WordPopup.jsx'
 import { buildVocabMap } from '../../utils/vocabMap.js'
 import { useProgress } from '../../hooks/useProgress.js'
-import { useToast } from '../../context/ToastContext.jsx'
-// Cross-module write: creates cards in vocab-srs progress namespace
-import { createCard } from '../vocab-srs/srs.js'
-import { ensureDeck, createDeck, deleteCards } from '../vocab-srs/deckUtils.js'
 import ChipSelector from '../../components/Chip.jsx'
 import ToggleButton from '../../components/ToggleButton.jsx'
 import Disclosure from '../../components/Disclosure.jsx'
@@ -34,11 +30,8 @@ export default function ImmersionReader({ article, defaultLevel = 'simplified', 
   const [popup, setPopup] = useState(null) // { token, vocabEntry, anchorRect, idx }
   const [showFurigana, setShowFurigana] = useState(true)
   const { data: srsData, save: saveSrs } = useProgress('vocab-srs')
-  const { showToast } = useToast()
   const scrollRef = useRef(null)
   const isMobile = useIsMobile()
-
-  const decks = srsData?.decks ?? {}
 
   useEffect(() => {
     const el = scrollRef.current
@@ -60,39 +53,6 @@ export default function ImmersionReader({ article, defaultLevel = 'simplified', 
     setPopup({ token, vocabEntry, anchorRect: rect, idx })
   }
 
-  function addWordToDeck(token, vocabEntry, deckId, decksForCreate) {
-    const word = token.t
-    const meaning = vocabEntry?.meaning ?? token.r ?? ''
-    const current = srsData ?? { decks: {}, cards: {}, lastSession: null, totalReviews: 0, newCardDay: { date: '', count: 0 } }
-    const newDecks = decksForCreate ?? ensureDeck(current.decks, deckId, current.decks[deckId]?.name ?? 'Deck')
-    const cardId = `${deckId}-${Date.now()}`
-    const extras = {}
-    if (vocabEntry?.jmdictId) extras.jmdictId = vocabEntry.jmdictId
-    const card = createCard(word, meaning, cardId, deckId, extras)
-    saveSrs({ ...current, decks: newDecks, cards: { ...current.cards, [cardId]: card } })
-    setPopup(null)
-    showToast({
-      message: `Added to "${newDecks[deckId]?.name ?? 'Deck'}".`,
-      actionLabel: 'Undo',
-      onAction: () => handleUndoAdd(cardId),
-    })
-  }
-
-  function handlePopupAdd(token, vocabEntry, deckId) {
-    addWordToDeck(token, vocabEntry, deckId)
-  }
-
-  function handlePopupCreateAndAdd(token, vocabEntry, name) {
-    const current = srsData ?? { decks: {}, cards: {}, lastSession: null, totalReviews: 0, newCardDay: { date: '', count: 0 } }
-    const { decks: newDecks, deckId } = createDeck(current.decks, name)
-    addWordToDeck(token, vocabEntry, deckId, newDecks)
-  }
-
-  function handleUndoAdd(cardId) {
-    const current = srsData ?? { decks: {}, cards: {}, lastSession: null, totalReviews: 0, newCardDay: { date: '', count: 0 } }
-    saveSrs({ ...current, cards: deleteCards(current.cards, [cardId]) })
-  }
-
   const showingSimplified = showSimplified && !!article.body_simple
   const body = showingSimplified ? article.body_simple : article.body_ja
   const tokens = showingSimplified ? article.tokens_simple : article.tokens_ja
@@ -103,13 +63,13 @@ export default function ImmersionReader({ article, defaultLevel = 'simplified', 
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: '#1E1E1E' }}>
       {popup && (
         <WordPopup
-          token={popup.token}
-          vocabEntry={popup.vocabEntry}
+          // Added as it appears in the article, which is what this reader
+          // has always saved.
+          word={{ text: popup.token.t, reading: popup.token.r, pos: popup.vocabEntry?.pos, meaning: popup.vocabEntry?.meaning ?? popup.token.r ?? '', jmdictId: popup.vocabEntry?.jmdictId }}
           anchorRect={popup.anchorRect}
-          decks={decks}
           isMobile={isMobile}
-          onAdd={handlePopupAdd}
-          onCreateAndAdd={handlePopupCreateAndAdd}
+          srsData={srsData}
+          saveSrs={saveSrs}
           onClose={() => setPopup(null)}
         />
       )}

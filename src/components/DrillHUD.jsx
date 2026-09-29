@@ -26,7 +26,21 @@ function WaveText({ text, color }) {
   ))
 }
 
-export default function DrillHUD({ streak, bestStreak, correct, troubled, remaining, canUndo, onUndo, showStreak, showVisualEffects = true, onboardingHint, errorMessage, streakLost, actionSlot, isShort, children }) {
+// The session's Correct · Troubled · Remaining line. Exported for the drills
+// that show it in their bottom bar instead (DrillHUD showCounts={false}).
+export function DrillCounts({ correct, troubled, remaining }) {
+  return (
+    <div style={{ display: 'flex', gap: 8, fontSize: FS_BASE, fontFamily: FONT, alignItems: 'center', whiteSpace: 'nowrap' }}>
+      <span style={{ color: correct > 0 ? '#4ade80' : 'rgba(255,255,255,0.5)' }}>{correct} Correct</span>
+      <span style={{ color: 'rgba(255,255,255,0.25)' }}>·</span>
+      <span style={{ color: troubled > 0 ? '#fbbf24' : 'rgba(255,255,255,0.5)' }}>{troubled} Troubled</span>
+      <span style={{ color: 'rgba(255,255,255,0.25)' }}>·</span>
+      <span style={{ color: 'rgba(255,255,255,0.5)' }}>{remaining} Remaining</span>
+    </div>
+  )
+}
+
+export default function DrillHUD({ streak, bestStreak, correct, troubled, remaining, canUndo, onUndo, showStreak, showVisualEffects = true, onboardingHint, errorMessage, streakLost, actionSlot, isShort, showUndo = true, showCounts = true, children }) {
   const [popCount,   setPopCount]   = useState(0)
   const [errorCount, setErrorCount] = useState(0)
   const prevStreakRef = useRef(streak)
@@ -62,12 +76,18 @@ export default function DrillHUD({ streak, bestStreak, correct, troubled, remain
   const showWiggle  = showVisualEffects && streak >= WIGGLE_THRESHOLD
   const showWave    = showVisualEffects && streak >= WAVE_THRESHOLD
   const streakText  = `Streak: ${streak}`
+  // The slot above the card holds the streak, a hint or an error, and stays
+  // reserved (hidden) so that one appearing never moves the card. With the
+  // streak off and a caller that uses neither of the others it would only
+  // ever be 64px of empty space — enough, with the card's details panel under
+  // it, to push the buttons and counts below the fold on a laptop or phone.
+  const topSlot     = showStreak || onboardingHint !== undefined || errorMessage !== undefined
   const streakColor = streak > 0 ? '#fff' : 'transparent'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: isShort ? 8 : 15 }}>
 
-      <div style={{ minHeight: isShort ? 44 : 64, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, visibility: (showStreak || onboardingHint != null || errorMessage != null) ? 'visible' : 'hidden' }}>
+      {topSlot && <div style={{ minHeight: isShort ? 44 : 64, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, visibility: (showStreak || onboardingHint != null || errorMessage != null) ? 'visible' : 'hidden' }}>
         {errorMessage != null ? (
           <span key={errorCount} style={{ display: 'inline-block', fontSize: 20, fontWeight: 700, fontFamily: FONT, color: '#f87171', letterSpacing: '0.05em', lineHeight: 1.3, animation: 'error-in 0.22s ease-out' }}>
             {errorMessage}
@@ -111,11 +131,13 @@ export default function DrillHUD({ streak, bestStreak, correct, troubled, remain
             </span>
           </>
         )}
-      </div>
+      </div>}
 
       <div>{children}</div>
 
-      <div style={{ width: 'min(380px, calc(100vw - 32px))', marginTop: -5 }}>
+      {/* showUndo={false}: the drill has put Undo in its button row instead
+          (DrillButtonRow's `undo`), so this line isn't needed at all. */}
+      {(showUndo || actionSlot != null) && <div style={{ width: 'min(380px, calc(100vw - 32px))', marginTop: -5 }}>
         {actionSlot != null ? actionSlot : (
           <button
             onClick={canUndo ? onUndo : undefined}
@@ -137,15 +159,9 @@ export default function DrillHUD({ streak, bestStreak, correct, troubled, remain
             Undo
           </button>
         )}
-      </div>
+      </div>}
 
-      <div style={{ display: 'flex', gap: 8, fontSize: FS_BASE, fontFamily: FONT, alignItems: 'center' }}>
-        <span style={{ color: correct > 0 ? '#4ade80' : 'rgba(255,255,255,0.5)' }}>{correct} Correct</span>
-        <span style={{ color: 'rgba(255,255,255,0.25)' }}>·</span>
-        <span style={{ color: troubled > 0 ? '#fbbf24' : 'rgba(255,255,255,0.5)' }}>{troubled} Troubled</span>
-        <span style={{ color: 'rgba(255,255,255,0.25)' }}>·</span>
-        <span style={{ color: 'rgba(255,255,255,0.5)' }}>{remaining} Remaining</span>
-      </div>
+      {showCounts && <DrillCounts correct={correct} troubled={troubled} remaining={remaining} />}
 
     </div>
   )

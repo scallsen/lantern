@@ -15,10 +15,14 @@ export function useJaVoices() {
 }
 
 export function useTTS(voiceName = '') {
-  function speak(text) {
+  // `onEnd` chains the next clip (the drills' word-then-sentence) — only on a
+  // natural finish, since a cancel() from a newer speak() or a stop ends the
+  // utterance with an error instead.
+  function speak(text, { onEnd } = {}) {
     if (!supported) return
     speechSynthesis.cancel()
     const utterance = new SpeechSynthesisUtterance(text)
+    if (onEnd) utterance.onend = onEnd
     utterance.lang = 'ja-JP'
     utterance.rate = 0.85
     if (voiceName) {

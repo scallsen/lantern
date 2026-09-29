@@ -31,7 +31,7 @@ No bundled deck ships today, so this is the shape a future one would need — ea
 }
 ```
 
-There is no per-card sentence: the card back shows the Tanaka sentence (Japanese, English below in a smaller font) for the card's `jmdictId` — see "The Tanaka sentence is the only example sentence" in the root CLAUDE.md.
+There is no per-card sentence: the details panel under the card shows the Tanaka sentence (and its translation) for the card's `jmdictId` — see "The Tanaka sentence is the only example sentence" in the root CLAUDE.md.
 
 **A card's `jmdictId` is a snapshot, so it is backfilled nightly.** `addWordsToDeck` copies the word's link when the card is made and never looks again, so cards made from a personal list before that list was linked stayed unlinked — no sentence, no sentence audio — even once the word itself was (183 of one learner's 283 cards, found and fixed 2026-09-29). `scripts/backfill-srs-jmdict.mjs` fills a missing `jmdictId` from the same account's list word with that front, then from a reading-verified dictionary match, and runs nightly in `generate-vocab-audio.yml` after the list backfill. It never overwrites a link, and a card (or its list word) carrying `noJmdict: true` is left alone — that is the hand-set marker for a homograph the matcher would get wrong (～両目, a train car, is spelled and read like 両目, "both eyes").
 
@@ -176,9 +176,15 @@ All keys use `srs-` prefix. The VocabSrsModule reads these on mount; VocabSrsDri
 | `srs-backup-voice` | `''` | Browser speech voice name that reads words with no recording (`''` = device default) |
 | `srs-sfx-enabled` | `true` | Sound effects (correct/wrong beeps) |
 | `srs-show-furigana` | `false` | Show the reading on the card **front**. The back always shows it — see Furigana on the back, under Vocabulary Drill |
+| `srs-reading-position` | `'below'` | The card's reading under the word, or `'above'` as furigana — the sentence's furigana follows it |
 | `srs-show-translation` | `true` | Show English translation on card back |
-| `srs-show-sentence` | `true` | Show example sentence on card back |
-| `srs-show-kanji-meaning` | `true` | Show per-kanji meaning bar on card back (see Per-kanji meanings under Vocabulary Drill) |
+| `srs-show-details` | `true` | Show the details panel under the card (`CardDetails`, see `src/components/CLAUDE.md`) |
+| `srs-details-theme` | `'dark'` | The panel's look — `'dark'` (outline) \| `'light'` (paper), switched by the sun in its corner |
+| `srs-show-sentence` | `true` | The panel's example sentence (at least one of this and the next stays on) |
+| `srs-show-kanji-meaning` | `true` | The panel's kanji tiles |
+| `srs-sentence-translation` | `'blur'` | `'off'` \| `'blur'` (tap to reveal) \| `'on'` |
+| `srs-sentence-furigana` | `'new'` | `'off'` \| `'new'` (words the learner doesn't know yet) \| `'all'` |
+| `srs-sentence-audio` | `true` | Play the sentence on flip (after the word, when back audio is on) |
 | `srs-pixel-font` | `false` | Use DotGothic16 pixel font on cards |
 | `srs-visual-effects` | `true` | Enable card visual effects |
 | `srs-show-streak` | `false` | Show the streak counter |

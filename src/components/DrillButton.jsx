@@ -38,7 +38,50 @@ export function DrillButton({ label, hint, color, onClick, disabled = false, fle
       }}
     >
       {label}
-      {hint && <span style={{ opacity: 0.6, fontSize: FS_CAPTION }}> [{hint}]</span>}
+      {/* A margin, not a leading space: the button is a flex box, which
+          drops a space at the start of its text — "Correct[X]". */}
+      {hint && <span style={{ opacity: 0.6, fontSize: FS_CAPTION, marginLeft: '0.45em' }}>[{hint}]</span>}
+    </button>
+  )
+}
+
+const FLIP_FILL = 'rgba(255,255,255,0.1)'
+
+// Before the flip, the row is one button the same height as the verdict
+// buttons that replace it, so nothing shifts when the card turns.
+export function DrillFlipButton({ onClick, hint = 'Space', disabled = false }) {
+  return <DrillButton label="Flip card" hint={hint} color={FLIP_FILL} onClick={onClick} disabled={disabled} />
+}
+
+function UndoIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" style={{ display: 'block' }}>
+      <path d="M7.5 5 L3.5 9 L7.5 13" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M4 9 H12 A4.5 4.5 0 0 1 12 18 H9" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+// Undo as a square the height of the verdict buttons, leading their row —
+// it used to be a line of its own under the row, which a short window
+// couldn't spare. Hover in global.css (.drill-undo).
+export function DrillUndoButton({ onClick, disabled = false }) {
+  return (
+    <button
+      type="button"
+      title="Undo"
+      aria-label="Undo"
+      onClick={onClick}
+      disabled={disabled}
+      className="drill-undo"
+      style={{
+        width: DRILL_ROW_HEIGHT, height: DRILL_ROW_HEIGHT, flexShrink: 0, padding: 0, borderRadius: 8,
+        background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(255,255,255,0.75)',
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.35 : 1,
+      }}
+    >
+      <UndoIcon />
     </button>
   )
 }
@@ -46,22 +89,27 @@ export function DrillButton({ label, hint, color, onClick, disabled = false, fle
 // The row DrillButtons sit in, plus the pre-flip placeholder that occupies
 // the same slot so the layout doesn't jump when the card flips. Both are
 // pinned to DRILL_ROW_HEIGHT so that's true regardless of content.
-export default function DrillButtonRow({ children, placeholder }) {
+// `undo` ({ onClick, disabled }) leads the row with DrillUndoButton on both
+// faces.
+export default function DrillButtonRow({ children, placeholder, undo }) {
+  const lead = undo && <DrillUndoButton onClick={undo.onClick} disabled={undo.disabled} />
   if (placeholder) {
     return (
       <div style={{
         width: DRILL_ROW_WIDTH, height: DRILL_ROW_HEIGHT,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        display: 'flex', alignItems: 'center', gap: SPACE_8,
         color: 'rgba(255,255,255,0.25)', fontSize: FS_BASE,
         fontFamily: FONT, letterSpacing: TRACKING,
       }}>
-        {placeholder}
+        {lead}
+        <span style={{ flex: 1, textAlign: 'center' }}>{placeholder}</span>
       </div>
     )
   }
 
   return (
     <div style={{ width: DRILL_ROW_WIDTH, height: DRILL_ROW_HEIGHT, display: 'flex', gap: SPACE_8 }}>
+      {lead}
       {children}
     </div>
   )

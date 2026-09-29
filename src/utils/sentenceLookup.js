@@ -16,6 +16,23 @@ const pending = new Map()
 // keeps a card's sentence and its pre-recorded clip in step.
 const BATCH = 500
 
+async function dictionaryIdsOf(sentenceIds) {
+  const ids = [...new Set(sentenceIds)]
+  if (!ids.length) return new Map()
+  const { data } = await supabase.from('sentences').select('id, dictionary_ids').in('id', ids)
+  return new Map((data ?? []).map(row => [row.id, row.dictionary_ids]))
+}
+
+// The already-resolved subset, synchronously — lets a hook that mounts
+// fresh for every card (the drill card is keyed per card) render cached data
+// on its first frame instead of flashing an empty state while the async
+// lookup resolves from cache.
+export function peekSentences(ids) {
+  const result = {}
+  for (const id of ids) if (cache.has(id)) result[id] = cache.get(id)
+  return result
+}
+
 // Returns { [jmdictId]: sentenceRow|null } for every id resolved (found or
 // not). A failed request resolves nothing, so the next call retries it.
 export async function fetchSentencesFor(ids) {
@@ -25,9 +42,14 @@ export async function fetchSentencesFor(ids) {
     for (let i = 0; i < missing.length; i += BATCH) {
       const batch = missing.slice(i, i + BATCH)
       const request = supabase.rpc('best_sentences', { ids: batch })
-        .then(({ data }) => {
+        .then(async ({ data }) => {
           if (!data) return
-          const byId = new Map(data.map(row => [row.dictionary_id, row]))
+          // best_sentences doesn't return a sentence's dictionary_ids, which
+          // the drill's details panel tokenizes it by, so they come from the
+          // table in the same request. Without them a row still shows and
+          // plays; only its words aren't tappable.
+          const words = await dictionaryIdsOf(data.map(row => row.id))
+          const byId = new Map(data.map(row => [row.dictionary_id, { ...row, dictionary_ids: words.get(row.id) ?? [] }]))
           for (const id of batch) cache.set(id, byId.get(id) ?? null)
         })
         .catch(() => {})

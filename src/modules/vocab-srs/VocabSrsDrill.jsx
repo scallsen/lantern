@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 import FlipCard from '../../FlipCard.jsx'
-import Japanese from '../../components/Japanese.jsx'
+import CardWord from '../../components/CardWord.jsx'
+import CardDetails from '../../components/CardDetails.jsx'
 import PageHeader from '../../components/PageHeader.jsx'
 import { SidebarHeaderToggle } from '../../components/SettingsSidebar.jsx'
 import Button from '../../components/Button.jsx'
 import DrillHUD from '../../components/DrillHUD.jsx'
-import DrillButtonRow, { DrillButton } from '../../components/DrillButton.jsx'
+import DrillButtonRow, { DrillButton, DrillFlipButton } from '../../components/DrillButton.jsx'
+import DrillActionBar from '../../components/DrillActionBar.jsx'
 import { FONT, TRACKING, TEXT, TEXT_MUTED, FS_BASE, FS_DISPLAY_HEADING, FS_STAT_VALUE, FS_CAPTION, WARNING, DRILL_COLORS, LANTERN_ON, LANTERN_SIZES } from '../../data/theme.js'
 import { useAccent } from '../../context/ModuleThemeContext.jsx'
 import { Rating } from './srs.js'
@@ -14,15 +16,17 @@ import { useTTS } from '../../hooks/useTTS.js'
 import { useSFX } from '../../hooks/useSFX.js'
 import { useGamepad } from '../../hooks/useGamepad.js'
 import { useVoicevoxPlayer, SENTENCE_GAP } from '../../hooks/useVoicevoxPlayer.js'
-import { useKanjiMeanings } from '../../hooks/useKanjiMeanings.js'
 import { getVoicevoxAudioUrl, speakerIdFromAudioSource } from '../../utils/voicevoxAudio.js'
 import { cardSpeechText } from '../../lib/displayForm.js'
-import { kanjiCharsOf } from '../../utils/kanjiMeaningLookup.js'
 import { useDictionaryEntry } from '../../hooks/useDictionaryEntries.js'
 import { briefGloss } from '../../utils/dictionaryEntryLookup.js'
 import { useSentenceForWord } from '../../hooks/useSentenceForWord.js'
 import { useTurnedOn } from '../../hooks/useTurnedOn.js'
 import { fetchSentencesFor } from '../../utils/sentenceLookup.js'
+import { useCardSentence, usePrefetchCardDetails } from '../../hooks/useCardSentence.js'
+import { useDrillEntrance } from '../../hooks/useDrillEntrance.js'
+import { useDrillCardSize } from '../../hooks/useDrillCardSize.js'
+import { detailsSlot } from '../../components/cardDetailsSlot.js'
 import AttributionFooter from '../../components/AttributionFooter.jsx'
 import { getMainTextScale, getSecondaryTextScale, cqw } from '../../utils/cardTextFit.js'
 
@@ -50,36 +54,11 @@ function formatTime(secs) {
   return m > 0 ? `${m}m ${s}s` : `${s}s`
 }
 
-function KanjiMeaningBar({ chars, meanings, jaFont, scale }) {
-  return (
-    <div style={{ display: 'flex', borderTop: '1px solid rgba(0,0,0,0.14)', backgroundColor: 'rgba(0,0,0,0.035)' }}>
-      {chars.map((ch, i) => (
-        <div key={`${ch}-${i}`} style={{
-          flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-          padding: '1.8cqw 1cqw', gap: 2,
-          borderLeft: i > 0 ? '1px solid rgba(0,0,0,0.1)' : 'none',
-        }}>
-          <Japanese as="span" style={{ fontFamily: jaFont, fontSize: cqw(5, scale), color: '#333' }}>{ch}</Japanese>
-          <div style={{
-            fontFamily: FONT, fontSize: cqw(2.6, scale), color: '#777', textAlign: 'center',
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%',
-          }}>
-            {meanings[ch]}
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function SrsCardFace({ text, kana, isBack, backText, jmdictId, showFurigana, showTranslation, showSentence, showKanjiMeaning, pixelFont }) {
+// The card itself carries the word, its reading and its meaning. The example
+// sentence and the kanji breakdown moved into the details panel under it
+// (CardDetails), shared with Vocab Drill.
+function SrsCardFace({ text, kana, isBack, backText, jmdictId, showFurigana, showTranslation, readingPosition, pixelFont }) {
   const cardFont = pixelFont ? FONT : 'system-ui, sans-serif'
-  const showReading = kana && kana !== text && (isBack || showFurigana)
-
-  const kanjiMeaningsEnabled = isBack && showKanjiMeaning
-  const kanjiMeanings = useKanjiMeanings(text, kanjiMeaningsEnabled)
-  const kanjiChars = kanjiMeaningsEnabled ? kanjiCharsOf(text) : []
-  const meaningBarReady = kanjiChars.length > 0 && kanjiChars.every(ch => ch in kanjiMeanings)
 
   // Dictionary is the source of truth for the definition when this card is
   // linked (jmdictId); the card's own `back` text is only a fallback for cards
@@ -87,89 +66,23 @@ function SrsCardFace({ text, kana, isBack, backText, jmdictId, showFurigana, sho
   const { entry: dictEntry } = useDictionaryEntry(jmdictId, true)
   const resolvedBackText = briefGloss(dictEntry) ?? backText
 
-  const tanakaSentence = useSentenceForWord(jmdictId, isBack && showSentence)
-  const resolvedSentence = tanakaSentence?.japanese ?? null
-  const resolvedSentenceEnglish = tanakaSentence?.english ?? null
-
   const mainScale = getMainTextScale(text)
-  const secondaryScale = getSecondaryTextScale({
-    translation: isBack && showTranslation ? resolvedBackText : null,
-    sentence: isBack && showSentence ? resolvedSentence : null,
-    sentenceEnglish: isBack && showSentence ? resolvedSentenceEnglish : null,
-    showKanjiMeaning: isBack && meaningBarReady,
-  })
+  const secondaryScale = getSecondaryTextScale({ translation: isBack && showTranslation ? resolvedBackText : null })
 
   return (
-    <div style={{ backgroundColor: CARD_BG, width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div style={{
-        flex: 1,
-        minHeight: 0,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 10,
-        padding: '0 20px',
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <Japanese as="div" style={{
-            fontFamily: cardFont,
-            fontSize: cqw(isBack ? 10 : 12.63, mainScale),
-            color: '#222',
-            letterSpacing: 'normal',
-            lineHeight: 1.3,
-            textShadow: '2px 2px 0 rgba(0,0,0,0.25)',
-          }}>
-            {text}
-          </Japanese>
-          {showReading && (
-            <Japanese as="div" style={{
-              fontFamily: cardFont,
-              fontSize: cqw(5.26, mainScale),
-              color: '#666',
-              marginTop: 4,
-            }}>
-              {kana}
-            </Japanese>
-          )}
+    <div style={{ backgroundColor: CARD_BG, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2.5cqw', padding: '0 20px', boxSizing: 'border-box' }}>
+      <CardWord form={text} reading={kana} showReading={isBack || showFurigana} readingPosition={readingPosition} jaFont={cardFont} scale={mainScale} />
+      {isBack && resolvedBackText && showTranslation && (
+        <div style={{
+          fontFamily: cardFont,
+          fontSize: cqw(5.26, secondaryScale),
+          color: '#555',
+          textAlign: 'center',
+          lineHeight: 1.5,
+        }}>
+          {resolvedBackText}
         </div>
-        {isBack && resolvedBackText && showTranslation && (
-          <div style={{
-            fontFamily: cardFont,
-            fontSize: cqw(5.26, secondaryScale),
-            color: '#555',
-            textAlign: 'center',
-            lineHeight: 1.5,
-          }}>
-            {resolvedBackText}
-          </div>
-        )}
-        {isBack && resolvedSentence && showSentence && (
-          <div style={{ textAlign: 'center' }}>
-            <Japanese as="div" style={{
-              fontFamily: cardFont,
-              fontSize: cqw(4.2, secondaryScale),
-              color: '#666',
-              lineHeight: 1.5,
-            }}>
-              {resolvedSentence}
-            </Japanese>
-            {resolvedSentenceEnglish && (
-              <div style={{
-                fontFamily: cardFont,
-                fontSize: cqw(3.5, secondaryScale),
-                color: '#888',
-                lineHeight: 1.5,
-                fontStyle: 'italic',
-                marginTop: 2,
-              }}>
-                {resolvedSentenceEnglish}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-      {isBack && meaningBarReady && <KanjiMeaningBar chars={kanjiChars} meanings={kanjiMeanings} jaFont={cardFont} scale={secondaryScale} />}
+      )}
     </div>
   )
 }
@@ -219,7 +132,7 @@ function DoneScreen({ stats, onDone }) {
 
 export default function VocabSrsDrill({
   initialCards, initialSession, onCardSave, onDone,
-  showTranslation = true, showFurigana = true, showSentence = true, showKanjiMeaning = false,
+  showTranslation = true, showFurigana = true, settings, onChangeSetting, knownIds, related, srsData, saveSrs,
   pixelFont = true, showVisualEffects = true, showStreak = false,
   audioEnabled = true, autoplayFront = true, autoplayBack = true, playSentence = false,
   audioSource = 'voicevox-9', sfxEnabled = true, ttsVoice = '',
@@ -230,10 +143,17 @@ export default function VocabSrsDrill({
   const [session, setSession] = useState(initialSession)
   const [localCards, setLocalCards] = useState(initialCards)
   const [flipped, setFlipped] = useState(false)
+  const { edgeToEdge, width: cardWidth } = useDrillCardSize()
   const ACCENT = useAccent()
   const [leechNotice, setLeechNotice] = useState(null)
+  // `transitioning` locks input only while the answered card leaves; the
+  // next card's slide-in (`entering`) runs on after it, and the buttons are
+  // live again as soon as that card is.
   const [transitioning, setTransitioning] = useState(false)
   const [exitDir, setExitDir] = useState(null)
+  const [entering, setEntering] = useState(false)
+  const enterTimerRef = useRef(null)
+  useEffect(() => () => clearTimeout(enterTimerRef.current), [])
   const [undoEntering, setUndoEntering] = useState(false)
 
   // Force re-render every second so waitUntil countdowns and card availability update.
@@ -313,6 +233,30 @@ export default function VocabSrsDrill({
     if (!played) tts.speak(cardSpeechText(card) ?? '')
   }
 
+  // The details panel's sentence (the same Tanaka sentence Sentence audio
+  // plays after the word), and what its replay button says.
+  const panelCard = getCurrentCard(session)
+  const sentenceOn = !!settings && settings.details && settings.sentence
+  const sentence = useCardSentence({
+    jmdictId: panelCard?.jmdictId, form: panelCard?.front, reading: panelCard?.kana,
+    enabled: sentenceOn && !!panelCard,
+  })
+  usePrefetchCardDetails(session.queue?.slice(0, 3).map(c => ({ jmdictId: c.jmdictId, form: c.front })) ?? [], !!settings?.details)
+  const sentenceRef = useRef(null)
+  sentenceRef.current = sentenceOn && sentence ? sentence : null
+
+  // The session's first card and the panel under it arrive together, once
+  // the panel has its sentence and kanji meanings.
+  const [panelReady, setPanelReady] = useState(false)
+  const entered = useDrillEntrance(panelReady || !settings || !panelCard?.front)
+
+  function replaySentence() {
+    const text = sentenceRef.current?.japanese
+    if (!text) return
+    tts.cancel()
+    playSentenceText(text, { delay: 0 })
+  }
+
   const sessionRef = useRef(session)
   sessionRef.current = session
   const localCardsRef = useRef(localCards)
@@ -331,6 +275,11 @@ export default function VocabSrsDrill({
       sessionRef.current, currentCard, rating, { leechThreshold }
     )
     setTransitioning(true)
+    // An answer given while the last card is still sliding in cuts that
+    // slide short, and its timer with it.
+    clearTimeout(enterTimerRef.current)
+    setEntering(false)
+    setUndoEntering(false)
     setExitDir(rating === Rating.Again ? 'down' : 'up')
     const exitDelay = showVisualEffects ? EXIT_MS : 0
     const clearDelay = showVisualEffects ? CLEAR_MS : 0
@@ -345,8 +294,10 @@ export default function VocabSrsDrill({
         setTimeout(() => setLeechNotice(null), 4000)
       }
       setExitDir(null)
+      setTransitioning(false)
+      setEntering(true)
+      enterTimerRef.current = setTimeout(() => setEntering(false), clearDelay - exitDelay)
     }, exitDelay)
-    setTimeout(() => setTransitioning(false), clearDelay)
   }
 
   const handleFlipRef = useRef()
@@ -367,6 +318,9 @@ export default function VocabSrsDrill({
     if (prevSession === sessionRef.current) return
     voicevox.stop()
     setTransitioning(true)
+    clearTimeout(enterTimerRef.current)
+    setEntering(false)
+    setUndoEntering(false)
     setExitDir('undo')
     const exitDelay = showVisualEffects ? UNDO_EXIT_MS : 0
     const clearDelay = showVisualEffects ? UNDO_CLEAR_MS : 0
@@ -385,9 +339,10 @@ export default function VocabSrsDrill({
       setSession(prevSession)
       setFlipped(false)
       setExitDir(null)
+      setTransitioning(false)
       setUndoEntering(true)
+      enterTimerRef.current = setTimeout(() => setUndoEntering(false), clearDelay - exitDelay)
     }, exitDelay)
-    setTimeout(() => { setTransitioning(false); setUndoEntering(false) }, clearDelay)
   }
 
   const handleReplayRef = useRef()
@@ -548,12 +503,15 @@ export default function VocabSrsDrill({
   const rightSlot = isMobile && onShowOptions && <SidebarHeaderToggle onClick={onShowOptions} />
 
   const isRequeue = currentCard && seenRef.current.has(currentCard.id)
+  // Undo leads the button row on both faces, in place of DrillHUD's own line.
+  const undo = { onClick: () => handleUndoRef.current(), disabled: !stats.canUndo || transitioning }
 
+  const readingPosition = settings?.readingPosition ?? 'below'
   const front = currentCard
-    ? <SrsCardFace text={currentCard.front} kana={currentCard.kana} isBack={false} showFurigana={showFurigana} backText={currentCard.back} jmdictId={currentCard.jmdictId} showTranslation={showTranslation} showSentence={showSentence} showKanjiMeaning={showKanjiMeaning} pixelFont={pixelFont} />
+    ? <SrsCardFace text={currentCard.front} kana={currentCard.kana} isBack={false} showFurigana={showFurigana} backText={currentCard.back} jmdictId={currentCard.jmdictId} showTranslation={showTranslation} readingPosition={readingPosition} pixelFont={pixelFont} />
     : null
   const back = currentCard
-    ? <SrsCardFace text={currentCard.front} kana={currentCard.kana} isBack={true} showFurigana={showFurigana} backText={currentCard.back} jmdictId={currentCard.jmdictId} showTranslation={showTranslation} showSentence={showSentence} showKanjiMeaning={showKanjiMeaning} pixelFont={pixelFont} />
+    ? <SrsCardFace text={currentCard.front} kana={currentCard.kana} isBack={true} showFurigana={showFurigana} backText={currentCard.back} jmdictId={currentCard.jmdictId} showTranslation={showTranslation} readingPosition={readingPosition} pixelFont={pixelFont} />
     : null
 
   let cardClass = ''
@@ -562,8 +520,16 @@ export default function VocabSrsDrill({
     else if (exitDir === 'down') cardClass = 'card-exit-down'
     else if (exitDir === 'undo') cardClass = 'card-exit-undo'
     else if (undoEntering) cardClass = 'card-entering-undo'
-    else if (transitioning) cardClass = 'card-entering'
+    else if (entering) cardClass = 'card-entering'
   }
+
+  // Half the room left over once the card, its gap and the details panel's
+  // reserved slot are placed, as a percentage of the stage's flexed height:
+  // built from the reserve, not the panel's own height, so the card holds
+  // still from card to card, and nothing when the stage is only as tall as
+  // its content, so it never adds scroll. Same as Vocab Drill's.
+  const stageReserve = `calc(${cardWidth} * 280 / 380 + 16px + ${settings ? detailsSlot(settings, true) : 0}px)`
+  const phoneStageSpacer = <div aria-hidden="true" style={{ flexShrink: 0, height: `max(0px, calc((100% - ${stageReserve}) / 2))` }} />
 
   return (
     <div style={{
@@ -603,107 +569,165 @@ export default function VocabSrsDrill({
 
       <div style={{
         flex: 1,
+        minHeight: 0,
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '16px',
-        overflow: 'hidden',
+        // The card and its details panel can outgrow a short screen.
+        overflowY: 'auto',
+        scrollbarGutter: 'stable both-edges',
+        // The card and panel size against this area (cqw), not the viewport,
+        // so an open settings sidebar can't push them past the room beside it.
+        containerType: 'inline-size',
       }}>
-
-        <DrillHUD
-          streak={stats.streak}
-          bestStreak={stats.bestStreak}
-          correct={stats.correctCount}
-          troubled={stats.troubledCount}
-          remaining={stats.remaining}
-          canUndo={stats.canUndo}
-          onUndo={() => handleUndoRef.current()}
-          showStreak={showStreak}
-          showVisualEffects={showVisualEffects}
-        >
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-            <div key={currentCard.id} className={cardClass} style={{ position: 'relative' }}>
-              <div style={{
-                width: 'min(380px, calc(100vw - 32px), calc(var(--card-max-h, 9999px) * 380 / 280))',
-                aspectRatio: '380 / 280',
-                containerType: 'size',
-              }}>
-                <FlipCard
-                  front={front}
-                  back={back}
-                  width="100%"
-                  height="100%"
-                  flipped={flipped}
-                  onFlip={(next) => {
-                    if (transitioningRef.current) return
-                    setFlipped(next)
-                    if (next) {
-                      if (sfxEnabled) sfx.play('flip_card')
-                      if (audioEnabled && autoplayBack && currentCard) {
-                        speakCard(currentCard, resolveAudioUrl(currentCard), { sequence: true })
-                      }
-                    }
-                  }}
-                  animate={showVisualEffects}
-                />
-              </div>
-              {isRequeue && (
+        {/* The stage takes the height the credit line and the bottom bar
+            leave (flex footer layout); the page only scrolls when the stage
+            needs more. */}
+        <div style={{
+          flex: '1 0 auto',
+          boxSizing: 'border-box',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          // `safe`: on a screen too short for the stage, overflow runs off
+          // the bottom (scrollable) rather than off the top (not). A phone
+          // can't spare the room reserved under the details panel
+          // (CardDetails' `reserve`), so the stage starts at the top and
+          // phoneStageSpacer centres the card as if the room were there.
+          justifyContent: isMobile ? 'flex-start' : 'safe center',
+          padding: isMobile ? '12px 0 16px' : '16px',
+        }}>
+        {isMobile && phoneStageSpacer}
+        <div data-drill-stage="" className={entered ? 'drill-stage-in' : 'drill-stage-waiting'}>
+          <DrillHUD
+            streak={stats.streak}
+            bestStreak={stats.bestStreak}
+            correct={stats.correctCount}
+            troubled={stats.troubledCount}
+            remaining={stats.remaining}
+            canUndo={stats.canUndo}
+            onUndo={() => handleUndoRef.current()}
+            showStreak={showStreak}
+            showVisualEffects={showVisualEffects}
+            showUndo={false}
+            showCounts={false}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+              <div key={currentCard.id} className={cardClass} style={{ position: 'relative' }}>
                 <div style={{
-                  position: 'absolute',
-                  top: -6,
-                  right: -6,
-                  width: 8,
-                  height: 8,
-                  borderRadius: '50%',
-                  background: WARNING,
-                }} />
+                  width: cardWidth,
+                  aspectRatio: '380 / 280',
+                  containerType: 'size',
+                }}>
+                  <FlipCard
+                    front={front}
+                    back={back}
+                    width="100%"
+                    height="100%"
+                    className={edgeToEdge ? '' : 'fc-rounded'}
+                    flipped={flipped}
+                    onFlip={(next) => {
+                      if (transitioningRef.current) return
+                      setFlipped(next)
+                      if (next) {
+                        if (sfxEnabled) sfx.play('flip_card')
+                        if (audioEnabled && autoplayBack && currentCard) {
+                          speakCard(currentCard, resolveAudioUrl(currentCard), { sequence: true })
+                        }
+                      }
+                    }}
+                    animate={showVisualEffects}
+                  />
+                </div>
+                {isRequeue && (
+                  <div style={{
+                    position: 'absolute',
+                    top: -6,
+                    right: -6,
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    background: WARNING,
+                  }} />
+                )}
+              </div>
+
+              {settings && currentCard.front && (
+                <CardDetails
+                  cardKey={currentCard.id}
+                  word={{ form: currentCard.front, reading: currentCard.kana }}
+                  sentence={sentence}
+                  settings={settings}
+                  knownIds={knownIds}
+                  related={related}
+                  lessonLabel="This review"
+                  revealed={flipped}
+                  leaving={!!exitDir}
+                  mobile={isMobile}
+                  edgeToEdge={edgeToEdge}
+                  jaFont={pixelFont ? FONT : 'system-ui, sans-serif'}
+                  onChangeSetting={onChangeSetting}
+                  onPlaySentence={replaySentence}
+                  onReady={() => setPanelReady(true)}
+                reserve={!isMobile}
+                srsData={srsData}
+                saveSrs={saveSrs}
+                />
               )}
+
             </div>
-
-            {!flipped ? (
-              <DrillButtonRow placeholder="Space or tap to flip" />
-            ) : (
-              <DrillButtonRow>
-                <DrillButton
-                  label="Again"
-                  hint={isMobile ? null : '1'}
-                  color={DRILL_COLORS.again}
-                  onClick={() => handleAnswerRef.current(Rating.Again)}
-                  disabled={transitioning}
-                />
-                {showHardEasy && (
-                  <DrillButton
-                    label="Hard"
-                    hint={isMobile ? null : '2'}
-                    color={DRILL_COLORS.hard}
-                    onClick={() => handleAnswerRef.current(Rating.Hard)}
-                    disabled={transitioning}
-                  />
-                )}
-                <DrillButton
-                  label="Good"
-                  hint={isMobile ? null : (showHardEasy ? '3' : '2')}
-                  color={DRILL_COLORS.good}
-                  onClick={() => handleAnswerRef.current(Rating.Good)}
-                  disabled={transitioning}
-                />
-                {showHardEasy && (
-                  <DrillButton
-                    label="Easy"
-                    hint={isMobile ? null : '4'}
-                    color={DRILL_COLORS.easy}
-                    onClick={() => handleAnswerRef.current(Rating.Easy)}
-                    disabled={transitioning}
-                  />
-                )}
-              </DrillButtonRow>
-            )}
-          </div>
-        </DrillHUD>
-
+          </DrillHUD>
+        </div>
+        </div>
+        <AttributionFooter compact sources={footerSources} />
       </div>
-      <AttributionFooter sources={footerSources} />
+      {/* The buttons and counts, pinned under the scroll area rather than
+          sticky inside it: a scroller's reserved scrollbar gutters are
+          outside its content box, so a bar inside one stops short of both
+          edges. */}
+      <div style={{ flexShrink: 0 }}>
+        <DrillActionBar isMobile={isMobile} correct={stats.correctCount} troubled={stats.troubledCount} remaining={stats.remaining}>
+          {!flipped ? (
+            <DrillButtonRow undo={undo}>
+              <DrillFlipButton onClick={() => handleFlipRef.current()} hint={isMobile ? null : 'Space'} disabled={transitioning} />
+            </DrillButtonRow>
+          ) : (
+            <DrillButtonRow undo={undo}>
+              <DrillButton
+                label="Again"
+                hint={isMobile ? null : '1'}
+                color={DRILL_COLORS.again}
+                onClick={() => handleAnswerRef.current(Rating.Again)}
+                disabled={transitioning}
+              />
+              {showHardEasy && (
+                <DrillButton
+                  label="Hard"
+                  hint={isMobile ? null : '2'}
+                  color={DRILL_COLORS.hard}
+                  onClick={() => handleAnswerRef.current(Rating.Hard)}
+                  disabled={transitioning}
+                />
+              )}
+              <DrillButton
+                label="Good"
+                hint={isMobile ? null : (showHardEasy ? '3' : '2')}
+                color={DRILL_COLORS.good}
+                onClick={() => handleAnswerRef.current(Rating.Good)}
+                disabled={transitioning}
+              />
+              {showHardEasy && (
+                <DrillButton
+                  label="Easy"
+                  hint={isMobile ? null : '4'}
+                  color={DRILL_COLORS.easy}
+                  onClick={() => handleAnswerRef.current(Rating.Easy)}
+                  disabled={transitioning}
+                />
+              )}
+            </DrillButtonRow>
+          )}
+        </DrillActionBar>
+      </div>
     </div>
   )
 }

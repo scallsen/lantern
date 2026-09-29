@@ -4,6 +4,11 @@ import { useDrill } from '../../hooks/useDrill.js'
 import { useTTS } from '../../hooks/useTTS.js'
 import { useSFX } from '../../hooks/useSFX.js'
 import VocabCard from '../../components/VocabCard.jsx'
+import CardDetails from '../../components/CardDetails.jsx'
+import { useDrillCardSize } from '../../hooks/useDrillCardSize.js'
+import { useCardSentence } from '../../hooks/useCardSentence.js'
+import { wordItem } from '../../hooks/useKnownWords.js'
+import { useDrillEntrance } from '../../hooks/useDrillEntrance.js'
 import DrillHUD from '../../components/DrillHUD.jsx'
 import SpeedModeControls from '../../components/SpeedModeControls.jsx'
 import { useAuth } from '../../context/AuthContext.jsx'
@@ -26,14 +31,34 @@ const ANIME_WORDS_DECK_ID = 'anime-words'
 // gamepad support — Vocab Drill specific, not core to the flow.
 function ActiveEpisodeDrill({
   drill, ttsVoice, playOnFront, playOnBack, sfxEnabled, disableKeyboard,
-  showStreak, showFurigana, showTranslation, showSentence, showKanjiMeaning, pixelFont, showVisualEffects,
+  showStreak, showFurigana, showTranslation, settings, onChangeSetting, isMobile, related, srsData, saveSrs, pixelFont, showVisualEffects,
 }) {
   const [flippedCardId, setFlippedCardId] = useState(null)
   const [transitioning, setTransitioning] = useState(false)
+  const { edgeToEdge } = useDrillCardSize()
   const { currentCard, streak, bestStreak, correct, troubled, remaining, canUndo, onUndo } = drill
   const isFlipped = flippedCardId === currentCard.id
   const tts = useTTS(ttsVoice)
   const sfx = useSFX()
+
+  // The word's Tanaka sentence, as in the other drills. Episode words have no
+  // recordings, so the backup voice reads it: from the panel's replay button,
+  // and after the word on a flip with Sentence audio on (whether or not the
+  // panel shows it).
+  const word = currentCard.word
+  const form = word.kanji || word.kana
+  const sentenceOn = settings.details && settings.sentence
+  const autoSentence = playOnBack && settings.sentenceAudio
+  const sentence = useCardSentence({ jmdictId: word.jmdictId, form, reading: word.kana, enabled: sentenceOn || autoSentence })
+  const sentenceRef = useRef(null)
+  sentenceRef.current = sentence ?? null
+  function playSentence() {
+    if (sentenceRef.current) tts.speak(sentenceRef.current.japanese)
+  }
+
+  // The first card and its panel arrive together.
+  const [panelReady, setPanelReady] = useState(false)
+  const entered = useDrillEntrance(panelReady)
 
   const transitioningRef = useRef(false)
   useEffect(() => { transitioningRef.current = transitioning }, [transitioning])
@@ -46,13 +71,14 @@ function ActiveEpisodeDrill({
     const action = isCorrect ? drill.onCorrect : drill.onWrong
     if (sfxEnabled) sfx.play(isCorrect ? 'flip_card_correct' : 'flip_card_wrong')
     setTransitioning(true)
-    setTimeout(() => { action() }, 200)
-    setTimeout(() => { setTransitioning(false) }, 240)
+    setTimeout(() => { action(); setTransitioning(false) }, 200)
   }
 
   useEffect(() => {
-    if (isFlipped) { if (playOnBack) tts.speak(currentCard.word.kana) }
-    else tts.cancel()
+    const then = autoSentence ? playSentence : undefined
+    if (isFlipped) {
+      if (playOnBack) tts.speak(currentCard.word.kana, { onEnd: then })
+    } else tts.cancel()
     return () => tts.cancel()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isFlipped, currentCard.id, playOnBack])
@@ -101,33 +127,53 @@ function ActiveEpisodeDrill({
   }, [currentCard.id, sfxEnabled, disableKeyboard])
 
   return (
-    <DrillHUD
-      streak={streak}
-      bestStreak={bestStreak}
-      correct={correct}
-      troubled={troubled}
-      remaining={remaining}
-      canUndo={canUndo}
-      onUndo={handleUndo}
-      showStreak={showStreak}
-      showVisualEffects={showVisualEffects}
-    >
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 15 }}>
-        <VocabCard
-          word={currentCard.word}
-          flipped={isFlipped}
-          onFlip={handleFlip}
-          animate={showVisualEffects}
-          reviewMode="kanji-front"
-          showFurigana={showFurigana}
-          showTranslation={showTranslation}
-          showSentence={showSentence}
-          showKanjiMeaning={showKanjiMeaning}
-          pixelFont={pixelFont}
-        />
-        <SpeedModeControls isFlipped={isFlipped} transitioning={transitioning} onVerdict={v => handleVerdictRef.current(v)} />
-      </div>
-    </DrillHUD>
+    <div data-drill-stage="" className={entered ? 'drill-stage-in' : 'drill-stage-waiting'}>
+      <DrillHUD
+        streak={streak}
+        bestStreak={bestStreak}
+        correct={correct}
+        troubled={troubled}
+        remaining={remaining}
+        canUndo={canUndo}
+        onUndo={handleUndo}
+        showStreak={showStreak}
+        showVisualEffects={showVisualEffects}
+        showUndo={false}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 15 }}>
+          <VocabCard
+            word={currentCard.word}
+            flipped={isFlipped}
+            onFlip={handleFlip}
+            animate={showVisualEffects}
+            reviewMode="kanji-front"
+            showFurigana={showFurigana}
+            showTranslation={showTranslation}
+            readingPosition={settings.readingPosition}
+            pixelFont={pixelFont}
+            edgeToEdge={edgeToEdge}
+          />
+          <CardDetails
+            cardKey={currentCard.id}
+            word={{ form, reading: word.kana }}
+            sentence={sentence}
+            settings={settings}
+            related={related}
+            lessonLabel="This episode"
+            revealed={isFlipped}
+            mobile={isMobile}
+            edgeToEdge={edgeToEdge}
+            jaFont={pixelFont ? FONT : 'system-ui, sans-serif'}
+            onChangeSetting={onChangeSetting}
+            onPlaySentence={playSentence}
+            onReady={() => setPanelReady(true)}
+          srsData={srsData}
+          saveSrs={saveSrs}
+          />
+          <SpeedModeControls isFlipped={isFlipped} transitioning={transitioning} onVerdict={v => handleVerdictRef.current(v)} onFlip={() => handleFlip(true)} onUndo={handleUndo} canUndo={canUndo} hints={!isMobile} />
+        </div>
+      </DrillHUD>
+    </div>
   )
 }
 
@@ -218,10 +264,11 @@ function DoneScreen({ pool, mistakeCounts, correct, troubled, onRestart, onBack,
 export default function EpisodeDrill({
   words, onBack,
   ttsVoice, playOnFront, playOnBack, sfxEnabled, disableKeyboard,
-  showStreak, showFurigana, showTranslation, showSentence, showKanjiMeaning, pixelFont, showVisualEffects,
+  showStreak, showFurigana, showTranslation, settings, onChangeSetting, isMobile, pixelFont, showVisualEffects,
 }) {
   const pool = useMemo(() => words.map(w => ({ id: w.id, word: w })), [words])
   const drill = useDrill(pool, { engine: SimpleQueue })
+  const related = useMemo(() => ({ known: [], lesson: words.map(w => wordItem({ ...w, front: w.kanji || w.kana, back: w.english })) }), [words])
   const { user, signIn } = useAuth()
   const { data: srsData, save: saveSrs } = useProgress('vocab-srs')
 
@@ -274,8 +321,12 @@ export default function EpisodeDrill({
           showStreak={showStreak}
           showFurigana={showFurigana}
           showTranslation={showTranslation}
-          showSentence={showSentence}
-          showKanjiMeaning={showKanjiMeaning}
+          settings={settings}
+          onChangeSetting={onChangeSetting}
+          isMobile={isMobile}
+          related={related}
+          srsData={srsData}
+          saveSrs={saveSrs}
           pixelFont={pixelFont}
           showVisualEffects={showVisualEffects}
         />

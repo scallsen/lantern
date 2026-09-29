@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { kanjiCharsOf, fetchKanjiMeanings } from '../utils/kanjiMeaningLookup.js'
+import { useEffect, useMemo, useState } from 'react'
+import { kanjiCharsOf, fetchKanjiMeanings, peekKanjiMeanings } from '../utils/kanjiMeaningLookup.js'
 
 export function useKanjiMeanings(kanjiStr, enabled) {
   const [meanings, setMeanings] = useState({})
@@ -16,5 +16,10 @@ export function useKanjiMeanings(kanjiStr, enabled) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, enabled])
 
-  return meanings
+  // Stable between renders unless something new resolved, so callers can
+  // keep memoizing on it.
+  const peeked = peekKanjiMeanings(chars)
+  const peekedCount = Object.keys(peeked).length
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  return useMemo(() => ({ ...peeked, ...meanings }), [key, peekedCount, meanings])
 }

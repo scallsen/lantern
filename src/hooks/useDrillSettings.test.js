@@ -46,10 +46,15 @@ describe('initialDrillSettings', () => {
     expect(DRILL_SETTINGS_DEFAULTS).toEqual({
       furigana: false,
       frontAudio: false,
+      readingPosition: 'below',
       translation: true,
-      kanjiMeanings: true,
-      sentence: true,
       backAudio: true,
+      details: true,
+      detailsTheme: 'dark',
+      sentence: true,
+      kanjiMeanings: true,
+      sentenceTranslation: 'blur',
+      sentenceFurigana: 'new',
       sentenceAudio: false,
       voice: 'male',
       backupVoice: '',
@@ -58,6 +63,12 @@ describe('initialDrillSettings', () => {
       pixelFont: false,
       streak: false,
     })
+  })
+
+  it('reads the details panel’s string settings back', () => {
+    withStorage({ 'srs-reading-position': 'above', 'srs-sentence-translation': 'on', 'srs-sentence-furigana': 'all' })
+    const s = initialDrillSettings('srs')
+    expect([s.readingPosition, s.sentenceTranslation, s.sentenceFurigana]).toEqual(['above', 'on', 'all'])
   })
 
   it('prefers stored new-shape keys over any migration', () => {
