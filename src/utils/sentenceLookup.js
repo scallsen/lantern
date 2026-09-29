@@ -1,7 +1,13 @@
 import { supabase } from '../lib/supabase.js'
 
 const cache = new Map()
-const attempted = new Set()
+// id -> the request that will fill it. A second caller for an id already on
+// its way waits for that request instead of reading the cache early: the card
+// face and the drill's sentence audio both ask for the new card's sentence in
+// the same commit, and the old "attempted" set, marked before the request
+// returned, told whichever asked second that the word had no sentence — so
+// the sentence showed but never autoplayed until the card was seen again.
+const pending = new Map()
 
 // The pick (quality-flagged, then shortest, then lowest id) lives in the
 // best_sentences SQL function, not here: common words match more rows than a
@@ -10,23 +16,29 @@ const attempted = new Set()
 // keeps a card's sentence and its pre-recorded clip in step.
 const BATCH = 500
 
-// Returns { [jmdictId]: sentenceRow|null } for every id already resolved (found or not).
+// Returns { [jmdictId]: sentenceRow|null } for every id resolved (found or
+// not). A failed request resolves nothing, so the next call retries it.
 export async function fetchSentencesFor(ids) {
   const unique = [...new Set(ids)].filter(Boolean)
-  const missing = unique.filter(id => !attempted.has(id))
+  const missing = unique.filter(id => !cache.has(id) && !pending.has(id))
   if (missing.length > 0 && supabase) {
-    missing.forEach(id => attempted.add(id))
     for (let i = 0; i < missing.length; i += BATCH) {
       const batch = missing.slice(i, i + BATCH)
-      const { data } = await supabase.rpc('best_sentences', { ids: batch })
-      if (!data) continue
-      const byId = new Map(data.map(row => [row.dictionary_id, row]))
-      for (const id of batch) cache.set(id, byId.get(id) ?? null)
+      const request = supabase.rpc('best_sentences', { ids: batch })
+        .then(({ data }) => {
+          if (!data) return
+          const byId = new Map(data.map(row => [row.dictionary_id, row]))
+          for (const id of batch) cache.set(id, byId.get(id) ?? null)
+        })
+        .catch(() => {})
+        .finally(() => batch.forEach(id => pending.delete(id)))
+      batch.forEach(id => pending.set(id, request))
     }
   }
+  await Promise.all([...new Set(unique.map(id => pending.get(id)).filter(Boolean))])
   const result = {}
   for (const id of unique) {
-    if (attempted.has(id)) result[id] = cache.get(id) ?? null
+    if (cache.has(id)) result[id] = cache.get(id)
   }
   return result
 }

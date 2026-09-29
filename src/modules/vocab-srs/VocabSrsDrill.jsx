@@ -294,8 +294,16 @@ export default function VocabSrsDrill({
   async function speakCard(card, urls, { sequence } = {}) {
     if (!card) return
     if (!urls.word) { voicevox.stop(); tts.speak(card.kana ?? card.front ?? ''); return }
-    const chainSentence = sequence && playSentence && urls.sentenceText
-      ? () => playSentenceText(urls.sentenceText)
+    // The text is looked up when the word ends, not taken from the flip-time
+    // snapshot: a card flipped before its sentence lookup returned would
+    // otherwise chain nothing. The lookup is cached, so this is instant after
+    // the first card view.
+    const chainSentence = sequence && playSentence && card.jmdictId
+      ? async () => {
+          const text = urls.sentenceText ?? (await fetchSentencesFor([card.jmdictId]))[card.jmdictId]?.japanese
+          if (!text || !flippedRef.current || getCurrentCard(sessionRef.current)?.id !== card.id) return
+          playSentenceText(text)
+        }
       : undefined
     const played = await voicevox.play(urls.word, { onEnded: chainSentence })
     if (!played) tts.speak(card.kana ?? card.front ?? '')
