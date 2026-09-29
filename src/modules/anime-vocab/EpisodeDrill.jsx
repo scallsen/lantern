@@ -171,7 +171,7 @@ function ActiveEpisodeDrill({
           srsData={srsData}
           saveSrs={saveSrs}
           />
-          <SpeedModeControls isFlipped={isFlipped} transitioning={transitioning} onVerdict={v => handleVerdictRef.current(v)} onFlip={() => handleFlip(true)} onUndo={handleUndo} canUndo={canUndo} />
+          <SpeedModeControls isFlipped={isFlipped} transitioning={transitioning} onVerdict={v => handleVerdictRef.current(v)} onFlip={() => handleFlip(true)} onUndo={handleUndo} canUndo={canUndo} hints={!isMobile} />
         </div>
       </DrillHUD>
     </div>

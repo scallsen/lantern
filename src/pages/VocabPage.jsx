@@ -419,6 +419,7 @@ function ActiveDrill({ drill, audioSource, playOnFront, playOnBack, sfxEnabled, 
               onFlip={() => handleFlip(true)}
               onUndo={handleUndo}
               canUndo={canUndo}
+              hints={!isMobile}
             />
           </DrillActionBar>,
           barSlot,
