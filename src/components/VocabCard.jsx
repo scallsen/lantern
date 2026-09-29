@@ -99,9 +99,9 @@ function BackContent({ word, displayForm, reading, resolvedEnglish, showTranslat
   )
 }
 
-// Desktop: 380px, corners rounded to match the details panel under it. On a
-// phone the card runs edge to edge, square, like the panel.
-
+// 380px, corners rounded to match the details panel under it (less a 16px
+// margin where that doesn't fit); edge to edge and square only on the
+// narrowest phones (`edgeToEdge`, see useDrillCardSize).
 export default function VocabCard({ word, flipped, onFlip, animate, reviewMode, showFurigana, showTranslation, readingPosition = 'below', pixelFont, edgeToEdge = false }) {
   // Dictionary is the source of truth for the definition — and, whenever the
   // word doesn't carry its own kanji/kana override, for the display form and

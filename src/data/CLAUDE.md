@@ -96,9 +96,8 @@ Each word object in an older `src/data/words/*.json` file:
   "kanji": "魚",              // display form (front of card); use kana if no kanji form
   "kana": "さかな",           // full hiragana/katakana reading — spoken by TTS on flip
   "english": "fish",          // meaning — shown on back of card (concise, 1–5 words)
-  "sentence": "...",          // optional example sentence — shown on back when "Show sentence" is on
   "listKey": "nsm-n3-w1d1",  // must match a source id (flat) or sublist id (hierarchical)
-  "voicevoxVoices": [2, 11], // set by scripts/generate-audio.mjs — speaker ids with generated audio; absent/empty until generated
+  "voicevoxVoices": [9, 11], // set by scripts/generate-audio.mjs — speaker ids with generated audio; absent/empty until generated
   "jmdictId": "1426920"      // set by scripts/backfill-vocab-jmdict.mjs — links to the `dictionary` table row for this word; absent if unmatched (see Dictionary linkage section)
 }
 ```
@@ -125,7 +124,7 @@ Third-party data/asset credits (JMdict/EDICT, KANJIDIC2, Tanaka Corpus, Voicevox
 ### Personal word lists (`custom_words`)
 
 A learner's own course material — one class's re-chunking of a book, with its
-own example sentences and review markers — belongs to an account, not to the
+own review markers — belongs to an account, not to the
 bundle. It lives in `custom_words` (one row per word, `payload` holding the word
 itself) rather than in `src/data/words/`, so it is not downloaded by every
 visitor: moving 5,277 of these words out took 1.1 MB of JSON off the bundle.
@@ -135,7 +134,8 @@ visitor: moving 5,277 of these words out took 1.1 MB of JSON off the bundle.
 | `supabase/migrations/*_add_custom_words.sql` | Table + RLS. `user_id` cascades from `auth.users`, so `delete-account` needs no change |
 | `supabase/migrations/*_custom_word_counts.sql` | `custom_word_counts()` — per-chapter counts for the picker, so drawing 36 tiles doesn't fetch 5,277 rows |
 | `scripts/upload-custom-words.mjs` | Moves lists from the repo into an account. Idempotent; keyed `(user_id, id)` |
-| `scripts/backfill-custom-words-jmdict.mjs` | Matches `custom_words` rows missing `jmdictId` against `dictionary`, across every account (service role). `backfill-vocab-jmdict.mjs`'s own `TARGETS` are the local files these words used to be — once a list moves here, that script silently stops reaching it (its `existsSync` guard just skips the missing path), so this is the one thing that still backfills a personal word's link. Fills only what's missing; never clears an existing match |
+| `scripts/backfill-custom-words-jmdict.mjs` | Matches `custom_words` rows missing `jmdictId` against `dictionary`, across every account (service role). `backfill-vocab-jmdict.mjs`'s own `TARGETS` are the local files these words used to be — once a list moves here, that script silently stops reaching it (its `existsSync` guard just skips the missing path), so this is the one thing that still backfills a personal word's link. Matches through the list's decoration (`resolveDecoratedMatches`: 深刻（な）, ～製, 〇〇様, 保存する) — the first version matched the printed text and left 175 decorated words unlinked. Runs **nightly** in `generate-vocab-audio.yml`, so a word added to a list is linked and recorded without anyone running it. Fills only what's missing; never clears an existing match; skips a word marked `noJmdict: true` (a homograph checked by hand) |
+| `scripts/backfill-srs-jmdict.mjs` | The same for Vocab SRS cards, which copy a word's link when made and never refresh it — see `src/modules/vocab-srs/CLAUDE.md`. Runs nightly right after the list backfill, since a card inherits its list word's link first |
 | `src/hooks/useCustomWords.js` | `useCustomWordCounts()` for the picker, `useCustomWords(listKeys)` for the chapters actually selected |
 
 A source in `WORD_SOURCES` marked `personal: true` has no words in the bundle.

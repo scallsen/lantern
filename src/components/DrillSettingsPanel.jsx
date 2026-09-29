@@ -19,10 +19,13 @@ import {
 // sequenced by position and by appearing at all — a deck with no recordings
 // has no Voice row, a device with no speech voices has no Backup voice row,
 // the Sentence group only exists while the sentence is shown — so there is no
-// explanatory text under any row. Two rows are disabled rather than hidden,
-// because they are the same row a moment later: the last of Sentence / Kanji
-// still on (the details panel always shows at least one), and Play sentence
-// while no sentence is showing.
+// explanatory text under any row; Sentence audio, which follows the word, only
+// appears under the back's Audio while that's on. One row is disabled rather
+// than hidden, because it's the same row a moment later: the last of Sentence
+// / Kanji still on (the details panel always shows at least one).
+// Sentence audio doesn't depend on the details panel showing the sentence:
+// it's the word's Tanaka sentence either way, and with no recording the
+// backup voice reads it.
 
 const VOICE_OPTIONS = [
   { value: 'male', label: 'Male' },
@@ -160,6 +163,7 @@ export default function DrillSettingsPanel({
         {chipRow('readingPosition', 'Reading', READING_OPTIONS)}
         {boolRow('translation', 'Meaning')}
         {boolRow('backAudio', 'Audio')}
+        {settings.backAudio && boolRow('sentenceAudio', 'Sentence audio')}
       </Group>
 
       <Group label="Details">
@@ -175,9 +179,9 @@ export default function DrillSettingsPanel({
         </Group>
       )}
 
+      {(showVoice || showBackupVoice) && (
       <Group label="Audio" footnote={audioFootnote}>
         {showVoice && chipRow('voice', 'Voice', VOICE_OPTIONS)}
-        {boolRow('sentenceAudio', 'Play sentence', { checked: sentenceShown && settings.sentenceAudio, disabled: !sentenceShown })}
         {showBackupVoice && (
           <Row
             key="backupVoice"
@@ -193,6 +197,7 @@ export default function DrillSettingsPanel({
           />
         )}
       </Group>
+      )}
 
       <Group label="Interface">
         {boolRow('sfx', 'Sound effects')}

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Generates Voicevox neural TTS audio for the vocab word lists, and uploads
- * MP3s to Supabase Storage.
+ * Generates Voicevox neural TTS audio for the vocab word lists — each word and
+ * the example sentence its card shows — and uploads MP3s to Supabase Storage.
  *
  * A clip is stored under audio/voicevox/<speakerId>/<key>.mp3, where the key is
  * a hash of THE TEXT SPOKEN rather than of the word that wanted it. One reading
@@ -21,12 +21,27 @@
  * audio that is very much still in use, so that read is mandatory — a failure
  * to fetch them skips pruning entirely rather than pruning on a partial set.
  *
+ * Vocab SRS cards are read too, from every account's `progress` row. A card is
+ * a snapshot of its word rather than a pointer to it, so it says what its own
+ * front and reading say (cardSpeechText) — usually a list word's text, but not
+ * always, and an Anki-imported card belongs to no list at all. They join the
+ * keep set on the same terms as custom_words: a failed read skips the prune.
+ *
+ * Sentences share the words' folder and keying: a clip is a hash of what it
+ * says, whether that is a reading or a sentence. The sentence is the one the
+ * card displays: the Tanaka pick for the word's jmdictId from the
+ * best_sentences SQL function, the same function the app calls. Pick it any
+ * other way and the recorded sentence drifts from the shown one, and the prune
+ * deletes every sentence clip as an orphan. A word's own `sentence` field, if
+ * one ever reappears, is ignored — the app never shows it.
+ *
  * Requires a running Voicevox engine (desktop app, or the headless
  * voicevox/voicevox_engine Docker image) reachable at VOICEVOX_URL.
  *
  * Run manually: node --env-file=.env scripts/generate-audio.mjs
  * Runs automatically via .github/workflows/generate-vocab-audio.yml on every push
- * touching src/data/words/**.
+ * touching src/data/words/**, and nightly — words and cards added in the app
+ * never touch the repo, so a push trigger alone would never record them.
  *
  * Env vars required:
  *   SUPABASE_URL (or VITE_SUPABASE_URL)
@@ -35,7 +50,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js'
-import { audioKeyFor, speechTextOf } from '../src/lib/displayForm.js'
+import { audioKeyFor, speechTextOf, cardSpeechText } from '../src/lib/displayForm.js'
 import { readFileSync, writeFileSync, readdirSync } from 'fs'
 import { execFile } from 'child_process'
 import { promisify } from 'util'
@@ -74,7 +89,7 @@ const CUSTOM_WORDS_KEY = '<custom_words>'
 
 // Keep in sync with VOICEVOX_VOICES in src/utils/voicevoxAudio.js
 const VOICES = [
-  { id: 2, name: 'shikoku-metan' },
+  { id: 9, name: 'namine-ritsu' },
   { id: 11, name: 'kurono-takehiro' },
 ]
 
@@ -175,6 +190,21 @@ async function listExistingKeys(speakerId) {
   return keys
 }
 
+// The Tanaka sentence each entry's card shows. A failed read throws rather than
+// returning a partial map: the result feeds the prune's keep set, and a missing
+// sentence there reads as an orphaned clip.
+async function fetchBestSentences(ids) {
+  const map = new Map()
+  const unique = [...new Set(ids)].filter(Boolean)
+  const BATCH = 500
+  for (let i = 0; i < unique.length; i += BATCH) {
+    const { data, error } = await supabase.rpc('best_sentences', { ids: unique.slice(i, i + BATCH) })
+    if (error) throw new Error(`best_sentences failed: ${error.message}`)
+    for (const row of data) map.set(row.dictionary_id, row.japanese)
+  }
+  return map
+}
+
 // A learner's own word lists, which left the repo for per-user storage. They
 // are read for two reasons: their clips must be generated like any other, and —
 // the load-bearing one — they must be in the prune's keep set, since their
@@ -188,6 +218,25 @@ async function fetchCustomWords() {
     if (data.length < 1000) break
   }
   return words
+}
+
+// Every account's Vocab SRS cards. Only the fields that decide what a card
+// says are kept; a card that plays its own imported recording needs no word
+// clip, but still shows (and so plays) its entry's sentence.
+async function fetchSrsCards() {
+  const cards = []
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supabase.from('progress')
+      .select('payload').eq('namespace', 'vocab-srs').range(from, from + 999)
+    if (error) throw new Error(`progress read failed: ${error.message}`)
+    for (const row of data) {
+      for (const c of Object.values(row.payload?.cards ?? {})) {
+        if (c.front) cards.push({ front: c.front, kana: c.kana, jmdictId: c.jmdictId, wordAudio: c.wordAudio })
+      }
+    }
+    if (data.length < 1000) break
+  }
+  return cards
 }
 
 async function setStatus(status) {
@@ -256,34 +305,56 @@ async function generate() {
   // Pruning on a key set missing these would delete clips a learner's own lists
   // still use, so a failed read disables the prune rather than narrowing it.
   let customWords = []
-  let customWordsOk = true
+  let keepSetOk = true
   try {
     customWords = await fetchCustomWords()
     console.log(`${customWords.length} word(s) from custom_words`)
   } catch (err) {
-    customWordsOk = false
+    keepSetOk = false
     console.warn(`Could not read custom_words (${err.message}) — pruning will be skipped this run`)
   }
   allIds.push(...customWords.map(e => e.jmdictId))
   entriesByPath.set(CUSTOM_WORDS_KEY, customWords)
 
+  let srsCards = []
+  try {
+    srsCards = await fetchSrsCards()
+    console.log(`${srsCards.length} Vocab SRS card(s)`)
+  } catch (err) {
+    keepSetOk = false
+    console.warn(`Could not read Vocab SRS cards (${err.message}) — pruning will be skipped this run`)
+  }
+  allIds.push(...srsCards.map(c => c.jmdictId))
+
   const dict = await fetchEntries(allIds)
+  const sentenceById = await fetchBestSentences(allIds)
 
   const textByKey = new Map()
+  function addText(text) {
+    const key = audioKeyFor(text)
+    const seen = textByKey.get(key)
+    // Two texts sharing a key would silently serve each other's audio.
+    if (seen && seen !== text) {
+      throw new Error(`audio key collision: ${JSON.stringify(seen)} and ${JSON.stringify(text)}`)
+    }
+    textByKey.set(key, text)
+  }
+  const sentences = new Set()
   for (const path of [...TARGETS, CUSTOM_WORDS_KEY]) {
     for (const entry of entriesByPath.get(path)) {
       const text = speechTextOf(entry, entry.jmdictId ? dict.get(entry.jmdictId) : null) ?? entry.kana
-      if (!text) continue
-      const key = audioKeyFor(text)
-      const seen = textByKey.get(key)
-      // Two readings sharing a key would silently serve each other's audio.
-      if (seen && seen !== text) {
-        throw new Error(`audio key collision: ${JSON.stringify(seen)} and ${JSON.stringify(text)}`)
-      }
-      textByKey.set(key, text)
+      if (text) addText(text)
+      const sentence = sentenceById.get(entry.jmdictId)
+      if (sentence) { addText(sentence); sentences.add(sentence) }
     }
   }
-  console.log(`${textByKey.size} distinct spoken texts across ${TARGETS.length} list(s) plus custom_words`)
+  for (const card of srsCards) {
+    const text = card.wordAudio ? null : cardSpeechText(card)
+    if (text) addText(text)
+    const sentence = sentenceById.get(card.jmdictId)
+    if (sentence) { addText(sentence); sentences.add(sentence) }
+  }
+  console.log(`${textByKey.size} distinct spoken texts (${sentences.size} of them sentences) across ${TARGETS.length} list(s), custom_words and SRS cards`)
 
   const allKeys = new Set(textByKey.keys())
 
@@ -316,13 +387,13 @@ async function generate() {
     console.log('\n(dry run — nothing generated, nothing pruned)')
     return
   }
-  if (customWordsOk) {
+  if (keepSetOk) {
     console.log('\nReconciling storage (pruning orphaned audio)...')
     for (const voice of VOICES) {
       await reconcileVoice(voice.id, allKeys)
     }
   } else {
-    console.log('\nSkipping the prune: the custom_words keep set could not be read.')
+    console.log('\nSkipping the prune: the custom_words or SRS keep set could not be read.')
   }
 
   console.log('\nDone.')

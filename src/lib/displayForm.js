@@ -62,6 +62,17 @@ export function speechTextOf(word, entry) {
 }
 
 /**
+ * What an SRS card's audio says. A card stores its own front and reading
+ * rather than a word record, and the reading may keep the list's decoration
+ * (しんこく（な）), so it goes through the same rule as a word — which is what
+ * lets the drill and generate-audio.mjs agree on one clip per card.
+ */
+export function cardSpeechText(card) {
+  if (!card?.front) return null
+  return speechTextOf({ kanji: card.front, kana: card.kana ?? card.front }, null)
+}
+
+/**
  * Storage key for a clip of `text`.
  *
  * Audio is keyed by what is spoken rather than by which word wanted it, so one

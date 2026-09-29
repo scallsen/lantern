@@ -98,7 +98,7 @@ export function tokenizeSentence(japanese, entries = {}, target = {}) {
 
   // The card's own word first, so nothing else can claim its characters. By
   // its dictionary entry when the sentence is indexed to it, else by the
-  // form the card shows (a curated sentence has no index at all).
+  // form the card shows.
   const targetEntry = target.id ? entries[target.id] : null
   const targetCandidates = targetEntry ? candidatesFor(targetEntry) : []
   const bare = (target.form ?? '').replace(/[〜~～（）()]/gu, '').replace(/な$/u, '')

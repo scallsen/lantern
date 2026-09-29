@@ -41,16 +41,17 @@ function ActiveEpisodeDrill({
   const tts = useTTS(ttsVoice)
   const sfx = useSFX()
 
-  // The subtitle line the word came from is the card's own sentence; a
-  // Tanaka sentence fills in for a word without one. No recordings exist for
-  // either, so the backup voice reads it.
+  // The word's Tanaka sentence, as in the other drills. Episode words have no
+  // recordings, so the backup voice reads it: from the panel's replay button,
+  // and after the word on a flip with Sentence audio on (whether or not the
+  // panel shows it).
   const word = currentCard.word
   const form = word.kanji || word.kana
   const sentenceOn = settings.details && settings.sentence
-  const sentence = useCardSentence({ jmdictId: word.jmdictId, form, reading: word.kana, sentence: word.sentence, enabled: sentenceOn })
+  const autoSentence = playOnBack && settings.sentenceAudio
+  const sentence = useCardSentence({ jmdictId: word.jmdictId, form, reading: word.kana, enabled: sentenceOn || autoSentence })
   const sentenceRef = useRef(null)
-  sentenceRef.current = sentenceOn && sentence ? sentence : null
-  const autoSentence = sentenceOn && settings.sentenceAudio
+  sentenceRef.current = sentence ?? null
   function playSentence() {
     if (sentenceRef.current) tts.speak(sentenceRef.current.japanese)
   }
@@ -78,7 +79,6 @@ function ActiveEpisodeDrill({
     const then = autoSentence ? playSentence : undefined
     if (isFlipped) {
       if (playOnBack) tts.speak(currentCard.word.kana, { onEnd: then })
-      else then?.()
     } else tts.cancel()
     return () => tts.cancel()
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -37,9 +37,9 @@ export const ATTRIBUTIONS = {
   ],
   // Character-specific — shown inline under the "Text to speech" picker.
   // Voicevox's own credit examples name the specific character voice used
-  // (e.g. "VOICEVOX:四国めたん"), which the generic footer credit above doesn't.
-  'voicevox-2': [
-    { text: '四国めたん by ' },
+  // (e.g. "VOICEVOX:波音リツ"), which the generic footer credit above doesn't.
+  'voicevox-9': [
+    { text: '波音リツ by ' },
     { text: 'VOICEVOX', href: 'https://voicevox.hiroshiba.jp/' },
   ],
   'voicevox-11': [

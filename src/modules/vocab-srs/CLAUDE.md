@@ -12,7 +12,7 @@ Cards come from two sources:
 
 **Bundled decks** — static JSON files in `decks/`. Content lives in the JSON; only FSRS scheduling state is persisted to storage. New bundled decks start with no card entries in storage; entries are created on first activation via `initializeDeckCards`. **None currently ship** — `core3k`, `core2000`, and `keigo` were all retired (see below); `DECK_WORDS`/`DECK_FILES` are both empty objects until a new one is added.
 
-**Imported decks** — created from Anki TSV exports, or from the "Import from text / image" flow (see Word import below). Content (front/back/audio/sentence fields) is stored inline on each card object in storage.
+**Imported decks** — created from Anki TSV exports, or from the "Import from text / image" flow (see Word import below). Content (front/back/kana/audio fields) is stored inline on each card object in storage.
 
 Both sources write to the same `cards{}` object, distinguished by `deckId`.
 
@@ -27,13 +27,15 @@ No bundled deck ships today, so this is the shape a future one would need — ea
   "back": "to receive (humble)",
   "kana": "いただく",                     // optional
   "wordAudio": "8b0ee07c....mp3",        // optional — Supabase Storage filename
-  "sentenceAudio": "c951babc....mp3",    // optional — Supabase Storage filename
-  "sentence": "コーヒーをいただきます。",   // optional
-  "sentenceEnglish": "I'll have a coffee." // optional
+  "jmdictId": "1012980"                  // optional — the example sentence comes from this entry's Tanaka pick
 }
 ```
 
-`sentenceEnglish` is the sentence's translation in the details panel under the card.
+There is no per-card sentence: the details panel under the card shows the Tanaka sentence (and its translation) for the card's `jmdictId` — see "The Tanaka sentence is the only example sentence" in the root CLAUDE.md.
+
+**A card's `jmdictId` is a snapshot, so it is backfilled nightly.** `addWordsToDeck` copies the word's link when the card is made and never looks again, so cards made from a personal list before that list was linked stayed unlinked — no sentence, no sentence audio — even once the word itself was (183 of one learner's 283 cards, found and fixed 2026-09-29). `scripts/backfill-srs-jmdict.mjs` fills a missing `jmdictId` from the same account's list word with that front, then from a reading-verified dictionary match, and runs nightly in `generate-vocab-audio.yml` after the list backfill. It never overwrites a link, and a card (or its list word) carrying `noJmdict: true` is left alone — that is the hand-set marker for a homograph the matcher would get wrong (～両目, a train car, is spelled and read like 両目, "both eyes").
+
+**A card's word clip is keyed by `cardSpeechText(card)`** (`src/lib/displayForm.js`), not the raw reading. A card copied from a class list keeps the list's decoration (しんこく（な）, ～せい); `generate-audio.mjs` strips that before recording, so keying on the raw reading asked for a clip that never existed and every decorated card fell back to browser speech. The generator reads every account's SRS cards and records the same text, so the two cannot drift.
 
 **Retiring a bundled deck** — add its id to `RETIRED_DECKS` in `migrate.js` *and* delete its JSON, import, and `DECK_FILES`/`DECK_WORDS` entries. The `RETIRED_DECKS` filter is not optional tidying: a retired deck's cards keep their scheduling state in stored progress but can no longer resolve content, so without it they render as blank cards in the drill. `core3k`, `core2000`, and `keigo` were all retired this way (`core2000` in favour of using Core 2000 in the real Anki app; `keigo` had no such replacement, it was simply dropped), and `migrate.test.js` covers the behaviour.
 
@@ -62,7 +64,7 @@ Response: `{ words: [{ id, surface, reading, meaning, jmdictId }], truncated }`.
 
 **Deploy**: needs its own `supabase functions deploy word-import` (see Edge functions deploy steps under Story generator) — reuses the same `ANTHROPIC_API_KEY` secret; `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY` are auto-provided to edge functions and don't need setting.
 
-Built in `VocabSrsDrill.jsx` via the `AUDIO_BASE` constant. Autoplay sequence on flip: word audio first, then sentence audio. Autoplay can be toggled independently for front (on card load) and back (on flip).
+Built in `VocabSrsDrill.jsx` via the `AUDIO_BASE` constant. Autoplay sequence on flip: word audio first, then sentence audio when the Sentence audio setting is on (always the Voicevox clip of the Tanaka sentence, even on a card with its own recorded `wordAudio`). Autoplay can be toggled independently for front (on card load) and back (on flip).
 
 ### FSRS setup
 
@@ -108,9 +110,6 @@ Configured via `leechThreshold` (default 8, localStorage key `srs-leech-threshol
       back?: string,
       kana?: string,
       wordAudio?: string,
-      sentenceAudio?: string,
-      sentence?: string,
-      sentenceEnglish?: string,
       jmdictId?: string,             // set on immersion-words cards when word matched JMdict
       voicevoxVoices?: number[],     // set on vocab-drill-words cards — speaker ids with generated audio, copied from the source word
       voicevoxId?: string,           // set alongside voicevoxVoices — original word id, since cardId is a synthetic vocab-drill-words-<ts>-<i> string and Voicevox storage paths are keyed by the original word id
@@ -171,7 +170,8 @@ All keys use `srs-` prefix. The VocabSrsModule reads these on mount; VocabSrsDri
 | `srs-show-hard-easy` | `true` | Show Hard + Easy rating buttons (4-way vs 2-way) |
 | `srs-leech-threshold` | `8` | Lapse count before card is suspended (0 = disabled) |
 | `srs-front-audio` | `false` | Speak the word as the card arrives |
-| `srs-back-audio` | `true` | Speak the word (then sentence) on flip |
+| `srs-back-audio` | `true` | Speak the word on flip |
+| `srs-sentence-audio` | `false` | Speak the example sentence after the word on flip |
 | `srs-voice` | `'male'` | Recorded voice — `'male'` \| `'female'`, mapped to a Voicevox speaker by `audioSourceForVoice()` |
 | `srs-backup-voice` | `''` | Browser speech voice name that reads words with no recording (`''` = device default) |
 | `srs-sfx-enabled` | `true` | Sound effects (correct/wrong beeps) |

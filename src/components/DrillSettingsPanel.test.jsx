@@ -31,16 +31,20 @@ describe('DrillSettingsPanel', () => {
     expect(render({ backupVoices: [] })).not.toContain('>Backup voice<')
   })
 
-  it('keeps the audio group for Play sentence even when neither voice row applies', () => {
+  it('drops the audio group when neither voice row applies', () => {
     const html = render({ backupVoices: [], hasRecordedVoices: false })
-    expect(html.match(/>Audio</g)).toHaveLength(3)
-    expect(html).toContain('>Play sentence<')
+    expect(html.match(/>Audio</g)).toHaveLength(2)
   })
 
-  it('drops the sentence group, and disables Play sentence, while the sentence is off', () => {
+  it('offers Sentence audio under the back’s Audio, only while that is on', () => {
+    expect(render({})).toContain('aria-label="Sentence audio"')
+    expect(render({ settings: { ...DRILL_SETTINGS_DEFAULTS, backAudio: false } })).not.toContain('aria-label="Sentence audio"')
+  })
+
+  it('drops the sentence group while the sentence is off, but keeps Sentence audio', () => {
     const html = render({ settings: { ...DRILL_SETTINGS_DEFAULTS, sentence: false } })
     expect(html).not.toContain('>Translation<')
-    expect(html).toMatch(/aria-checked="false" aria-label="Play sentence" disabled=""/)
+    expect(html).toContain('aria-label="Sentence audio"')
   })
 
   it('keeps at least one half of the details panel on', () => {

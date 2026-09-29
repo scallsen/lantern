@@ -7,24 +7,23 @@ import { fetchKanjiMeanings, kanjiCharsOf } from '../utils/kanjiMeaningLookup.js
 import { tokenizeSentence } from '../utils/sentenceTokens.js'
 
 // The example sentence a drill card's details panel shows, ready to draw:
-// { japanese, english, tokens, entries, audio }, null when the card has none,
-// or undefined while it's still resolving (the panel keeps its slot empty
-// rather than flash a kanji-only panel first).
+// { japanese, english, tokens, entries }, null when the card has none, or
+// undefined while it's still resolving (the panel keeps its slot empty rather
+// than flash a kanji-only panel first).
 //
-// Same priority rule as before the panel: the card's own curated sentence
-// wins, and a Tanaka Corpus sentence fills the gap. Only a Tanaka sentence is
-// indexed to dictionary entries, so a curated one gets the card's own word
-// picked out and nothing else tappable.
-export function useCardSentence({ jmdictId, form, reading, sentence, sentenceEnglish, sentenceAudio, enabled = true }) {
-  const lookup = useSentencesForWords(jmdictId ? [jmdictId] : [], enabled && !sentence)
+// The word's Tanaka Corpus sentence, the only example sentence there is (the
+// one Sentence audio plays), tokenized by the dictionary entries it's indexed
+// to so each word in it can be looked up.
+export function useCardSentence({ jmdictId, form, reading, enabled = true }) {
+  const lookup = useSentencesForWords(jmdictId ? [jmdictId] : [], enabled)
   const tanaka = jmdictId ? lookup[jmdictId] ?? null : null
-  const ids = !sentence && tanaka ? tanaka.dictionary_ids : []
+  const ids = tanaka?.dictionary_ids ?? []
   const { entries, loading } = useDictionaryEntries(ids, enabled)
 
-  const japanese = sentence ?? tanaka?.japanese ?? null
-  const english = sentence ? sentenceEnglish : tanaka?.english
+  const japanese = tanaka?.japanese ?? null
+  const english = tanaka?.english
   // The lookup only lists an id once it has resolved, found or not.
-  const pending = enabled && !sentence && !!jmdictId && !(jmdictId in lookup)
+  const pending = enabled && !!jmdictId && !(jmdictId in lookup)
 
   const tokens = useMemo(() => {
     if (!japanese || loading) return null
@@ -36,7 +35,7 @@ export function useCardSentence({ jmdictId, form, reading, sentence, sentenceEng
   if (!enabled) return null
   if (pending || (japanese && !tokens)) return undefined
   if (!japanese) return null
-  return { japanese, english: english ?? null, tokens, entries, audio: sentence ? sentenceAudio ?? null : null }
+  return { japanese, english: english ?? null, tokens, entries }
 }
 
 // Warms everything the details panel needs for the next few cards — the

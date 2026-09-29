@@ -20,7 +20,7 @@ beforeEach(() => { withStorage({}) })
 
 describe('audioSourceForVoice', () => {
   it('maps the named voices onto their speaker ids', () => {
-    expect(audioSourceForVoice('female')).toBe('voicevox-2')
+    expect(audioSourceForVoice('female')).toBe('voicevox-9')
     expect(audioSourceForVoice('male')).toBe('voicevox-11')
   })
 })
@@ -55,7 +55,7 @@ describe('initialDrillSettings', () => {
       kanjiMeanings: true,
       sentenceTranslation: 'blur',
       sentenceFurigana: 'new',
-      sentenceAudio: true,
+      sentenceAudio: false,
       voice: 'male',
       backupVoice: '',
       sfx: true,
