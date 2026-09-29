@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en" translate="no">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="google" content="notranslate">
+<title>Sentence Speed Lab</title>
+<style>
+  :root { --bg: #121212; --surface: #1b1b1b; --border: #2e2e2e; --text: #e8e8e8; --muted: #8a8a8a; --accent: #4fd1b5; --warn: #e0a458; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 system-ui, sans-serif; }
+  [lang="ja"] { font-family: 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', system-ui, sans-serif; }
+  header { border-bottom: 1px solid var(--border); padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; }
+  h1 { font-size: 17px; margin: 0 8px 0 0; }
+  label { display: inline-flex; gap: 6px; align-items: center; color: var(--muted); }
+  select, button { font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; cursor: pointer; }
+  button:hover, select:hover { border-color: var(--accent); }
+  button.playing { background: var(--accent); color: #0b0b0b; border-color: var(--accent); }
+  .status { color: var(--muted); font-size: 13px; }
+  main { padding: 16px; max-width: 760px; }
+  .now { min-height: 84px; margin-bottom: 16px; padding: 12px 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+  .now .form { font-size: 22px; }
+  .now .sentence { font-size: 19px; margin-top: 4px; }
+  .now .en { color: var(--muted); font-size: 13px; }
+  h2.group { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 24px 0 0; }
+  h2.group:first-child { margin-top: 0; }
+  .group-note { color: var(--muted); font-size: 12px; margin: 2px 0 0; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .row.current .name { color: var(--accent); }
+  .name { font-weight: 600; }
+  .note { color: var(--muted); font-size: 12px; }
+  .note.warn { color: var(--warn); }
+  .row button { font-size: 13px; padding: 4px 12px; flex-shrink: 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Sentence Speed Lab</h1>
+  <label>Voice <select id="voice"><option value="9">Female (Namine Ritsu)</option><option value="11">Male (Kurono Takehiro)</option></select></label>
+  <label>Sentence <select id="only"><option value="">All 20</option></select></label>
+  <label><input type="checkbox" id="wordFirst" checked> Word first</label>
+  <button id="stop">Stop</button>
+  <span class="status" id="status"></span>
+</header>
+<main>
+  <div class="now" id="now"><span class="status">Pick a version to play. "Word first" plays the word, then the sentence 0.4s later, like the drill.</span></div>
+  <div id="rows"></div>
+</main>
+<script type="module">
+const { speeds, words } = await (await fetch('./manifest.json')).json()
+const $ = id => document.getElementById(id)
+const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e }
+const ja = (text, cls = '') => { const e = el('span', { className: cls, textContent: text }); e.lang = 'ja'; e.translate = false; return e }
+
+words.forEach((w, i) => $('only').append(el('option', { value: i, textContent: `${i + 1}. ${w.sentence.japanese}` })))
+
+const voice = () => Number($('voice').value)
+const wordUrl = i => `../audio/${voice()}/${i}-word.mp3`
+const normalUrl = i => `../audio/${voice()}/${i}-sentence.mp3`
+const slowUrl = (i, s) => `./audio/${voice()}/${i}-${s}.mp3`
+
+// Web Audio, exactly as useVoicevoxPlayer plays clips: an AudioBufferSourceNode,
+// whose playbackRate resamples — slower is also lower.
+const ctx = new AudioContext()
+const buffers = new Map()
+const loadBuffer = url => {
+  if (!buffers.has(url)) buffers.set(url, fetch(url).then(r => r.arrayBuffer()).then(d => ctx.decodeAudioData(d)))
+  return buffers.get(url)
+}
+let current = null
+async function playWebAudio(url, rate = 1) {
+  await ctx.resume()
+  const buffer = await loadBuffer(url)
+  return new Promise(resolve => {
+    const src = ctx.createBufferSource()
+    src.buffer = buffer
+    src.playbackRate.value = rate
+    src.connect(ctx.destination)
+    src.onended = () => resolve()
+    src.start()
+    current = { stop: () => { try { src.stop() } catch {} resolve() } }
+  })
+}
+
+// <audio> with preservesPitch — keeps the pitch, but play() re-checks user
+// activation, which is why the app stopped using it (gamepad flips).
+const audioEl = new Audio()
+audioEl.preservesPitch = true
+function playElement(url, rate) {
+  return new Promise(resolve => {
+    audioEl.src = url
+    audioEl.playbackRate = rate
+    audioEl.onended = () => resolve()
+    audioEl.onerror = () => resolve()
+    audioEl.play().catch(() => resolve())
+    current = { stop: () => { audioEl.pause(); resolve() } }
+  })
+}
+
+function playSpeech(text, rate) {
+  return new Promise(resolve => {
+    speechSynthesis.cancel()
+    const u = new SpeechSynthesisUtterance(text)
+    u.lang = 'ja-JP'
+    u.rate = rate
+    u.onend = () => resolve()
+    u.onerror = () => resolve()
+    speechSynthesis.speak(u)
+    current = { stop: () => { speechSynthesis.cancel(); resolve() } }
+  })
+}
+
+const x = s => `${s}×`
+const GROUPS = [
+  {
+    title: 'Pre-generated',
+    note: 'Voicevox renders the sentence at this speed (speedScale). Pitch and timbre stay natural; each speed is its own set of clips.',
+    rows: [
+      { name: '1× (normal)', note: 'What is being generated now', play: i => playWebAudio(normalUrl(i)) },
+      ...speeds.map(s => ({ name: x(s), play: i => playWebAudio(slowUrl(i, s)) })),
+    ],
+  },
+  {
+    title: 'Playback speed: Web Audio',
+    note: 'The normal clip slowed in the browser the way the app plays audio today. No extra clips, but the voice drops in pitch.',
+    rows: speeds.map(s => ({ name: x(s), warn: true, play: i => playWebAudio(normalUrl(i), s) })),
+  },
+  {
+    title: 'Playback speed: audio element',
+    note: 'The normal clip slowed with pitch preserved (time-stretch). Reference only: the app moved off this player because it fails on gamepad flips.',
+    rows: speeds.map(s => ({ name: x(s), play: i => playElement(normalUrl(i), s) })),
+  },
+  {
+    title: 'Browser speech',
+    note: 'The backup voice, for comparison. The app speaks at 0.85.',
+    rows: [1, 0.85, 0.7].map(s => ({ name: x(s), note: s === 0.85 ? 'Current app setting' : '', play: i => playSpeech(words[i].sentence.japanese, s) })),
+  },
+]
+
+let runId = 0
+function stop() {
+  runId++
+  current?.stop()
+  speechSynthesis.cancel()
+  document.querySelectorAll('.current, .playing').forEach(e => e.classList.remove('current', 'playing'))
+  $('status').textContent = ''
+}
+const wait = ms => new Promise(r => setTimeout(r, ms))
+
+function show(w) {
+  $('now').replaceChildren(
+    el('div', {}, ja(w.form, 'form')),
+    el('div', {}, ja(w.sentence.japanese, 'sentence')),
+    el('div', { className: 'en' }, w.sentence.english),
+  )
+}
+
+async function run(row, rowEl, button, label) {
+  stop()
+  const me = runId
+  button.classList.add('playing')
+  rowEl.classList.add('current')
+  const only = $('only').value
+  const indexes = only === '' ? words.map((_, i) => i) : [Number(only)]
+  for (const i of indexes) {
+    if (me !== runId) return
+    show(words[i])
+    $('status').textContent = `${label}: ${indexes.indexOf(i) + 1} / ${indexes.length}`
+    if ($('wordFirst').checked) {
+      await playWebAudio(wordUrl(i))
+      if (me !== runId) return
+      await wait(400)
+      if (me !== runId) return
+    }
+    await row.play(i)
+    await wait(900)
+  }
+  if (me === runId) stop()
+}
+
+for (const g of GROUPS) {
+  $('rows').append(el('h2', { className: 'group' }, g.title), el('p', { className: 'group-note' }, g.note))
+  for (const row of g.rows) {
+    const button = el('button', { textContent: 'Play' })
+    const rowEl = el('div', { className: 'row' },
+      el('div', {}, el('div', { className: 'name' }, row.name), row.note ? el('div', { className: row.warn ? 'note warn' : 'note' }, row.note) : ''),
+      button,
+    )
+    button.onclick = () => run(row, rowEl, button, `${g.title} ${row.name}`)
+    $('rows').append(rowEl)
+  }
+}
+
+$('stop').onclick = stop
+$('voice').onchange = stop
+</script>
+</body>
+</html>

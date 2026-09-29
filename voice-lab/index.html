@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en" translate="no">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="google" content="notranslate">
+<title>Voice Lab</title>
+<style>
+  :root { --bg: #121212; --surface: #1b1b1b; --border: #2e2e2e; --text: #e8e8e8; --muted: #8a8a8a; --accent: #4fd1b5; --current: #1f2b28; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 system-ui, sans-serif; }
+  [lang="ja"] { font-family: 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', system-ui, sans-serif; }
+  header { border-bottom: 1px solid var(--border); padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; }
+  h1 { font-size: 17px; margin: 0 8px 0 0; }
+  label { display: inline-flex; gap: 6px; align-items: center; color: var(--muted); }
+  select, button { font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; cursor: pointer; }
+  button:hover, select:hover { border-color: var(--accent); }
+  button.playing { background: var(--accent); color: #0b0b0b; border-color: var(--accent); }
+  .status { color: var(--muted); font-size: 13px; }
+  main { padding: 16px; max-width: 720px; }
+  .now { min-height: 96px; margin-bottom: 16px; padding: 12px 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+  .now .form { font-size: 26px; }
+  .now .reading, .now .en { color: var(--muted); font-size: 13px; }
+  .now .sentence { margin-top: 4px; }
+  h2.group { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 24px 0 0; }
+  h2.group:first-child { margin-top: 0; }
+  .voice-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .voice-row.current .voice-name { color: var(--accent); }
+  .voice-name { font-weight: 600; }
+  .voice-name [lang="ja"] { font-weight: 400; color: var(--muted); margin-left: 6px; }
+  .note { color: var(--muted); font-size: 12px; }
+  .voice-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .voice-actions button { font-size: 13px; padding: 4px 9px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Voice Lab</h1>
+  <label>Gap <select id="gap"><option value="400">0.4s</option><option value="800" selected>0.8s</option><option value="1500">1.5s</option></select></label>
+  <button id="stop">Stop</button>
+  <span class="status" id="status"></span>
+</header>
+<main>
+  <div class="now" id="now"><span class="status">Pick a voice to play through all 20 words.</span></div>
+  <div id="voices"></div>
+</main>
+<script type="module">
+const { voices, words } = await (await fetch('./manifest.json')).json()
+const $ = id => document.getElementById(id)
+const audio = new Audio()
+let runId = 0
+
+const ja = (text, cls = '') => {
+  const e = document.createElement('span')
+  e.lang = 'ja'
+  e.translate = false
+  e.className = cls
+  e.textContent = text
+  return e
+}
+const el = (tag, props = {}, ...kids) => {
+  const e = Object.assign(document.createElement(tag), props)
+  e.append(...kids)
+  return e
+}
+const url = (voiceId, i, kind) => `./audio/${voiceId}/${i}-${kind}.mp3`
+
+const TOP_PICKS = [118, 9, 108]
+const groups = [
+  ['Top picks', TOP_PICKS.map(id => voices.find(v => v.id === id))],
+  ['Other', voices.filter(v => !TOP_PICKS.includes(v.id))],
+]
+
+for (const [title, list] of groups) {
+  $('voices').append(el('h2', { className: 'group' }, title))
+  for (const v of list) {
+    const playAll = el('button', { textContent: 'Play all', onclick: () => playThrough(v, false, playAll) })
+    const playAllSentences = el('button', { textContent: 'Play all + sentences', onclick: () => playThrough(v, true, playAllSentences) })
+    $('voices').append(el('div', { className: 'voice-row', id: `voice-${v.id}` },
+      el('div', {}, el('div', { className: 'voice-name' }, v.romaji, ja(v.name)), el('div', { className: 'note' }, v.note)),
+      el('div', { className: 'voice-actions' }, playAll, playAllSentences),
+    ))
+  }
+}
+
+function showWord(w, withSentence) {
+  $('now').replaceChildren(
+    el('div', {}, ja(w.form, 'form'), ' ', ja(w.reading, 'reading')),
+    el('div', { className: 'en' }, w.gloss),
+    ...(withSentence ? [el('div', { className: 'sentence' }, ja(w.sentence.japanese)), el('div', { className: 'en' }, w.sentence.english)] : []),
+  )
+}
+
+function play(src) {
+  return new Promise(resolve => {
+    audio.src = src
+    audio.onended = () => resolve(true)
+    audio.onerror = () => resolve(false)
+    audio.play().catch(() => resolve(false))
+  })
+}
+const wait = ms => new Promise(r => setTimeout(r, ms))
+
+function clearMarks() {
+  document.querySelectorAll('.current, .playing').forEach(e => e.classList.remove('current', 'playing'))
+}
+
+function stop() {
+  runId++
+  audio.pause()
+  clearMarks()
+  $('status').textContent = ''
+}
+
+async function playThrough(v, withSentences, button) {
+  stop()
+  const me = runId
+  const gap = Number($('gap').value)
+  button.classList.add('playing')
+  $(`voice-${v.id}`).classList.add('current')
+  for (let i = 0; i < words.length; i++) {
+    if (me !== runId) return
+    showWord(words[i], withSentences)
+    $('status').textContent = `${v.romaji}: ${i + 1} / ${words.length}`
+    await play(url(v.id, i, 'word'))
+    if (withSentences && me === runId) {
+      await wait(gap / 2)
+      if (me !== runId) return
+      await play(url(v.id, i, 'sentence'))
+    }
+    await wait(gap)
+  }
+  if (me === runId) stop()
+}
+
+$('stop').onclick = stop
+</script>
+</body>
+</html>

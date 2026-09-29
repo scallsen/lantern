@@ -17,6 +17,10 @@ const LAB_PAGES = [
   { href: '/dev/tracked-stat', title: 'Tracked Stat', description: 'Candidate shapes for a shared per-module "tracked" stat component.' },
   { href: '/dev/segment-colors', title: 'Segment Colors', description: 'Candidate palettes for the card-state colours (Distribution Bar).' },
   { href: '/dev/accent-polish', title: 'Accent Polish', description: 'Accent-red text legibility before/after, and loading-pulse variants.' },
+  // Plain HTML pages under voice-lab/, served by the dev server as files
+  // rather than routed by App.jsx.
+  { href: '/voice-lab/', static: true, title: 'Voice Lab', description: 'Eight Voicevox voices reading 20 Genki words and their example sentences — picked the female voice.' },
+  { href: '/voice-lab/speed/', static: true, title: 'Sentence Speed Lab', description: 'Pre-generated slow sentences vs slowing them down in the browser.' },
 ]
 
 function pageRowContent(page) {
@@ -44,7 +48,7 @@ export default function DevIndexPage() {
             columns={COLUMNS}
             rows={LAB_PAGES}
             rowKey={page => page.href}
-            navigate={{ href: page => `#${page.href}` }}
+            navigate={{ href: page => page.static ? page.href : `#${page.href}` }}
           />
         </div>
       </main>

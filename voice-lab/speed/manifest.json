@@ -1,0 +1,229 @@
+{
+  "speeds": [
+    0.9,
+    0.8,
+    0.75
+  ],
+  "words": [
+    {
+      "id": "genki-1-l1-004",
+      "lesson": "genki-1-l1",
+      "form": "学生",
+      "reading": "がくせい",
+      "gloss": "student (esp. a university student)",
+      "sentence": {
+        "japanese": "彼は法科の学生だ。",
+        "english": "He is an undergraduate in the law department."
+      }
+    },
+    {
+      "id": "genki-1-l1-019",
+      "lesson": "genki-1-l1",
+      "form": "名前",
+      "reading": "なまえ",
+      "gloss": "name; given name; first name",
+      "sentence": {
+        "japanese": "彼は人の名前を忘れやすい。",
+        "english": "He is apt to forget people's name."
+      }
+    },
+    {
+      "id": "genki-1-l2-008",
+      "lesson": "genki-1-l2",
+      "form": "どの",
+      "reading": "どの",
+      "gloss": "which; what (way)",
+      "sentence": {
+        "japanese": "彼は出会うどの女性ともいちゃつく。",
+        "english": "He flirts with every woman he meets."
+      }
+    },
+    {
+      "id": "genki-1-l2-032",
+      "lesson": "genki-1-l2",
+      "form": "帽子",
+      "reading": "ぼうし",
+      "gloss": "hat; cap; cap (move)",
+      "sentence": {
+        "japanese": "彼は帽子をかぶらずに出かけた。",
+        "english": "He went out without a hat."
+      }
+    },
+    {
+      "id": "genki-1-l3-028",
+      "lesson": "genki-1-l3",
+      "form": "日曜日",
+      "reading": "にちようび",
+      "gloss": "Sunday",
+      "sentence": {
+        "japanese": "彼は日曜日に部屋を掃除した。",
+        "english": "He cleaned his room on Sunday."
+      }
+    },
+    {
+      "id": "genki-1-l3-043",
+      "lesson": "genki-1-l3",
+      "form": "勉強する",
+      "reading": "べんきょうする",
+      "gloss": "study; diligence; working hard; experience; knowledge; lesson (for the future); discount; price reduction",
+      "sentence": {
+        "japanese": "心理学を勉強すればするほど面白いと思えてきたんだ。",
+        "english": "The more I studied psychology, the more interesting it seemed to me."
+      }
+    },
+    {
+      "id": "genki-1-l4-027",
+      "lesson": "genki-1-l4",
+      "form": "〜時間",
+      "reading": "じかん",
+      "gloss": "time; hour; period; class; lesson",
+      "sentence": {
+        "japanese": "彼は続けざまに五時間以上働かされた。",
+        "english": "He was forced to work more than five hours on end."
+      }
+    },
+    {
+      "id": "genki-1-l4-055",
+      "lesson": "genki-1-l4",
+      "form": "中",
+      "reading": "なか",
+      "gloss": "inside; interior; among; within; middle; center; centre; during; while; middle; midst; amid; interval; gap; mean; average; second (of three, e.g. sons, volumes); middle; medium grade; medium quality; red-light district",
+      "sentence": {
+        "japanese": "彼は森の中で迷った。",
+        "english": "He lost his way in the woods."
+      }
+    },
+    {
+      "id": "genki-1-l5-023",
+      "lesson": "genki-1-l5",
+      "form": "面白い",
+      "reading": "おもしろい",
+      "gloss": "interesting; fascinating; intriguing; enthralling; amusing; funny; comical; enjoyable; fun; entertaining; pleasant; agreeable; good; satisfactory; favourable; desirable; encouraging",
+      "sentence": {
+        "japanese": "心理学を勉強すればするほど面白いと思えてきたんだ。",
+        "english": "The more I studied psychology, the more interesting it seemed to me."
+      }
+    },
+    {
+      "id": "genki-1-l5-051",
+      "lesson": "genki-1-l5",
+      "form": "とても",
+      "reading": "とても",
+      "gloss": "very; awfully; exceedingly; (not) at all; by no means; simply (cannot)",
+      "sentence": {
+        "japanese": "彼は年の割にとても世慣れて見える。",
+        "english": "He looks quite sophisticated for his age."
+      }
+    },
+    {
+      "id": "genki-1-l6-029",
+      "lesson": "genki-1-l6",
+      "form": "持つ",
+      "reading": "もつ",
+      "gloss": "to hold (in one's hand); to take; to carry; to possess; to have; to own; to maintain; to keep; to last; to be durable; to keep; to survive; to take charge of; to be in charge of; to hold (meeting, etc.); to have (opportunity, etc.); to have \"it\"; to have that special something; to be blessed with good luck",
+      "sentence": {
+        "japanese": "彼は田舎に地所を持っている。",
+        "english": "He has an estate in the country."
+      }
+    },
+    {
+      "id": "genki-1-l7-015",
+      "lesson": "genki-1-l7",
+      "form": "車",
+      "reading": "くるま",
+      "gloss": "car; automobile; vehicle; wheel; castor; caster",
+      "sentence": {
+        "japanese": "彼は赤い車に決めた。",
+        "english": "He decided on a red car."
+      }
+    },
+    {
+      "id": "genki-1-l7-033",
+      "lesson": "genki-1-l7",
+      "form": "かぶる",
+      "reading": "かぶる",
+      "gloss": "to put on (one's head); to wear; to have on; to pull over (one's head); to crown (oneself); to be covered with (dust, snow, etc.); to pour (water, etc.) on oneself; to dash on oneself; to ship water; to bear (e.g. someone's debts, faults, etc.); to take (blame); to assume (responsibility); to shoulder (burden); to overlap (e.g. sound or color); to be similar; to be redundant; to be fogged (due to overexposure, etc.); to close; to come to an end; to get a full house; to sell out; to blunder; to bungle; to fail; to be deceived",
+      "sentence": {
+        "japanese": "彼は帽子をかぶらずに出かけた。",
+        "english": "He went out without a hat."
+      }
+    },
+    {
+      "id": "genki-1-l8-029",
+      "lesson": "genki-1-l8",
+      "form": "言う",
+      "reading": "いう",
+      "gloss": "to say; to utter; to declare; to name; to call; to go (e.g. \"the alarm went ping\"); to make a noise",
+      "sentence": {
+        "japanese": "彼は彼女に小声で言った。",
+        "english": "He said to her under his breath."
+      }
+    },
+    {
+      "id": "genki-1-l9-009",
+      "lesson": "genki-1-l9",
+      "form": "今度",
+      "reading": "こんど",
+      "gloss": "this time; now; next time; another time; shortly; soon; recently; lately; the other day",
+      "sentence": {
+        "japanese": "彼は今度の選挙には立たないだろう。",
+        "english": "He is not running in the coming election."
+      }
+    },
+    {
+      "id": "genki-1-l9-026",
+      "lesson": "genki-1-l9",
+      "form": "終わる",
+      "reading": "おわる",
+      "gloss": "to end; to come to an end; to finish; to close; to be over; to finish; to complete; to conclude; to finish doing; to be past its (one's) prime; to be awful; to be terrible; to suck; to be hopeless",
+      "sentence": {
+        "japanese": "彼は戦争が早々と終わるとあてこんでいた。",
+        "english": "He gambled on the war coming to an early end."
+      }
+    },
+    {
+      "id": "genki-1-l9-040",
+      "lesson": "genki-1-l9",
+      "form": "三つ",
+      "reading": "みっつ",
+      "gloss": "three; three years of age",
+      "sentence": {
+        "japanese": "彼は答えを三つ間違えた。",
+        "english": "He gave three wrong answers."
+      }
+    },
+    {
+      "id": "genki-1-l10-019",
+      "lesson": "genki-1-l10",
+      "form": "船",
+      "reading": "ふね",
+      "gloss": "ship; boat; watercraft; vessel; seaplane; tank; tub; vat; trough; counter for boat-shaped containers (e.g. of sashimi)",
+      "sentence": {
+        "japanese": "彼はその船の水先人を勤めた。",
+        "english": "He served as the pilot of the ship."
+      }
+    },
+    {
+      "id": "genki-1-l10-037",
+      "lesson": "genki-1-l10",
+      "form": "歩いて",
+      "reading": "あるいて",
+      "gloss": "to walk",
+      "sentence": {
+        "japanese": "彼は肩を怒らせて歩いていた。",
+        "english": "He was walking with his shoulders squared."
+      }
+    },
+    {
+      "id": "genki-1-l11-015",
+      "lesson": "genki-1-l11",
+      "form": "美術館",
+      "reading": "びじゅつかん",
+      "gloss": "art museum; art gallery",
+      "sentence": {
+        "japanese": "彼は美術館巡りでつかれていた。",
+        "english": "He was tired from walking round museums."
+      }
+    }
+  ]
+}
