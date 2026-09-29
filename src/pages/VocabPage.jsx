@@ -127,9 +127,16 @@ const AUDIO_PRELOAD_COUNT = 3
 function ActiveDrill({ drill, audioSource, playOnFront, playOnBack, playSentence, sfxEnabled, ttsVoice, showStreak, reviewMode, showFurigana, showTranslation, pixelFont, showVisualEffects, onPulse, isShort, isMobile, settings, onChangeSetting, knownIds, related, srsData, saveSrs, barSlot }) {
   const [flippedCardId, setFlippedCardId] = useState(null)
   const { edgeToEdge } = useDrillCardSize()
+  // `transitioning` locks input only while the answered card leaves; the
+  // next card's slide-in (`entering`) runs on after it, and the buttons are
+  // live again as soon as that card is.
   const [transitioning, setTransitioning] = useState(false)
   const [exitDir, setExitDir] = useState(null)
+  const [entering, setEntering] = useState(false)
   const [undoEntering, setUndoEntering] = useState(false)
+  const enterTimerRef = useRef(null)
+  const pulseTimerRef = useRef(null)
+  useEffect(() => () => { clearTimeout(enterTimerRef.current); clearTimeout(pulseTimerRef.current) }, [])
   const { currentCard, upcoming, streak, bestStreak, correct, troubled, remaining, canUndo, onUndo } = drill
   const isFlipped = flippedCardId === currentCard.id
   const tts = useTTS(ttsVoice)
@@ -273,12 +280,21 @@ function ActiveDrill({ drill, audioSource, playOnFront, playOnBack, playSentence
       setLocalStreak(0)
     }
     setTransitioning(true)
+    // An answer given while the last card is still sliding in cuts that
+    // slide short, and its timers with it.
+    clearTimeout(enterTimerRef.current)
+    setEntering(false)
+    setUndoEntering(false)
     setExitDir(isCorrect ? 'up' : 'down')
+    clearTimeout(pulseTimerRef.current)
     onPulse(isCorrect ? 'correct' : 'wrong')
     const exitDelay  = showVisualEffects ? 280 : 0
     const clearDelay = showVisualEffects ? 600 : 0
-    setTimeout(() => { action(); setExitDir(null) }, exitDelay)
-    setTimeout(() => { setTransitioning(false); onPulse(null) }, clearDelay)
+    setTimeout(() => {
+      action(); setExitDir(null); setTransitioning(false); setEntering(true)
+      enterTimerRef.current = setTimeout(() => setEntering(false), clearDelay - exitDelay)
+    }, exitDelay)
+    pulseTimerRef.current = setTimeout(() => onPulse(null), clearDelay)
   }
 
   useEffect(() => {
@@ -339,11 +355,16 @@ function ActiveDrill({ drill, audioSource, playOnFront, playOnBack, playSentence
     if (sfxEnabled) sfx.play('undo')
     setFlippedCardId(null)
     setTransitioning(true)
+    clearTimeout(enterTimerRef.current)
+    setEntering(false)
+    setUndoEntering(false)
     setExitDir('undo')
     const undoExitDelay  = showVisualEffects ? 200 : 0
     const undoClearDelay = showVisualEffects ? 580 : 0
-    setTimeout(() => { onUndo(); setExitDir(null); setUndoEntering(true) }, undoExitDelay)
-    setTimeout(() => { setTransitioning(false); setUndoEntering(false) }, undoClearDelay)
+    setTimeout(() => {
+      onUndo(); setExitDir(null); setTransitioning(false); setUndoEntering(true)
+      enterTimerRef.current = setTimeout(() => setUndoEntering(false), undoClearDelay - undoExitDelay)
+    }, undoExitDelay)
   }
 
   useEffect(() => {
@@ -392,7 +413,7 @@ function ActiveDrill({ drill, audioSource, playOnFront, playOnBack, playSentence
     else if (exitDir === 'down') cardClass = 'card-exit-down'
     else if (exitDir === 'undo') cardClass = 'card-exit-undo'
     else if (undoEntering) cardClass = 'card-entering-undo'
-    else if (transitioning) cardClass = 'card-entering'
+    else if (entering) cardClass = 'card-entering'
   }
 
   return (

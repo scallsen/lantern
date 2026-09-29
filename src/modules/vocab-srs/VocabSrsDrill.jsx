@@ -146,8 +146,14 @@ export default function VocabSrsDrill({
   const { edgeToEdge, width: cardWidth } = useDrillCardSize()
   const ACCENT = useAccent()
   const [leechNotice, setLeechNotice] = useState(null)
+  // `transitioning` locks input only while the answered card leaves; the
+  // next card's slide-in (`entering`) runs on after it, and the buttons are
+  // live again as soon as that card is.
   const [transitioning, setTransitioning] = useState(false)
   const [exitDir, setExitDir] = useState(null)
+  const [entering, setEntering] = useState(false)
+  const enterTimerRef = useRef(null)
+  useEffect(() => () => clearTimeout(enterTimerRef.current), [])
   const [undoEntering, setUndoEntering] = useState(false)
 
   // Force re-render every second so waitUntil countdowns and card availability update.
@@ -269,6 +275,11 @@ export default function VocabSrsDrill({
       sessionRef.current, currentCard, rating, { leechThreshold }
     )
     setTransitioning(true)
+    // An answer given while the last card is still sliding in cuts that
+    // slide short, and its timer with it.
+    clearTimeout(enterTimerRef.current)
+    setEntering(false)
+    setUndoEntering(false)
     setExitDir(rating === Rating.Again ? 'down' : 'up')
     const exitDelay = showVisualEffects ? EXIT_MS : 0
     const clearDelay = showVisualEffects ? CLEAR_MS : 0
@@ -283,8 +294,10 @@ export default function VocabSrsDrill({
         setTimeout(() => setLeechNotice(null), 4000)
       }
       setExitDir(null)
+      setTransitioning(false)
+      setEntering(true)
+      enterTimerRef.current = setTimeout(() => setEntering(false), clearDelay - exitDelay)
     }, exitDelay)
-    setTimeout(() => setTransitioning(false), clearDelay)
   }
 
   const handleFlipRef = useRef()
@@ -305,6 +318,9 @@ export default function VocabSrsDrill({
     if (prevSession === sessionRef.current) return
     voicevox.stop()
     setTransitioning(true)
+    clearTimeout(enterTimerRef.current)
+    setEntering(false)
+    setUndoEntering(false)
     setExitDir('undo')
     const exitDelay = showVisualEffects ? UNDO_EXIT_MS : 0
     const clearDelay = showVisualEffects ? UNDO_CLEAR_MS : 0
@@ -323,9 +339,10 @@ export default function VocabSrsDrill({
       setSession(prevSession)
       setFlipped(false)
       setExitDir(null)
+      setTransitioning(false)
       setUndoEntering(true)
+      enterTimerRef.current = setTimeout(() => setUndoEntering(false), clearDelay - exitDelay)
     }, exitDelay)
-    setTimeout(() => { setTransitioning(false); setUndoEntering(false) }, clearDelay)
   }
 
   const handleReplayRef = useRef()
@@ -503,7 +520,7 @@ export default function VocabSrsDrill({
     else if (exitDir === 'down') cardClass = 'card-exit-down'
     else if (exitDir === 'undo') cardClass = 'card-exit-undo'
     else if (undoEntering) cardClass = 'card-entering-undo'
-    else if (transitioning) cardClass = 'card-entering'
+    else if (entering) cardClass = 'card-entering'
   }
 
   // Half the room left over once the card, its gap and the details panel's

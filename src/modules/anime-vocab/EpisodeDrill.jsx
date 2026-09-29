@@ -71,8 +71,7 @@ function ActiveEpisodeDrill({
     const action = isCorrect ? drill.onCorrect : drill.onWrong
     if (sfxEnabled) sfx.play(isCorrect ? 'flip_card_correct' : 'flip_card_wrong')
     setTransitioning(true)
-    setTimeout(() => { action() }, 200)
-    setTimeout(() => { setTransitioning(false) }, 240)
+    setTimeout(() => { action(); setTransitioning(false) }, 200)
   }
 
   useEffect(() => {
