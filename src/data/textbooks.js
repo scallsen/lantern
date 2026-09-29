@@ -149,7 +149,7 @@ export const TEXTBOOKS = [
     chapters: weekDays('nsm-n3-kanji', 6, 6),
   },
   // Course material rather than published books: one class's own chunking of a
-  // So-Matome volume, with its own example sentences. The words live in the
+  // So-Matome volume. The words live in the
   // learner's account (custom_words), so these appear only for whoever owns
   // them — the picker offers a book when it has words for the viewer, and for
   // everyone else these have none.
@@ -165,7 +165,7 @@ export const TEXTBOOKS = [
     title: 'Coto Intermediate 3',
     subtitle: 'N3',
     publisher: 'Coto Academy',
-    description: 'Coto Academy\'s own chunking of the N3 kanji book, with its own example sentences and review markers.',
+    description: 'Coto Academy\'s own chunking of the N3 kanji book, with its own review markers.',
     purchase: [],
     icon: `${ICONS}/nihongo-so-matome-kanji-n3.svg`,
     chapters: weekDays('nsm-n3', 4),
@@ -198,7 +198,7 @@ export const TEXTBOOKS = [
     title: 'Coto Advanced 1',
     subtitle: 'N2',
     publisher: 'Coto Academy',
-    description: 'Coto Academy\'s own chunking of the N2 material, with its own example sentences.',
+    description: 'Coto Academy\'s own chunking of the N2 material.',
     purchase: [],
     icon: `${ICONS}/nihongo-so-matome-kanji-n2.svg`,
     chapters: weekDays('n2', 4),

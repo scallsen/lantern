@@ -15,6 +15,10 @@ async function getCtx(ctxRef) {
   return ctxRef.current
 }
 
+// Seconds between a word finishing and its example sentence starting. Back to
+// back, the sentence reads as a continuation of the word.
+export const SENTENCE_GAP = 0.4
+
 export function useVoicevoxPlayer() {
   const ctxRef = useRef(null)
   const bufferCacheRef = useRef(new Map()) // url -> Promise<AudioBuffer>
@@ -61,10 +65,12 @@ export function useVoicevoxPlayer() {
   // Resolves true when something was actually played, so a caller can fall back
   // to speech synthesis. It used to swallow every failure, which meant a word
   // whose clip was missing played nothing at all rather than falling back.
-  // `onEnded` (e.g. SRS's word-then-sentence sequencing) fires once this clip
+  // `onEnded` (the drills' word-then-sentence sequencing) fires once this clip
   // finishes on its own — guarded by the same token check so a later
   // play()/stop() that superseded this one doesn't also fire a stale chain.
-  async function play(url, { onEnded } = {}) {
+  // `delay` (seconds) schedules the start on the audio clock rather than a
+  // setTimeout, so stop() cancels a clip that hasn't started yet as well.
+  async function play(url, { onEnded, delay = 0 } = {}) {
     stop()
     const token = tokenRef.current
     try {
@@ -74,7 +80,7 @@ export function useVoicevoxPlayer() {
       source.buffer = buffer
       source.connect(ctx.destination)
       if (onEnded) source.onended = () => { if (token === tokenRef.current) onEnded() }
-      source.start()
+      source.start(ctx.currentTime + delay)
       sourceRef.current = source
       return true
     } catch {

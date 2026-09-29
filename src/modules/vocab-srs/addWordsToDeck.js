@@ -28,7 +28,6 @@ export function buildCardsForWords(words, targetDeckId, existingCardsObj, dictEn
     const english = word.english ?? cardGloss(word, dictEntry, senseGlosses)
     const extras = {}
     if (kana) extras.kana = kana
-    if (word.sentence) extras.sentence = word.sentence
     if (word.jmdictId) extras.jmdictId = word.jmdictId
     newCards[cardId] = createCard(front, english, cardId, targetDeckId, extras)
     newCardIds.push(cardId)

@@ -24,10 +24,10 @@ Env vars required: `SUPABASE_URL` (or `VITE_SUPABASE_URL`), `SUPABASE_SERVICE_RO
 
 ## What it does
 
-1. Reads `src/data/words/*.json`.
-2. For each entry missing a voice in its `voicevoxVoices` array, synthesizes audio (via `/audio_query` + `/synthesis`), converts WAV→MP3 with `ffmpeg`, and uploads to Supabase Storage at `audio/voicevox/<speakerId>/<entryId>.mp3`.
-3. Writes the updated `voicevoxVoices` array back into the source JSON.
-4. Reconciles each voice folder against current entries and deletes anything orphaned — removing a word/card from the JSON automatically prunes its stored audio on the next run.
+1. Reads `src/data/words/*.json` plus every learner's `custom_words`.
+2. Collects the texts to speak: each word's reading, and the example sentence its card shows — the Tanaka pick from the `best_sentences` SQL function (a word's own `sentence` field is ignored) (the same function the app calls, so the recorded sentence is the displayed one).
+3. For each text with no clip yet, synthesizes audio (via `/audio_query` + `/synthesis`), converts WAV→MP3 with `ffmpeg`, and uploads to Supabase Storage at `audio/voicevox/<speakerId>/<audioKeyFor(text)>.mp3`. Words and sentences share the folder.
+4. Reconciles each voice folder against that text set and deletes anything orphaned — removing a word from the JSON automatically prunes its stored audio (and its sentence's) on the next run.
 5. Flips the single-row `audio_generation_status` Supabase table to `'processing'`/`'idle'` around the run, which the frontend polls to show an "Audio is being generated" note.
 
 ## One-time setup required (not automated)

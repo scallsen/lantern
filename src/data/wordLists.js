@@ -15,7 +15,7 @@ function fromTextbook(id) {
 }
 
 // A personal source is one learner's own course material — a class's
-// re-chunking of a textbook, with its own sentences and review markers. It is
+// re-chunking of a textbook, with its own review markers. It is
 // theirs, not the app's, so it only appears for the account that owns it (see
 // visibleSources). The published book it was taken from lives alongside it as
 // an ordinary source.

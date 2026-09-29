@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Generates Voicevox neural TTS audio for the vocab word lists, and uploads
- * MP3s to Supabase Storage.
+ * Generates Voicevox neural TTS audio for the vocab word lists — each word and
+ * the example sentence its card shows — and uploads MP3s to Supabase Storage.
  *
  * A clip is stored under audio/voicevox/<speakerId>/<key>.mp3, where the key is
  * a hash of THE TEXT SPOKEN rather than of the word that wanted it. One reading
@@ -20,6 +20,14 @@
  * reading keys. Leaving them out of the key set would have the prune delete
  * audio that is very much still in use, so that read is mandatory — a failure
  * to fetch them skips pruning entirely rather than pruning on a partial set.
+ *
+ * Sentences share the words' folder and keying: a clip is a hash of what it
+ * says, whether that is a reading or a sentence. The sentence is the one the
+ * card displays: the Tanaka pick for the word's jmdictId from the
+ * best_sentences SQL function, the same function the app calls. Pick it any
+ * other way and the recorded sentence drifts from the shown one, and the prune
+ * deletes every sentence clip as an orphan. A word's own `sentence` field, if
+ * one ever reappears, is ignored — the app never shows it.
  *
  * Requires a running Voicevox engine (desktop app, or the headless
  * voicevox/voicevox_engine Docker image) reachable at VOICEVOX_URL.
@@ -175,6 +183,21 @@ async function listExistingKeys(speakerId) {
   return keys
 }
 
+// The Tanaka sentence each entry's card shows. A failed read throws rather than
+// returning a partial map: the result feeds the prune's keep set, and a missing
+// sentence there reads as an orphaned clip.
+async function fetchBestSentences(ids) {
+  const map = new Map()
+  const unique = [...new Set(ids)].filter(Boolean)
+  const BATCH = 500
+  for (let i = 0; i < unique.length; i += BATCH) {
+    const { data, error } = await supabase.rpc('best_sentences', { ids: unique.slice(i, i + BATCH) })
+    if (error) throw new Error(`best_sentences failed: ${error.message}`)
+    for (const row of data) map.set(row.dictionary_id, row.japanese)
+  }
+  return map
+}
+
 // A learner's own word lists, which left the repo for per-user storage. They
 // are read for two reasons: their clips must be generated like any other, and —
 // the load-bearing one — they must be in the prune's keep set, since their
@@ -268,22 +291,28 @@ async function generate() {
   entriesByPath.set(CUSTOM_WORDS_KEY, customWords)
 
   const dict = await fetchEntries(allIds)
+  const sentenceById = await fetchBestSentences(allIds)
 
   const textByKey = new Map()
+  function addText(text) {
+    const key = audioKeyFor(text)
+    const seen = textByKey.get(key)
+    // Two texts sharing a key would silently serve each other's audio.
+    if (seen && seen !== text) {
+      throw new Error(`audio key collision: ${JSON.stringify(seen)} and ${JSON.stringify(text)}`)
+    }
+    textByKey.set(key, text)
+  }
+  const sentences = new Set()
   for (const path of [...TARGETS, CUSTOM_WORDS_KEY]) {
     for (const entry of entriesByPath.get(path)) {
       const text = speechTextOf(entry, entry.jmdictId ? dict.get(entry.jmdictId) : null) ?? entry.kana
-      if (!text) continue
-      const key = audioKeyFor(text)
-      const seen = textByKey.get(key)
-      // Two readings sharing a key would silently serve each other's audio.
-      if (seen && seen !== text) {
-        throw new Error(`audio key collision: ${JSON.stringify(seen)} and ${JSON.stringify(text)}`)
-      }
-      textByKey.set(key, text)
+      if (text) addText(text)
+      const sentence = sentenceById.get(entry.jmdictId)
+      if (sentence) { addText(sentence); sentences.add(sentence) }
     }
   }
-  console.log(`${textByKey.size} distinct spoken texts across ${TARGETS.length} list(s) plus custom_words`)
+  console.log(`${textByKey.size} distinct spoken texts (${sentences.size} of them sentences) across ${TARGETS.length} list(s) plus custom_words`)
 
   const allKeys = new Set(textByKey.keys())
 

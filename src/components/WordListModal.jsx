@@ -20,7 +20,7 @@ import { FONT, TRACKING, TEXT, TEXT_MUTED, FS_BASE, FS_CAPTION, FS_ENTRY_WORD, K
 // same content it always has. `groups` is `[{ id, label, words }]`,
 // already resolved and ordered by the caller — this component only
 // renders them.
-export function WordListContent({ groups, sentenceSource = 'custom' }) {
+export function WordListContent({ groups }) {
   const allWords = useMemo(() => groups.flatMap(g => g.words), [groups])
   const jmdictIds = useMemo(() => allWords.map(w => w.jmdictId).filter(Boolean), [allWords])
   const { entries: dictEntries } = useDictionaryEntries(jmdictIds, true)
@@ -74,9 +74,7 @@ export function WordListContent({ groups, sentenceSource = 'custom' }) {
 
   function renderWordDetail(word) {
     const dictEntry = word.jmdictId ? dictEntries[word.jmdictId] : null
-    const tanakaSentence = word.jmdictId ? tanakaSentences[word.jmdictId] : null
-    const useTanakaSentence = sentenceSource === 'tanaka' ? !!tanakaSentence : (!word.sentence && !!tanakaSentence)
-    const sentenceText = useTanakaSentence ? tanakaSentence.japanese : word.sentence
+    const sentenceText = word.jmdictId ? tanakaSentences[word.jmdictId]?.japanese : null
     const { displayForm } = resolveWordDisplay(word, dictEntry)
     const kanjiChars = (displayForm ?? '').split('').filter(ch => /\p{Script=Han}/u.test(ch))
     return (
@@ -164,11 +162,11 @@ export class WordListErrorBoundary extends Component {
 // WordExplorerModal composes WordListContent directly instead, inside a
 // Modal it already owns (its Words step shares that Modal with a Picker
 // step, so the two can't be two separate Modal instances).
-export default function WordListModal({ open, onClose, title = 'View words', size = 'xl', isMobile, groups, sentenceSource, footer }) {
+export default function WordListModal({ open, onClose, title = 'View words', size = 'xl', isMobile, groups, footer }) {
   return (
     <Modal open={open} onClose={onClose} title={title} size={size} isMobile={isMobile} footer={footer}>
       <WordListErrorBoundary>
-        <WordListContent groups={groups} sentenceSource={sentenceSource} />
+        <WordListContent groups={groups} />
       </WordListErrorBoundary>
     </Modal>
   )

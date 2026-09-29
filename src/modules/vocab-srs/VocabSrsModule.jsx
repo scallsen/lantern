@@ -786,6 +786,7 @@ function VocabSrsHome() {
             audioEnabled={anyAudio}
             autoplayFront={settings.frontAudio}
             autoplayBack={settings.backAudio}
+            playSentence={settings.sentenceAudio}
             audioSource={audioSource}
             sfxEnabled={settings.sfx}
             ttsVoice={settings.backupVoice}

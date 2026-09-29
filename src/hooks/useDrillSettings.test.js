@@ -50,6 +50,7 @@ describe('initialDrillSettings', () => {
       kanjiMeanings: true,
       sentence: true,
       backAudio: true,
+      sentenceAudio: false,
       voice: 'male',
       backupVoice: '',
       sfx: true,
