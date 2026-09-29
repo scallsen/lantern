@@ -14,7 +14,7 @@ function render(props) {
 describe('DrillSettingsPanel', () => {
   it('groups every setting under the part of the card it changes', () => {
     const html = render({ backupVoices: VOICES })
-    for (const group of ['Card front', 'Card back', 'Audio', 'Interface']) {
+    for (const group of ['Card front', 'Card back', 'Details', 'Sentence', 'Audio', 'Interface']) {
       expect(html).toContain(`>${group}<`)
     }
     // One audio row per face, plus the group heading of the same name.
@@ -31,10 +31,28 @@ describe('DrillSettingsPanel', () => {
     expect(render({ backupVoices: [] })).not.toContain('>Backup voice<')
   })
 
-  it('drops the audio group entirely when neither voice row applies', () => {
+  it('keeps the audio group for Play sentence even when neither voice row applies', () => {
     const html = render({ backupVoices: [], hasRecordedVoices: false })
-    // Only the two per-face rows remain — no heading, so no third match.
-    expect(html.match(/>Audio</g)).toHaveLength(2)
+    expect(html.match(/>Audio</g)).toHaveLength(3)
+    expect(html).toContain('>Play sentence<')
+  })
+
+  it('drops the sentence group, and disables Play sentence, while the sentence is off', () => {
+    const html = render({ settings: { ...DRILL_SETTINGS_DEFAULTS, sentence: false } })
+    expect(html).not.toContain('>Translation<')
+    expect(html).toMatch(/aria-checked="false" aria-label="Play sentence" disabled=""/)
+  })
+
+  it('keeps at least one half of the details panel on', () => {
+    const html = render({ settings: { ...DRILL_SETTINGS_DEFAULTS, kanjiMeanings: false } })
+    expect(html).toMatch(/aria-label="Sentence" disabled=""/)
+    expect(html).not.toMatch(/aria-label="Kanji" disabled=""/)
+  })
+
+  it('hides the panel’s halves with the panel', () => {
+    const html = render({ settings: { ...DRILL_SETTINGS_DEFAULTS, details: false } })
+    expect(html).toContain('>Show under card<')
+    expect(html).not.toContain('aria-label="Kanji"')
   })
 
   it('reports switch state to assistive tech', () => {

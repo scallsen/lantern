@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { fetchDictionaryEntries, fetchSenseGlosses } from '../utils/dictionaryEntryLookup.js'
+import { useEffect, useMemo, useState } from 'react'
+import { fetchDictionaryEntries, fetchSenseGlosses, peekDictionaryEntries } from '../utils/dictionaryEntryLookup.js'
 
 // ids: array of jmdictId (nullish entries are filtered out).
 // Returns { entries: { [id]: row|null }, loading } — `loading` is true while
@@ -20,8 +20,14 @@ export function useDictionaryEntries(ids, enabled = true) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, enabled])
 
-  const loading = filtered.some(id => !(id in entries))
-  return { entries, loading }
+  // Stable between renders unless something new resolved, so callers can
+  // keep memoizing on it.
+  const peeked = peekDictionaryEntries(filtered)
+  const peekedCount = Object.keys(peeked).length
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const all = useMemo(() => ({ ...peeked, ...entries }), [key, peekedCount, entries])
+  const loading = filtered.some(id => !(id in all))
+  return { entries: all, loading }
 }
 
 // Single-word convenience wrapper. Returns { entry: row|null, loading } — an

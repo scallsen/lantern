@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react'
 import Popover from '../../components/Popover.jsx'
 import Menu from '../../components/Menu.jsx'
 import { useAuth } from '../../context/AuthContext.jsx'
@@ -31,6 +31,7 @@ import FilterCard from '../../components/FilterCard.jsx'
 import Switch from '../../components/Switch.jsx'
 import { useDrillSettings, audioSourceForVoice } from '../../hooks/useDrillSettings.js'
 import { useJaVoices } from '../../hooks/useTTS.js'
+import { useKnownWords, wordItem } from '../../hooks/useKnownWords.js'
 import { useAudioGenerationStatus } from '../../hooks/useAudioGenerationStatus.js'
 import { safeLocalStorageGet, safeLocalStorageSet } from '../../utils/storage.js'
 import { localDateStr } from '../../utils/date.js'
@@ -344,6 +345,18 @@ function VocabSrsHome() {
   const anyAudio = settings.frontAudio || settings.backAudio
   const audioSource = anyAudio ? audioSourceForVoice(settings.voice) : 'none'
   const voicevoxCredit = anyAudio ? getVoicevoxCredit(audioSource) : null
+
+  // What the details panel under the card treats as known — reviewed cards
+  // and drilled textbook chapters, the same rule Vocab Drill uses — and the
+  // rest of this review, for a kanji tile's word list.
+  const { data: vocabProgress } = useProgress('vocab-flashcard')
+  const { knownIds, known } = useKnownWords({
+    vocabProgress,
+    srsCards: progress?.cards,
+    enabled: !!session && settings.details && settings.kanjiMeanings,
+  })
+  const reviewItems = useMemo(() => sessionCards.map(c => wordItem(c)).filter(v => v.form), [sessionCards])
+  const related = useMemo(() => ({ known, lesson: reviewItems }), [known, reviewItems])
   const [dailyNewCards, setDailyNewCards] = useState(() => {
     const s = safeLocalStorageGet('srs-daily-new-cards'); return s ? parseInt(s, 10) : 10
   })
@@ -778,8 +791,14 @@ function VocabSrsHome() {
             onDone={handleDrillDone}
             showTranslation={settings.translation}
             showFurigana={settings.furigana}
-            showSentence={settings.sentence}
-            showKanjiMeaning={settings.kanjiMeanings}
+            settings={settings}
+            onChangeSetting={setSetting}
+            knownIds={knownIds}
+            related={related}
+            // Adding a word from the details panel goes through this module's
+            // own progress, so the drill's next card save can't drop it.
+            srsData={progress}
+            saveSrs={p => { setProgress(p); save(p) }}
             pixelFont={settings.pixelFont}
             showVisualEffects={settings.visualEffects}
             showStreak={settings.streak}

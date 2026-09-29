@@ -32,7 +32,7 @@ The dashboard is organised around two primary actions, **New** (work through one
 
 ## Vocabulary Drill (`#/vocab`)
 
-Mirrors katsuyou-drill's UI exactly. Speed-mode only (no text input). Card front: kanji, with furigana only if the Furigana setting is on. Card back: kanji + furigana (via `<ruby>/<rt>`, in-flow for correct vertical centering) + English meaning + optional example sentence.
+Mirrors katsuyou-drill's UI exactly. Speed-mode only (no text input). Card front: kanji, with furigana only if the Furigana setting is on. Card back: the word with its reading (below it by default, or as `<ruby>` furigana above — the Reading setting) + English meaning. The example sentence and kanji are in the details panel under the card.
 
 **Furigana on the back is not a setting** — the back is the answer, so it always carries the reading; the setting only decides whether the *front* gives it away. `SrsCardFace` has always worked this way (`isBack || showFurigana`), but `VocabCard` gated both faces on the one flag and never annotated its front at all, so turning the setting off silently stripped the answer's reading. Pinned by `VocabCard.test.jsx`.
 
@@ -44,9 +44,9 @@ A drill session (`src/engines/simpleQueue.js`) is a first pass over every word, 
 
 **Screens** (`src/pages/drillFinish.jsx`, stories under *Vocab Drill/Finish*): between rounds, `RoundBreak` — the loading-state lantern, a headline by round, the session's Correct · Troubled counts, and the next round starts by itself after `ROUND_BREAK_MS` (no answers shown: the learner goes in blind). At the end, `LessonCleared` — the score filling against the `READINESS_TARGET_PCT` (80%) tick, previous sessions, every word ranked by misses, and an Action Bar (one row on desktop, primary last; two rows on phones): at or above the target **Add all N to review** leads, below it **Drill again** does (each a `SegmentedPrimary` with the troubled-only variant in its menu), plus End drill. Adding opens the deck picker (Popover + OptionPicker, as `DeckComboBox`) from the split button, with the book's deck (`textbookDeck`, the one the advance gate fills) pinned first as Suggested even before it exists; any other deck, or a new one, works too. The screen is `CONTENT_STANDARD` wide rather than the narrow done-screen width, because three xl buttons don't fit on one row any narrower. After a **practice pass** — drilling only the troubled words, from the Drill again menu — the same screen runs with `practice`: it's never scored or saved (the save effect only records a session over the whole pool, since a top-up from targeted retries would let the score reach 80% without the lesson being known), so it says "Troubled words cleared" with a plain "N words · M missed again" line, no bar or previous sessions, and **Drill full lesson** leads; "Drill M missed again" and adding stay available. The advance gate (`SrsGateDialog`, via `useTextbookAdvance`) asks which deck the same way, as a second view of the same dialog, with the same suggested deck (`suggestedDeckItems` in `deckPickerItems.js`). Moving to the next lesson is deliberately **not** on this screen — the home card does it, leading with "Start next" only once the current lesson's score reaches the target (`chapterPrimaryAction`).
 
-### Per-kanji meanings
+### Details panel
 
-`vocab-show-kanji-meaning` (default `false`) toggles a `KanjiMeaningBar` row on the card back showing each kanji character in the word alongside its first `kanji` table gloss (via `useKanjiMeanings`/`kanjiMeaningLookup.js`, see Key files above). `KanjiMeaningBar` is defined locally in both `VocabCard.jsx` and `VocabSrsDrill.jsx` (not extracted to a shared component). The SRS module has the equivalent `srs-show-kanji-meaning` setting (see SRS settings table below).
+The example sentence and per-kanji meanings sit in the details panel under the card (`CardDetails`), not on the card back — see `src/components/CLAUDE.md`. The old `KanjiMeaningBar` copies in `VocabCard.jsx` and `VocabSrsDrill.jsx` are gone.
 
 ### Vocab audio (Voicevox)
 

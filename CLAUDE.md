@@ -113,7 +113,7 @@ The component library lives in **Storybook** — `npm run storybook` (port 6006)
 | File Button | Built |
 | Section Header | Built — the **one** section heading. `action` slot (done screens), `marginTop` for stacked in-page groups, the older `hasSelections`/`onClearAll` pair for settings drawers. `SectionLabel` is **deleted** — see settled decision #19 |
 | Sign-in Gate | Built |
-| Definition Popover | Built — `WordPopup`, now Popover + an in-place view switch |
+| Definition Popover | Built — `WordPopup` (`src/components/WordPopup.jsx`), Popover + an in-place view switch. The one word lookup: news reader, Story, and the drill card's details panel. Adds to a review deck itself via `useAddToReview`, through the caller's own `vocab-srs` progress |
 
 **Settled design decisions — don't relitigate.** Full reasoning for each (same numbering) is in `docs/design-system-rebuild-review.md`'s "Settled design decisions — full reasoning" section — read there before relitigating; this index exists so in-file references like "settled decision #14" stay meaningful without paying for the full text every session.
 1. Drill palette (`DRILL_COLORS`) stays separate from the semantic tokens — different visual role, not interchangeable.

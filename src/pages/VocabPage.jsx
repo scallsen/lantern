@@ -1,5 +1,7 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import VocabCard from '../components/VocabCard.jsx'
+import CardDetails from '../components/CardDetails.jsx'
 import DrillHUD from '../components/DrillHUD.jsx'
 import CenteredLoadingMessage from '../components/CenteredLoadingMessage.jsx'
 import { WordListContent, WordListErrorBoundary } from '../components/WordListModal.jsx'
@@ -12,6 +14,7 @@ import Modal from '../components/Modal.jsx'
 import TextbookPicker from '../components/TextbookPicker.jsx'
 import SrsGateDialog from '../components/SrsGateDialog.jsx'
 import SpeedModeControls from '../components/SpeedModeControls.jsx'
+import DrillActionBar from '../components/DrillActionBar.jsx'
 import PageHeader from '../components/PageHeader.jsx'
 import AuthSlot from '../components/AuthSlot.jsx'
 import SettingsSidebar, { SidebarHeaderToggle } from '../components/SettingsSidebar.jsx'
@@ -30,7 +33,10 @@ import { useGamepad } from '../hooks/useGamepad.js'
 import { useProgress } from '../hooks/useProgress.js'
 import { useAudioGenerationStatus } from '../hooks/useAudioGenerationStatus.js'
 import { useDictionaryEntries, useSenseGlosses } from '../hooks/useDictionaryEntries.js'
-import { speechTextOf } from '../lib/displayForm.js'
+import { speechTextOf, cardFormOf } from '../lib/displayForm.js'
+import { useCardSentence, usePrefetchCardDetails } from '../hooks/useCardSentence.js'
+import { useKnownWords, wordItem } from '../hooks/useKnownWords.js'
+import { useDrillEntrance } from '../hooks/useDrillEntrance.js'
 import { safeLocalStorageGet, safeLocalStorageSet } from '../utils/storage.js'
 import * as SimpleQueue from '../engines/simpleQueue.js'
 import { WORD_DATA, bundledWordCountFor } from '../data/wordData.js'
@@ -113,7 +119,7 @@ function toggle(arr, val) {
 
 const AUDIO_PRELOAD_COUNT = 3
 
-function ActiveDrill({ drill, audioSource, playOnFront, playOnBack, sfxEnabled, ttsVoice, showStreak, reviewMode, showFurigana, showTranslation, showSentence, showKanjiMeaning, pixelFont, showVisualEffects, onPulse, isShort }) {
+function ActiveDrill({ drill, audioSource, playOnFront, playOnBack, sfxEnabled, ttsVoice, showStreak, reviewMode, showFurigana, showTranslation, pixelFont, showVisualEffects, onPulse, isShort, isMobile, settings, onChangeSetting, knownIds, related, srsData, saveSrs, barSlot }) {
   const [flippedCardId, setFlippedCardId] = useState(null)
   const [transitioning, setTransitioning] = useState(false)
   const [exitDir, setExitDir] = useState(null)
@@ -143,20 +149,50 @@ function ActiveDrill({ drill, audioSource, playOnFront, playOnBack, sfxEnabled, 
     return getVoicevoxAudioUrl(speakerId, speechTextOf(word, entry) ?? word.kana)
   }
 
-  function speakWord(word) {
+  function speakWord(word, onEnd) {
     const reading = resolveReading(word)
-    if (reading) tts.speak(reading)
+    if (reading) tts.speak(reading, { onEnd })
   }
 
-  async function playWordAudio(word) {
+  // `then` plays after the word finishes — the sentence, on a flip.
+  async function playWordAudio(word, then) {
     voicevox.stop()
     const url = voicevoxUrlForWord(word)
     // No clip for this word — the backup voice reads it, rather than the
     // silence you got unless you had picked the old 'Browser TTS' source.
-    if (!url) { speakWord(word); return }
+    if (!url) { speakWord(word, then); return }
     // Falls through to speech synthesis when a clip has not been generated yet,
     // which is what the old voicevoxVoices check was really guarding against.
-    if (!await voicevox.play(url)) speakWord(word)
+    if (!await voicevox.play(url, { onEnded: then })) speakWord(word, then)
+  }
+
+  // The details panel's sentence, and what its replay button (and Play
+  // sentence, after the word on a flip) says. Tanaka sentences have no
+  // recordings, so the backup voice reads them.
+  const currentEntry = currentCard.word.jmdictId ? nearbyDictEntries[currentCard.word.jmdictId] : null
+  const { form: currentForm, reading: currentReading } = cardFormOf(currentCard.word, currentEntry)
+  const sentenceOn = settings.details && settings.sentence
+  const sentence = useCardSentence({ jmdictId: currentCard.word.jmdictId, form: currentForm, reading: currentReading, sentence: currentCard.word.sentence, enabled: sentenceOn })
+  usePrefetchCardDetails(
+    upcoming.slice(0, 2).map(c => ({ jmdictId: c.word.jmdictId, form: cardFormOf(c.word, nearbyDictEntries[c.word.jmdictId]).form })),
+    settings.details,
+  )
+  const sentenceRef = useRef(null)
+  sentenceRef.current = sentenceOn && sentence ? sentence : null
+  const autoSentenceRef = useRef(false)
+  autoSentenceRef.current = sentenceOn && settings.sentenceAudio
+
+  // The first card waits for its dictionary entry (the card is blank without
+  // it) and for the panel under it, then both arrive together.
+  const [panelReady, setPanelReady] = useState(false)
+  const cardReady = !currentCard.word.jmdictId || currentCard.word.jmdictId in nearbyDictEntries
+  const entered = useDrillEntrance(cardReady && panelReady)
+
+  function playSentence() {
+    const text = sentenceRef.current?.japanese
+    if (!text) return
+    voicevox.stop()
+    tts.speak(text)
   }
 
   function stopWordAudio() {
@@ -225,8 +261,11 @@ function ActiveDrill({ drill, audioSource, playOnFront, playOnBack, sfxEnabled, 
   }
 
   useEffect(() => {
+    const thenSentence = autoSentenceRef.current ? playSentence : undefined
     if (isFlipped && playOnBack) {
-      playWordAudio(currentCard.word)
+      playWordAudio(currentCard.word, thenSentence)
+    } else if (isFlipped && thenSentence) {
+      playSentence()
     } else {
       stopWordAudio()
     }
@@ -313,41 +352,75 @@ function ActiveDrill({ drill, audioSource, playOnFront, playOnBack, sfxEnabled, 
   }
 
   return (
-    <DrillHUD
-      streak={localStreak}
-      bestStreak={localBestStreak}
-      streakLost={localStreakLost}
-      correct={correct}
-      troubled={troubled}
-      remaining={remaining}
-      canUndo={canUndo}
-      onUndo={handleUndo}
-      showStreak={showStreak}
-      showVisualEffects={showVisualEffects}
-      isShort={isShort}
-    >
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: isShort ? 8 : 15 }}>
-        <div key={currentCard.id} className={cardClass} style={{ transition: 'width 200ms ease' }}>
-          <VocabCard
-            word={currentCard.word}
-            flipped={isFlipped}
-            onFlip={handleFlip}
-            animate={showVisualEffects}
-            reviewMode={reviewMode}
-            showFurigana={showFurigana}
-            showTranslation={showTranslation}
-            showSentence={showSentence}
-            showKanjiMeaning={showKanjiMeaning}
-            pixelFont={pixelFont}
-          />
+    <div data-drill-stage="" className={entered ? 'drill-stage-in' : 'drill-stage-waiting'}>
+      <DrillHUD
+        streak={localStreak}
+        bestStreak={localBestStreak}
+        streakLost={localStreakLost}
+        correct={correct}
+        troubled={troubled}
+        remaining={remaining}
+        canUndo={canUndo}
+        onUndo={handleUndo}
+        showStreak={showStreak}
+        showVisualEffects={showVisualEffects}
+        isShort={isShort}
+        showUndo={false}
+        showCounts={false}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: isShort ? 8 : 15 }}>
+          <div key={currentCard.id} className={cardClass} style={{ transition: 'width 200ms ease' }}>
+            <VocabCard
+              word={currentCard.word}
+              flipped={isFlipped}
+              onFlip={handleFlip}
+              animate={showVisualEffects}
+              reviewMode={reviewMode}
+              showFurigana={showFurigana}
+              showTranslation={showTranslation}
+              readingPosition={settings.readingPosition}
+              pixelFont={pixelFont}
+              edgeToEdge={isMobile}
+            />
+          </div>
+          {currentForm && (
+            <CardDetails
+              cardKey={currentCard.id}
+              word={{ form: currentForm, reading: currentReading }}
+              sentence={sentence}
+              settings={settings}
+              knownIds={knownIds}
+              related={related}
+              revealed={isFlipped}
+              leaving={!!exitDir}
+              mobile={isMobile}
+              jaFont={pixelFont ? FONT : 'system-ui, sans-serif'}
+              onChangeSetting={onChangeSetting}
+              onPlaySentence={playSentence}
+              onReady={() => setPanelReady(true)}
+            reserve={!isMobile}
+            srsData={srsData}
+            saveSrs={saveSrs}
+            />
+          )}
         </div>
-        <SpeedModeControls
-          isFlipped={isFlipped}
-          transitioning={transitioning}
-          onVerdict={v => handleVerdictRef.current(v)}
-        />
-      </div>
-    </DrillHUD>
+        {/* The buttons and counts live in the bottom bar, rendered into the
+            page's sticky slot at the end of its scroll area. */}
+        {barSlot && createPortal(
+          <DrillActionBar isMobile={isMobile} correct={correct} troubled={troubled} remaining={remaining}>
+            <SpeedModeControls
+              isFlipped={isFlipped}
+              transitioning={transitioning}
+              onVerdict={v => handleVerdictRef.current(v)}
+              onFlip={() => handleFlip(true)}
+              onUndo={handleUndo}
+              canUndo={canUndo}
+            />
+          </DrillActionBar>,
+          barSlot,
+        )}
+      </DrillHUD>
+    </div>
   )
 }
 
@@ -660,6 +733,11 @@ function VocabPageScreens() {
     const s = safeLocalStorageGet('vocab-include-sentence-vocab'); return s === null ? false : s === 'true'
   })
   const [pulseColor,       setPulseColor]       = useState(null)
+  // The drill's bottom bar (DrillActionBar) renders into this sticky slot at
+  // the end of the scroll area. It's in the flow, so the usual flex footer
+  // layout holds: the stage takes the height left over, the credit line sits
+  // just above the bar, and the page only scrolls when the stage needs it.
+  const [barSlot, setBarSlot] = useState(null)
   const [headerHeight,     setHeaderHeight]     = useState(72)
   const headerRef   = useRef(null)
   const isMobile = useIsMobile()
@@ -762,6 +840,20 @@ function VocabPageScreens() {
   const poolJmdictIds = useMemo(() => pool.map(p => p.word.jmdictId).filter(Boolean), [pool])
   const { entries: poolDictEntries } = useDictionaryEntries(poolJmdictIds, true)
   const poolSenseGlosses = useSenseGlosses(useMemo(() => pool.map(p => p.word), [pool]))
+
+  // The details panel's picture of what the learner knows: furigana drops on
+  // known words, and a kanji tile lists them beside this lesson's.
+  const { knownIds, known } = useKnownWords({
+    vocabProgress,
+    srsCards: srsData?.cards,
+    excludeListKeys: selectedSubLists,
+    enabled: isDrilling && settings.details && settings.kanjiMeanings,
+  })
+  const lessonItems = useMemo(
+    () => pool.map(p => wordItem(p.word, poolDictEntries[p.word.jmdictId])).filter(v => v.form),
+    [pool, poolDictEntries],
+  )
+  const related = useMemo(() => ({ known, lesson: lessonItems }), [known, lessonItems])
 
   useEffect(() => {
     if (window.location.hash.includes('?')) window.history.replaceState(null, '', '#/vocab')
@@ -955,11 +1047,19 @@ function VocabPageScreens() {
           overflowY: 'auto', scrollbarGutter: 'stable both-edges',
           display: 'flex', flexDirection: 'column', alignItems: 'center',
           paddingBottom: isDrilling ? finishBarHeight : 0, boxSizing: 'border-box',
+          // The drill card and its details panel size against this area (cqw),
+          // not the viewport, so an open settings sidebar can't push them wider
+          // than the room left beside it.
+          containerType: 'inline-size',
           zIndex: 2,
         }}>
           <div style={{
             flex: 1, width: '100%',
-            display: 'flex', alignItems: isDrilling ? 'center' : 'flex-start', justifyContent: 'center',
+            // A phone pins the stage to the top, which keeps the card still
+            // without reserving room under the details panel (see CardDetails'
+            // `reserve`); desktop centres it.
+            display: 'flex', alignItems: isDrilling && !isMobile ? 'center' : 'flex-start', justifyContent: 'center',
+            paddingTop: isDrilling && isMobile ? 12 : 0, boxSizing: 'border-box',
             minHeight: 'min-content',
           }}>
             {isDrilling ? (
@@ -1007,12 +1107,18 @@ function VocabPageScreens() {
                   reviewMode={reviewMode}
                   showFurigana={settings.furigana}
                   showTranslation={settings.translation}
-                  showSentence={settings.sentence}
-                  showKanjiMeaning={settings.kanjiMeanings}
                   pixelFont={settings.pixelFont}
                   showVisualEffects={settings.visualEffects}
                   onPulse={setPulseColor}
                   isShort={isShort}
+                  isMobile={isMobile}
+                  settings={settings}
+                  onChangeSetting={setSetting}
+                  knownIds={knownIds}
+                  related={related}
+                  srsData={srsData}
+                  saveSrs={saveSrs}
+                  barSlot={barSlot}
                 />
               )
             ) : vocabProgressLoading ? (
@@ -1040,11 +1146,14 @@ function VocabPageScreens() {
               </div>
             ) : null}
           </div>
-          <AttributionFooter sources={[
+          <AttributionFooter compact={isDrilling} sources={[
             'dictionary',
             'tanaka-corpus',
             ...(speakerIdFromAudioSource(audioSource) ? ['voicevox'] : []),
           ]} />
+          {showingDrillSettings && !(personalSource && customWordsLoading) && (
+            <div ref={setBarSlot} style={{ position: 'sticky', bottom: 0, zIndex: 5, width: '100%', flexShrink: 0 }} />
+          )}
         </div>
       </div>
 

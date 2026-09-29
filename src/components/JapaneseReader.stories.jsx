@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
-import { WordPopup, TokenizedBody } from './JapaneseReader.jsx'
+import { TokenizedBody } from './JapaneseReader.jsx'
+import WordPopup from './WordPopup.jsx'
 import Japanese from './Japanese.jsx'
 import { AuthProvider } from '../context/AuthContext.jsx'
 import { BRAND, KANJI_FONT, TEXT, TEXT_MUTED, FS_ARTICLE_BODY, FS_CAPTION, FS_SM, SPACE_12 } from '../data/theme.js'
@@ -25,7 +26,7 @@ export default {
   decorators: [Story => <AuthProvider><Story /></AuthProvider>],
   parameters: {
     docs: {
-      description: { component: "Tapping a word in reading text shows its reading, part of speech and meaning, with a way to add it to a review deck.\n\n**Use when** words in a reading surface are tappable — Immersion articles, Story.\n\n**Don't use** for a word's full details; link to its dictionary entry instead.\n\n*Build note:* the tappable running text is `TokenizedBody` (see the Tokenized Text story). In Storybook there's no signed-in account, so the add-to-deck step shows its sign-in prompt." },
+      description: { component: "Tapping a word in reading text shows its reading, part of speech and meaning, with a way to add it to a review deck.\n\n**Use when** a word can be tapped to look it up — Immersion articles, Story, and the sentence under a drill card. It's the one word lookup; don't build another.\n\n**Don't use** for a word's full details; link to its dictionary entry instead.\n\n*Build note:* pass the page's own `vocab-srs` progress (`srsData`, `saveSrs`): the popup adds the card itself, with the Added / Undo toast. The tappable running text is `TokenizedBody` (see the Tokenized Text story). In Storybook there's no signed-in account, so the add-to-deck step shows its sign-in prompt." },
       story: { inline: false, iframeHeight: 420 },
     },
   },
@@ -60,15 +61,13 @@ function PopoverStory({ isMobile }) {
       </div>
       {open && (
         <WordPopup
-          token={{ t: '世界', r: 'せかい' }}
-          vocabEntry={{ pos: 'Noun', meaning: 'world; society; the universe' }}
-          decks={SEED_DECKS}
+          word={{ text: '世界', reading: 'せかい', pos: 'Noun', meaning: 'world; society; the universe' }}
+          srsData={{ decks: SEED_DECKS, cards: {} }}
+          saveSrs={next => setLog(`Saved ${Object.keys(next.cards).length} card(s) across ${Object.keys(next.decks).length} decks`)}
           lastUsedDeckId="immersion-words"
           isMobile={isMobile}
           anchorRect={wordRef.current?.getBoundingClientRect()}
           onClose={() => setOpen(false)}
-          onAdd={(token, entry, deckId) => setLog(`Added 世界 to "${SEED_DECKS[deckId]?.name ?? deckId}"`)}
-          onCreateAndAdd={(token, entry, name) => setLog(`Created "${name}" and added 世界`)}
         />
       )}
     </div>

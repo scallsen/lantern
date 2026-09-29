@@ -7,6 +7,16 @@ export function kanjiCharsOf(kanjiStr) {
   return [...(kanjiStr ?? '')].filter(ch => /\p{Script=Han}/u.test(ch))
 }
 
+// The already-resolved subset, synchronously — lets a hook that mounts
+// fresh for every card (the drill card is keyed per card) render cached data
+// on its first frame instead of flashing an empty state while the async
+// lookup resolves from cache.
+export function peekKanjiMeanings(chars) {
+  const result = {}
+  for (const ch of chars) if (attempted.has(ch)) result[ch] = cache.get(ch) ?? ''
+  return result
+}
+
 // Returns { [literal]: firstGlossOrEmptyString } for every char already resolved (found or not).
 export async function fetchKanjiMeanings(chars) {
   const unique = [...new Set(chars)]

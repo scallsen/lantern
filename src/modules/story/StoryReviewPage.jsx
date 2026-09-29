@@ -2,7 +2,8 @@ import { useState, useMemo, useEffect } from 'react'
 import PageHeader from '../../components/PageHeader.jsx'
 import AuthSlot from '../../components/AuthSlot.jsx'
 import CenteredLoadingMessage from '../../components/CenteredLoadingMessage.jsx'
-import { TokenizedBody, WordPopup } from '../../components/JapaneseReader.jsx'
+import { TokenizedBody } from '../../components/JapaneseReader.jsx'
+import WordPopup from '../../components/WordPopup.jsx'
 import { NewspaperLayout, ChatLayout, DiaryLayout, InterviewLayout, LetterLayout, PostcardLayout } from './StoryLayouts.jsx'
 import Button from '../../components/Button.jsx'
 import Japanese from '../../components/Japanese.jsx'
@@ -11,11 +12,7 @@ import { BG } from './storyUI.jsx'
 import { buildVocabMap } from '../../utils/vocabMap.js'
 import { FONT, TRACKING, TEXT, TEXT_MUTED, FS_ARTICLE_BODY, FS_HEADING, FS_CONTENT_HEADING, BRAND, CONTENT_READING } from '../../data/theme.js'
 import { ModuleThemeProvider } from '../../context/ModuleThemeContext.jsx'
-// Cross-module write: creates cards in vocab-srs progress namespace (same pattern as ImmersionReader)
-import { createCard } from '../vocab-srs/srs.js'
-import { ensureDeck, createDeck, deleteCards } from '../vocab-srs/deckUtils.js'
 import { useProgress } from '../../hooks/useProgress.js'
-import { useToast } from '../../context/ToastContext.jsx'
 import { supabase } from '../../lib/supabase.js'
 import { lookupVocabulary } from './lookupVocabulary.js'
 import { useIsMobile } from '../../hooks/useIsMobile.js'
@@ -42,7 +39,6 @@ export default function StoryReviewPage({ storyId }) {
 function StoryReview({ storyId }) {
   const isMobile = useIsMobile()
   const { data: srsData, save: saveSrs } = useProgress('vocab-srs')
-  const { showToast } = useToast()
 
   const [story, setStory] = useState(null)
   const [storyLoading, setStoryLoading] = useState(true)
@@ -76,8 +72,6 @@ function StoryReview({ storyId }) {
   const [popup, setPopup] = useState(null) // { token, vocabEntry, anchorRect, idx }
   const [showFurigana, setShowFurigana] = useState(true)
 
-  const decks = srsData?.decks ?? {}
-
   useEffect(() => {
     setVocabulary([])
     setPopup(null)
@@ -91,39 +85,6 @@ function StoryReview({ storyId }) {
   function handleWordClick(token, e, idx) {
     const rect = e.target.getBoundingClientRect()
     setPopup({ token, vocabEntry: vocabMap[token.t] ?? null, anchorRect: rect, idx })
-  }
-
-  function addWordToDeck(token, vocabEntry, deckId, decksForCreate) {
-    const meaning = vocabEntry?.meaning ?? token.r ?? ''
-    const current = srsData ?? { decks: {}, cards: {}, lastSession: null, totalReviews: 0, newCardDay: { date: '', count: 0 } }
-    const newDecks = decksForCreate ?? ensureDeck(current.decks, deckId, current.decks[deckId]?.name ?? 'Deck')
-    const cardId = `${deckId}-${Date.now()}`
-    const extras = {}
-    if (token.r) extras.kana = token.r
-    if (vocabEntry?.jmdictId) extras.jmdictId = vocabEntry.jmdictId
-    const card = createCard(token.b || token.t, meaning, cardId, deckId, extras)
-    saveSrs({ ...current, decks: newDecks, cards: { ...current.cards, [cardId]: card } })
-    setPopup(null)
-    showToast({
-      message: `Added to "${newDecks[deckId]?.name ?? 'Deck'}".`,
-      actionLabel: 'Undo',
-      onAction: () => handleUndoAdd(cardId),
-    })
-  }
-
-  function handlePopupAdd(token, vocabEntry, deckId) {
-    addWordToDeck(token, vocabEntry, deckId)
-  }
-
-  function handlePopupCreateAndAdd(token, vocabEntry, name) {
-    const current = srsData ?? { decks: {}, cards: {}, lastSession: null, totalReviews: 0, newCardDay: { date: '', count: 0 } }
-    const { decks: newDecks, deckId } = createDeck(current.decks, name)
-    addWordToDeck(token, vocabEntry, deckId, newDecks)
-  }
-
-  function handleUndoAdd(cardId) {
-    const current = srsData ?? { decks: {}, cards: {}, lastSession: null, totalReviews: 0, newCardDay: { date: '', count: 0 } }
-    saveSrs({ ...current, cards: deleteCards(current.cards, [cardId]) })
   }
 
   const crumbs = [
@@ -154,13 +115,13 @@ function StoryReview({ storyId }) {
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: BG, color: TEXT, fontFamily: FONT, letterSpacing: TRACKING }}>
       {popup && (
         <WordPopup
-          token={popup.token}
-          vocabEntry={popup.vocabEntry}
+          // Added in its dictionary form (the tokenizer's base), with the
+          // reading, which is what Story has always saved.
+          word={{ text: popup.token.t, reading: popup.token.r, pos: popup.vocabEntry?.pos, meaning: popup.vocabEntry?.meaning ?? popup.token.r ?? '', front: popup.token.b || popup.token.t, kana: popup.token.r, jmdictId: popup.vocabEntry?.jmdictId }}
           anchorRect={popup.anchorRect}
-          decks={decks}
           isMobile={isMobile}
-          onAdd={handlePopupAdd}
-          onCreateAndAdd={handlePopupCreateAndAdd}
+          srsData={srsData}
+          saveSrs={saveSrs}
           onClose={() => setPopup(null)}
         />
       )}

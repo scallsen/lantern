@@ -11,6 +11,16 @@ function pickBestSentence(rows) {
   return rows.slice().sort((a, b) => (b.quality === true) - (a.quality === true) || a.japanese.length - b.japanese.length)[0]
 }
 
+// The already-resolved subset, synchronously — lets a hook that mounts
+// fresh for every card (the drill card is keyed per card) render cached data
+// on its first frame instead of flashing an empty state while the async
+// lookup resolves from cache.
+export function peekSentences(ids) {
+  const result = {}
+  for (const id of ids) if (attempted.has(id)) result[id] = cache.get(id) ?? null
+  return result
+}
+
 // Returns { [jmdictId]: sentenceRow|null } for every id already resolved (found or not).
 export async function fetchSentencesFor(ids) {
   const unique = [...new Set(ids)].filter(Boolean)

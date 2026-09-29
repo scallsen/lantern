@@ -12,12 +12,20 @@ export const ACTION_BAR_HEIGHT = 72
 // Extracted from EpisodeVocabBrowser's fixed footer. `leading` is an
 // optional left-side slot (a status line like "935 words in context");
 // children are the buttons, right-aligned, wrapping on narrow screens.
-export default function ActionBar({ leading, maxWidth = CONTENT_STANDARD, children }) {
+//
+// `inFlow`: a plain block instead of `position: fixed`, for a caller that
+// pins it itself — the card drills put it in a `position: sticky` slot at
+// the end of their own scroll area, so it spans that area (not the settings
+// sidebar beside it) and the page scrolls under it.
+// `gutter` is the side padding — a phone drill bar narrows it to 16 so its
+// full-width button row (DRILL_ROW_WIDTH) fits.
+export default function ActionBar({ leading, maxWidth = CONTENT_STANDARD, inFlow = false, gutter = SPACE_24, children }) {
   return (
     <div style={{
-      position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 20,
+      ...(inFlow ? { position: 'relative' } : { position: 'fixed', left: 0, right: 0, bottom: 0 }),
+      zIndex: 20,
       background: BG, borderTop: `1px solid ${HAIRLINE}`,
-      padding: `${SPACE_12}px ${SPACE_24}px`,
+      padding: `${SPACE_12}px ${gutter}px`,
       paddingBottom: `calc(${SPACE_12}px + env(safe-area-inset-bottom))`,
     }}>
       <div style={{ maxWidth, margin: '0 auto', display: 'flex', alignItems: 'center', gap: SPACE_12, flexWrap: 'wrap' }}>

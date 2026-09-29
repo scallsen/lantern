@@ -33,7 +33,7 @@ No bundled deck ships today, so this is the shape a future one would need — ea
 }
 ```
 
-`sentenceEnglish` is shown below the Japanese sentence on the card back (smaller font).
+`sentenceEnglish` is the sentence's translation in the details panel under the card.
 
 **Retiring a bundled deck** — add its id to `RETIRED_DECKS` in `migrate.js` *and* delete its JSON, import, and `DECK_FILES`/`DECK_WORDS` entries. The `RETIRED_DECKS` filter is not optional tidying: a retired deck's cards keep their scheduling state in stored progress but can no longer resolve content, so without it they render as blank cards in the drill. `core3k`, `core2000`, and `keigo` were all retired this way (`core2000` in favour of using Core 2000 in the real Anki app; `keigo` had no such replacement, it was simply dropped), and `migrate.test.js` covers the behaviour.
 
@@ -176,9 +176,15 @@ All keys use `srs-` prefix. The VocabSrsModule reads these on mount; VocabSrsDri
 | `srs-backup-voice` | `''` | Browser speech voice name that reads words with no recording (`''` = device default) |
 | `srs-sfx-enabled` | `true` | Sound effects (correct/wrong beeps) |
 | `srs-show-furigana` | `false` | Show the reading on the card **front**. The back always shows it — see Furigana on the back, under Vocabulary Drill |
+| `srs-reading-position` | `'below'` | The card's reading under the word, or `'above'` as furigana — the sentence's furigana follows it |
 | `srs-show-translation` | `true` | Show English translation on card back |
-| `srs-show-sentence` | `true` | Show example sentence on card back |
-| `srs-show-kanji-meaning` | `true` | Show per-kanji meaning bar on card back (see Per-kanji meanings under Vocabulary Drill) |
+| `srs-show-details` | `true` | Show the details panel under the card (`CardDetails`, see `src/components/CLAUDE.md`) |
+| `srs-details-theme` | `'dark'` | The panel's look — `'dark'` (outline) \| `'light'` (paper), switched by the sun in its corner |
+| `srs-show-sentence` | `true` | The panel's example sentence (at least one of this and the next stays on) |
+| `srs-show-kanji-meaning` | `true` | The panel's kanji tiles |
+| `srs-sentence-translation` | `'blur'` | `'off'` \| `'blur'` (tap to reveal) \| `'on'` |
+| `srs-sentence-furigana` | `'new'` | `'off'` \| `'new'` (words the learner doesn't know yet) \| `'all'` |
+| `srs-sentence-audio` | `true` | Play the sentence on flip (after the word, when back audio is on) |
 | `srs-pixel-font` | `false` | Use DotGothic16 pixel font on cards |
 | `srs-visual-effects` | `true` | Enable card visual effects |
 | `srs-show-streak` | `false` | Show the streak counter |

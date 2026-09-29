@@ -1,13 +1,6 @@
-import { useState } from 'react'
-import { isBundledDeck } from '../modules/vocab-srs/deckUtils.js'
-import Button from './Button.jsx'
 import Japanese from './Japanese.jsx'
-import Popover from './Popover.jsx'
-import OptionPicker from './OptionPicker.jsx'
-import { deckPickerItems } from './deckPickerItems.js'
-import { TEXT, TEXT_MUTED, FS_BASE, FS_CAPTION, FS_ENTRY_WORD, SPACE_8, SPACE_12 } from '../data/theme.js'
+import { TEXT_MUTED } from '../data/theme.js'
 import { useAccent } from '../context/ModuleThemeContext.jsx'
-import { useAuth } from '../context/AuthContext.jsx'
 
 // Hover is a CSS class (.reader-token) per the StrictMode rule, not a
 // hovered-index useState as it was originally. The two highlight colours are
@@ -63,62 +56,5 @@ export function TokenizedBody({
         )
       })}
     </Japanese>
-  )
-}
-
-export function WordPopup({ token, vocabEntry, onAdd, onCreateAndAdd, decks, isMobile, onClose, anchorRect, lastUsedDeckId }) {
-  // The deck list is a second *view of this same surface*, not a second
-  // floating layer. Previously this popup rendered a DeckComboBox, which
-  // opened its own popover anchored to a button inside this one — two
-  // stacked layers with competing click-outside handlers and independent
-  // positioning. Swapping content in place removes that entirely.
-  const [view, setView] = useState('definition')
-  const { user } = useAuth()
-
-  function close() {
-    setView('definition')
-    onClose()
-  }
-
-  return (
-    <Popover
-      open
-      onClose={close}
-      anchorRect={anchorRect}
-      isMobile={isMobile}
-      title={view === 'deck' ? 'Add to which deck?' : <Japanese>{token.t}</Japanese>}
-      bodyPadding={view === 'deck' ? 0 : undefined}
-    >
-      {view === 'deck' ? (
-        <OptionPicker
-          items={deckPickerItems(decks, { lastUsedDeckId, exclude: isBundledDeck })}
-          onSelect={deckId => { onAdd(token, vocabEntry, deckId); close() }}
-          onCreate={name => { onCreateAndAdd(token, vocabEntry, name); close() }}
-          placeholder="Search or create a deck"
-          emptyMessage="No decks yet"
-        />
-      ) : (
-        <div style={{ padding: `${SPACE_8}px ${SPACE_12}px`, minWidth: 160 }}>
-          <Japanese as="div" style={{ fontSize: FS_ENTRY_WORD, color: TEXT, marginBottom: 2 }}>{token.t}</Japanese>
-          {token.r && (
-            <Japanese as="div" style={{ fontSize: FS_BASE, color: TEXT_MUTED, marginBottom: (vocabEntry?.pos || vocabEntry?.meaning) ? 4 : 10 }}>{token.r}</Japanese>
-          )}
-          {vocabEntry?.pos && (
-            <div style={{ fontSize: FS_CAPTION, color: TEXT_MUTED, marginBottom: vocabEntry.meaning ? 4 : 10, opacity: 0.7 }}>{vocabEntry.pos}</div>
-          )}
-          {vocabEntry?.meaning && (
-            <div style={{ fontSize: FS_BASE, color: TEXT, marginBottom: 10 }}>{vocabEntry.meaning}</div>
-          )}
-          <Button variant="accent-outline" fullWidth disabled={!user} onClick={() => setView('deck')}>
-            Add to review deck
-          </Button>
-          {!user && (
-            <div style={{ fontSize: FS_CAPTION, color: TEXT_MUTED, marginTop: SPACE_8, textAlign: 'center' }}>
-              Create an account to access this feature
-            </div>
-          )}
-        </div>
-      )}
-    </Popover>
   )
 }

@@ -118,6 +118,15 @@
   transform: rotateX(180deg) translateZ(0.1px);
 }
 
+/* Drill cards round their corners to match the details panel under them
+   (CardDetails). On a phone both run edge to edge and stay square, so the
+   drills leave this class off there. */
+.fc-rounded .fc-face,
+.fc-rounded .fc-shadow {
+  border-radius: 6px;
+  overflow: hidden;
+}
+
 /* ── Verdict transition animations ───────────────────────────── */
 
 @keyframes stagePulse {
