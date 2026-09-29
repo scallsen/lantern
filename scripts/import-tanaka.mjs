@@ -82,7 +82,11 @@ async function resolveSource() {
   return gunzipSync(buf).toString('utf-8')
 }
 
-const TOKEN_RE = /^([^(){}~]+)(?:\(([^)]+)\))?(?:\[(\d+)\])?(?:\{([^}]+)\})?(~)?$/
+// The headword excludes [ as well as ( and {: without it, a token with a sense
+// number and no reading — 移動[01], the commonest shape in the corpus — took
+// "[01]" into its headword, matched nothing, and left thousands of words
+// (移動, 依頼, 平日, 迷う …) with no sentence at all.
+const TOKEN_RE = /^([^(){}[\]~]+)(?:\(([^)]+)\))?(?:\[(\d+)\])?(?:\{([^}]+)\})?(~)?$/
 
 function parseToken(tok) {
   const m = TOKEN_RE.exec(tok)

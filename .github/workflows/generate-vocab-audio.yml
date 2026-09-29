@@ -5,7 +5,18 @@ on:
     branches: [main]
     paths:
       - 'src/data/words/**'
+  # Words added to a personal list and cards added to an SRS deck live in the
+  # database, not the repo, so no push ever announces them. The nightly run is
+  # what links and records them.
+  schedule:
+    - cron: '30 3 * * *'
   workflow_dispatch:
+
+# A push landing during the nightly run would otherwise synthesise the same
+# clips twice and race the prune.
+concurrency:
+  group: generate-vocab-audio
+  cancel-in-progress: false
 
 jobs:
   generate-audio:
@@ -36,6 +47,21 @@ jobs:
             curl -sf http://localhost:50021/version && break
             sleep 2
           done
+
+      # Linking first: an unlinked word or card has no Tanaka sentence, so the
+      # generator would have no sentence to record for it. Lists before cards,
+      # because a card inherits the link its list word carries.
+      - name: Link personal list words to the dictionary
+        run: node scripts/backfill-custom-words-jmdict.mjs
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+      - name: Link SRS cards to the dictionary
+        run: node scripts/backfill-srs-jmdict.mjs
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
       - name: Generate audio
         run: node scripts/generate-audio.mjs

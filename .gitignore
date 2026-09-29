@@ -10,3 +10,7 @@ supabase/.temp/
 
 *storybook.log
 storybook-static
+
+# Written on every run of the nightly linking backfills (account data, not repo data)
+backfill-custom-words-jmdict-report.json
+backfill-srs-jmdict-report.json

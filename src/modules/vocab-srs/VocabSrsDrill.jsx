@@ -16,6 +16,7 @@ import { useGamepad } from '../../hooks/useGamepad.js'
 import { useVoicevoxPlayer, SENTENCE_GAP } from '../../hooks/useVoicevoxPlayer.js'
 import { useKanjiMeanings } from '../../hooks/useKanjiMeanings.js'
 import { getVoicevoxAudioUrl, speakerIdFromAudioSource } from '../../utils/voicevoxAudio.js'
+import { cardSpeechText } from '../../lib/displayForm.js'
 import { kanjiCharsOf } from '../../utils/kanjiMeaningLookup.js'
 import { useDictionaryEntry } from '../../hooks/useDictionaryEntries.js'
 import { briefGloss } from '../../utils/dictionaryEntryLookup.js'
@@ -254,10 +255,13 @@ export default function VocabSrsDrill({
     // Generated clips are keyed by what is spoken, so a card derives its own
     // URL from its reading and needs no record of which clips exist. A card
     // whose clip has not been generated 404s and falls back to TTS.
+    // cardSpeechText, not the raw reading: a card copied from a list keeps the
+    // list's decoration (しんこく（な）), which generate-audio.mjs strips before
+    // recording, so the raw reading names a clip that never exists.
     const speakerId = speakerIdFromAudioSource(audioSource)
     const sentence = speakerId && sentenceText ? getVoicevoxAudioUrl(speakerId, sentenceText) : null
     if (card.wordAudio) return { word: getAudioUrl(card.wordAudio), sentence, sentenceText }
-    if (speakerId) return { word: getVoicevoxAudioUrl(speakerId, card.kana ?? card.front), sentence, sentenceText }
+    if (speakerId) return { word: getVoicevoxAudioUrl(speakerId, cardSpeechText(card)), sentence, sentenceText }
     return { word: null, sentence: null, sentenceText }
   }
 
@@ -293,7 +297,7 @@ export default function VocabSrsDrill({
 
   async function speakCard(card, urls, { sequence } = {}) {
     if (!card) return
-    if (!urls.word) { voicevox.stop(); tts.speak(card.kana ?? card.front ?? ''); return }
+    if (!urls.word) { voicevox.stop(); tts.speak(cardSpeechText(card) ?? ''); return }
     // The text is looked up when the word ends, not taken from the flip-time
     // snapshot: a card flipped before its sentence lookup returned would
     // otherwise chain nothing. The lookup is cached, so this is instant after
@@ -306,7 +310,7 @@ export default function VocabSrsDrill({
         }
       : undefined
     const played = await voicevox.play(urls.word, { onEnded: chainSentence })
-    if (!played) tts.speak(card.kana ?? card.front ?? '')
+    if (!played) tts.speak(cardSpeechText(card) ?? '')
   }
 
   const sessionRef = useRef(session)
