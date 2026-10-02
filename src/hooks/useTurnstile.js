@@ -44,6 +44,9 @@ export function useTurnstile(siteKey, active) {
   const widgetId = useRef(null)
   const [token, setToken] = useState(null)
   const [error, setError] = useState(null)
+  // True while Cloudflare is showing its checkbox — the person, not the
+  // network, is what's being waited on, so callers drop their loading state.
+  const [interactive, setInteractive] = useState(false)
 
   useEffect(() => {
     if (!siteKey || !active) return
@@ -56,7 +59,9 @@ export function useTurnstile(siteKey, active) {
           theme: 'dark',
           size: 'flexible',
           appearance: 'interaction-only',
-          callback: t => { setToken(t); setError(null) },
+          callback: t => { setToken(t); setError(null); setInteractive(false) },
+          'before-interactive-callback': () => setInteractive(true),
+          'after-interactive-callback': () => setInteractive(false),
           'expired-callback': () => setToken(null),
           'error-callback': () => {
             setToken(null)
@@ -72,6 +77,7 @@ export function useTurnstile(siteKey, active) {
         widgetId.current = null
       }
       setToken(null)
+      setInteractive(false)
     }
   }, [siteKey, active])
 
@@ -80,5 +86,5 @@ export function useTurnstile(siteKey, active) {
     if (widgetId.current != null) window.turnstile?.reset(widgetId.current)
   }, [])
 
-  return { containerRef, token, error, reset, required: Boolean(siteKey) }
+  return { containerRef, token, error, interactive, reset, required: Boolean(siteKey) }
 }

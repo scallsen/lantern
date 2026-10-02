@@ -2,7 +2,7 @@ import { useState } from 'react'
 import PageHeader from '../components/PageHeader.jsx'
 import AuthSlot from '../components/AuthSlot.jsx'
 import Button from '../components/Button.jsx'
-import { useAuth } from '../context/AuthContext.jsx'
+import { useAuth, signedInMessage } from '../context/AuthContext.jsx'
 import { setPendingToast } from '../utils/pendingToast.js'
 import { FONT, TRACKING, TEXT, TEXT_MUTED, DANGER, FS_BASE, FS_CONTENT_HEADING, SPACE_16, SPACE_24 } from '../data/theme.js'
 
@@ -40,7 +40,7 @@ export default function AuthConfirmPage() {
       setBusy(false)
       return
     }
-    setPendingToast('Signed in')
+    setPendingToast(signedInMessage(result.data?.user))
     // replace(), so Back doesn't return to a spent link.
     window.location.replace('#/')
   }

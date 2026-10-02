@@ -3,37 +3,59 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="light">
+<meta name="color-scheme" content="dark">
+<meta name="supported-color-schemes" content="dark">
 <title>Your Lantern sign-in code</title>
+<style>
+  :root { color-scheme: dark; supported-color-schemes: dark; }
+  @font-face {
+    font-family: 'DotGothic16';
+    src: url('https://lantern.study/fonts/DotGothic16-Modified.woff2') format('woff2');
+  }
+  /* The app's primary-button states (global.css .btn-primary): BRAND_DEEP on
+     hover, darker still when pressed. !important beats the inline background
+     that clients without <style> support fall back to. */
+  .btn-primary:hover { background: #D80041 !important; }
+  .btn-primary:active { background: #D80041 !important; filter: brightness(0.85); }
+</style>
 </head>
-<body style="margin:0;padding:0;background:#f4f4f4;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;">
+<body style="margin:0;padding:0;background:#1E1E1E;" bgcolor="#1E1E1E">
+<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">Your Lantern sign-in code is {{ .Token }}. It expires in 10 minutes.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#1E1E1E" style="background:#1E1E1E;">
   <tr>
     <td align="center" style="padding:32px 16px;">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:440px;background:#ffffff;border-radius:8px;border-top:4px solid #FF004D;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:440px;">
         <tr>
-          <td style="padding:32px 32px 8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:#1E1E1E;">
-            <div style="font-size:14px;letter-spacing:0.08em;text-transform:uppercase;color:#888888;">Lantern</div>
-            <h1 style="font-size:20px;font-weight:600;margin:12px 0 0;">Your sign-in code</h1>
-            <p style="font-size:15px;line-height:1.6;margin:12px 0 0;">Enter this code in the sign-in window to continue:</p>
+          <td style="padding:0 0 16px;">
+            <img src="https://lantern.study/brand/email-lockup.png" width="88" height="24" alt="Lantern" style="display:block;border:0;color:#E8E8E8;font-family:'DotGothic16',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;">
           </td>
         </tr>
         <tr>
-          <td align="center" style="padding:16px 32px;">
-            <div style="font-family:'SFMono-Regular',Menlo,Consolas,monospace;font-size:32px;font-weight:600;letter-spacing:0.3em;color:#1E1E1E;background:#f4f4f4;border-radius:6px;padding:12px 16px;">{{ .Token }}</div>
+          <td bgcolor="#2A2A2A" style="background:#2A2A2A;border:1px solid #2E2E2E;border-radius:8px;padding:32px;font-family:'DotGothic16',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;letter-spacing:0.05em;color:#E8E8E8;">
+            <h1 style="font-size:22px;font-weight:normal;line-height:1.3;margin:0;color:#E8E8E8;">Your sign-in code</h1>
+            <p style="font-size:15px;line-height:1.6;margin:12px 0 0;color:#E8E8E8;">Enter this code in the sign-in window to continue:</p>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0 0;">
+              <tr>
+                <td align="center" bgcolor="#1E1E1E" style="background:#1E1E1E;border:1px solid #2E2E2E;border-radius:6px;padding:16px 16px 16px 26px;font-family:'SFMono-Regular',Menlo,Consolas,monospace;font-size:32px;letter-spacing:0.3em;color:#E8E8E8;">{{ .Token }}</td>
+              </tr>
+            </table>
+            <p style="font-size:15px;line-height:1.6;margin:24px 0 0;color:#E8E8E8;">Or sign in with this link instead:</p>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:12px 0 0;">
+              <tr>
+                <td class="btn-primary" align="center" bgcolor="#FF004D" style="background:#FF004D;border-radius:6px;">
+                  <a href="{{ .RedirectTo }}#/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email" style="display:block;padding:10px 24px;font-size:15px;color:#ffffff;text-decoration:none;text-align:center;">Sign in to Lantern</a>
+                </td>
+              </tr>
+            </table>
+            <p style="font-size:13px;line-height:1.6;margin:24px 0 0;color:#888888;">This code and link expire in 10 minutes. If you didn&rsquo;t request them, you can ignore this email.</p>
           </td>
         </tr>
         <tr>
-          <td style="padding:8px 32px 32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:#1E1E1E;">
-            <p style="font-size:15px;line-height:1.6;margin:0;">Or sign in with this link instead:</p>
-            <p style="margin:16px 0 0;">
-              <a href="{{ .RedirectTo }}#/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email" style="display:inline-block;background:#FF004D;color:#ffffff;text-decoration:none;font-size:15px;padding:10px 20px;border-radius:6px;">Sign in to Lantern</a>
-            </p>
-            <p style="font-size:13px;line-height:1.6;color:#666666;margin:24px 0 0;">The code and link expire in 10 minutes and work once. If you didn&rsquo;t ask to sign in, ignore this email &mdash; nobody can get in without the code.</p>
+          <td style="padding:16px 0 0;font-family:'DotGothic16',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;letter-spacing:0.05em;font-size:13px;color:#888888;">
+            <a href="https://lantern.study" style="color:#888888;text-decoration:underline;">lantern.study</a>
           </td>
         </tr>
       </table>
-      <p style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:#888888;margin:16px 0 0;">Lantern &middot; <a href="https://lantern.study" style="color:#888888;">lantern.study</a></p>
     </td>
   </tr>
 </table>

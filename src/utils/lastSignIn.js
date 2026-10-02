@@ -35,14 +35,17 @@ export function clearPendingSignIn() {
   }
 }
 
+// Returns the method it promoted, or null — which is also how a caller tells
+// a sign-in that just completed from a session merely restored on load.
 export function commitPendingSignIn() {
   let pending = null
   try {
     pending = sessionStorage.getItem(PENDING_KEY)
   } catch {
-    return
+    return null
   }
   if (pending) recordSignIn(pending)
+  return pending
 }
 
 export function forgetLastSignIn() {

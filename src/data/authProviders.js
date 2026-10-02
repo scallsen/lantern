@@ -21,7 +21,7 @@ export const EMAIL_PROVIDER = 'email'
 // couple of emails an hour and only to the project's own org, so flip this to
 // true only once every step in supabase/CLAUDE.md's "Auth configuration" is
 // done: Resend as custom SMTP, the email templates, and Turnstile.
-export const EMAIL_SIGN_IN_ENABLED = false
+export const EMAIL_SIGN_IN_ENABLED = true
 
 // Must match "Email OTP Length" in the Supabase dashboard. The code field
 // submits itself once this many digits are in, which is what lets a phone's

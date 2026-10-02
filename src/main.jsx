@@ -8,11 +8,12 @@ import { ToastProvider } from './context/ToastContext.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <AuthProvider>
-      <ToastProvider>
+    {/* Toasts outside auth, so a completed sign-in can announce itself. */}
+    <ToastProvider>
+      <AuthProvider>
         <App />
         <TranslateNotice />
-      </ToastProvider>
-    </AuthProvider>
+      </AuthProvider>
+    </ToastProvider>
   </StrictMode>
 )

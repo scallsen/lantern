@@ -1,0 +1,4 @@
+<!-- The app's global box-sizing reset lives in index.html, which Storybook
+     never loads. Without it a fullWidth input renders 100% plus its padding
+     and overflows its container in stories but not in the app. -->
+<style>*, *::before, *::after { box-sizing: border-box; }</style>

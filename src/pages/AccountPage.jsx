@@ -183,7 +183,7 @@ export default function AccountPage() {
     // moment later, which would eat most of the toast's duration.
     setPendingToast('Account deleted')
     forgetLastSignIn()
-    await signOut()
+    await signOut({ quiet: true })
     window.location.hash = '#/'
   }
 
