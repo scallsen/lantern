@@ -63,9 +63,14 @@ export function useTurnstile(siteKey, active) {
           'before-interactive-callback': () => setInteractive(true),
           'after-interactive-callback': () => setInteractive(false),
           'expired-callback': () => setToken(null),
-          'error-callback': () => {
+          // Cloudflare's code names the actual cause (110200: this hostname
+          // isn't on the widget; 110100/110110: bad site key; 300xxx/600xxx:
+          // the visitor failed the challenge), so it goes in the message for
+          // anyone reporting it. Returning true tells Turnstile it's handled.
+          'error-callback': code => {
             setToken(null)
-            setError('The security check failed. Reload the page and try again.')
+            setError(`The security check failed${code ? ` (error ${code})` : ''}. Reload the page and try again.`)
+            return true
           },
         })
       })
