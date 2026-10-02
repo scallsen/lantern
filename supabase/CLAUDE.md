@@ -1,4 +1,4 @@
-# Supabase — schemas, edge functions, quotas, rate limits
+# Supabase — schemas, auth configuration, edge functions, quotas, rate limits
 
 Loaded when working under `supabase/`. Most tables were created in the SQL editor, not by a migration, so the SQL below is the only record of them in the repo.
 
@@ -86,6 +86,31 @@ grant all on kanji to service_role;
 ```
 
 Populated by `scripts/import-kanjidic2.mjs` (accepts raw XML zip or pre-converted JSON).
+
+### Auth configuration (dashboard only)
+
+Like `rls_auto_enable`, these settings live in the Supabase dashboard and nowhere in this repo, so this is their record. Change one there, change it here. Email sign-in (`EMAIL_SIGN_IN_ENABLED` in `src/data/authProviders.js`) must stay off until all of it is in place: an email that never arrives fails silently.
+
+**Sign-in methods.** GitHub and Google OAuth, and email one-time codes. No passwords anywhere. **Manual linking** is on (the account page's Link buttons). Supabase links identities that share a verified email automatically, so an email sign-in with the address a Google account already uses lands in that same account.
+
+**URL configuration.** Site URL `https://lantern.study`. Redirect allowlist: `https://lantern.study/` and `http://localhost:5173/`. The client uses the PKCE flow (`src/lib/supabase.js`), so OAuth returns a `?code=` that supabase-js exchanges and strips.
+
+**Email provider** (Authentication → Sign In / Providers → Email): enabled; Confirm email on; Secure email change on; Email OTP Expiration `600` seconds; Email OTP Length `6` (mirrored by `EMAIL_CODE_LENGTH`).
+
+**SMTP** (Authentication → Emails → SMTP Settings): Resend. Host `smtp.resend.com`, port `465`, username `resend`, password a Resend API key with *sending access only, restricted to the domain*. Sender `auth@mail.lantern.study`, name `Lantern`. Minimum interval per user `60` seconds (mirrored by `RESEND_COOLDOWN_S` in `SignInDialog`). Sending from the `mail.` subdomain keeps any deliverability trouble off the root domain. In Resend, **open and click tracking are off** for the domain: click tracking rewrites the sign-in link through Resend's servers, and open tracking is a tracking pixel the privacy policy says doesn't exist. DNS: Resend's SPF/DKIM/MX records for `mail.lantern.study`, plus DMARC at `_dmarc.lantern.study` (start `p=none`, move to `p=quarantine` once reports are clean).
+
+**Templates** (Authentication → Emails → Templates): `supabase/templates/` is the source of truth; paste each file into the dashboard after editing it.
+
+| Template | File | Subject |
+|---|---|---|
+| Magic Link (returning users) | `magic-link.html` | `Your Lantern sign-in code` |
+| Confirm signup (first sign-in) | `confirm-signup.html` | `Welcome to Lantern — your sign-in code` |
+
+Both carry the code (`{{ .Token }}`) and a backup link to `{{ .RedirectTo }}#/auth/confirm?token_hash={{ .TokenHash }}&type=email`. The link deliberately bypasses Supabase's own `/verify` redirect: that endpoint spends the token on a plain GET, so a mail scanner prefetching it would kill both the link and the code, and under PKCE it only works in the browser that asked. `AuthConfirmPage` spends the token on a click instead. `{{ .RedirectTo }}` is the client's `emailRedirectTo` (`redirectTarget()` in `AuthContext`), checked against the allowlist above, which is why a localhost sign-in gets a localhost link. Both templates use `type=email`; it covers new and existing users alike. The "expire in 10 minutes" line in the templates follows the OTP expiry above.
+
+**CAPTCHA** (Authentication → Attack Protection): on, Cloudflare Turnstile, with the widget's secret key. The widget (Cloudflare dashboard → Turnstile) is Managed mode, hostnames `lantern.study` and `localhost`; its public site key is `VITE_TURNSTILE_SITE_KEY` in the hosting build environment and in local `.env`. Supabase checks the token on the email-code request (`signInWithOtp`), not on code verification or OAuth. This is what stops the form being used to email strangers: every request otherwise costs Resend quota (100 a day on the free tier, after which nobody can sign in by email) and sender reputation.
+
+**Rate limits** (Authentication → Rate Limits): emails sent per hour `30`; sign-ups and sign-ins, and token verifications, per 5 minutes per IP at their defaults (`30`). With a 6-digit code, the per-IP verification limit plus the 10-minute expiry is what makes guessing a code impractical. The hourly email cap is global, so it bounds both abuse and legitimate peaks; raise it if real sign-ins ever hit it.
 
 ### Edge functions
 

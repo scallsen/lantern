@@ -37,7 +37,7 @@ export default function ProviderIcon({ provider, size = 16 }) {
     )
   }
 
-  // The magic-link identity has no brand mark of its own, and a blank slot
+  // The email identity has no brand mark of its own, and a blank slot
   // beside a labelled row reads as something failing to load.
   if (provider === EMAIL_PROVIDER) {
     return (

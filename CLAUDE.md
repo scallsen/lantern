@@ -179,15 +179,27 @@ An audit of `anon`/`authenticated` grants (2026-09-05) was otherwise clean: no w
 
 ## Auth
 
-Multi-provider auth via Supabase: GitHub and Google OAuth, plus passwordless email magic link. There is deliberately **no password anywhere** — magic link instead, which avoids owning a password-reset flow.
+Multi-provider auth via Supabase: GitHub and Google OAuth, plus email sign-in with a one-time code. There is deliberately **no password anywhere** — an emailed code instead, which avoids owning a password-reset flow. Email sign-in is built but hidden behind `EMAIL_SIGN_IN_ENABLED` until its dashboard setup (custom SMTP, templates, CAPTCHA) is live — every setting is recorded in `supabase/CLAUDE.md`'s "Auth configuration", which is the place to look before touching any of it.
+
+**Email sign-in is a code first, a link second.** One email carries both: a 6-digit code typed into the dialog that asked for it (`verifyEmailCode`; the field submits itself on the last digit so a phone's one-time-code autofill signs straight in), and a backup link to `#/auth/confirm` (`AuthConfirmPage`, `verifyEmailLink`). A link alone breaks in three common cases — a mail scanner prefetching it spends the token, it fails when opened in a different browser than the one that asked, and on iOS it opens in Safari instead of the installed app — and the code works in all of them. The confirm page asks for a click before spending the token for the scanner reason; don't make it auto-submit. The same `signInWithOtp` call creates the account on first use, so there's no separate sign-up path. Each request carries a Cloudflare Turnstile token (`useTurnstile`, `src/hooks/useTurnstile.js`) that Supabase verifies — Turnstile tokens are single-use, so the dialog resets the widget after every send.
+
+**The client uses PKCE** (`flowType: 'pkce'` in `src/lib/supabase.js`): OAuth comes back with a one-time `?code=` rather than tokens in the URL fragment.
+
+**The sign-in dialog marks the method last used on this device** (`src/utils/lastSignIn.js`, localStorage `lantern-last-sign-in`, method id only — never the address). An OAuth click is parked in sessionStorage and only promoted once a session actually arrives (`commitPendingSignIn` on `SIGNED_IN`/`INITIAL_SESSION`), so a cancelled provider prompt doesn't count; email sign-ins record directly on success. It survives sign-out by design and is cleared on account deletion.
+
+**Legal pages.** `PRIVACY.md` and `TERMS.md` are the source of truth, rendered at `#/privacy` and `#/terms` by `LegalPage` (inlined at build time). The sign-in dialog links both ("By continuing, you agree…"), as do the dashboard footer and the account page. A new third party that sees user data — like Resend and Cloudflare Turnstile for email sign-in — needs a line in `PRIVACY.md`'s "Who else sees your data" and a new "Last updated" date.
 
 `signIn()` stays **parameterless** and opens `SignInDialog` rather than redirecting. With more than one provider available "Sign in" can no longer mean "go to GitHub", and keeping the signature meant the six existing call sites (`AuthSlot`, `VocabSrsModule`, `StoryModule`, `EpisodeDrill`, …) needed no change to gain the chooser. `signInWithProvider(id)` is the actual redirect.
 
 | File | Purpose |
 |---|---|
 | `src/lib/supabase.js` | Supabase client (reads `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY`) |
-| `src/context/AuthContext.jsx` | `AuthProvider` + `useAuth()` — exposes `{ user, loading, signIn, signInWithProvider, signInWithEmail, signOut, linkProvider, unlinkProvider, refreshUser }`; also renders `SignInDialog` |
-| `src/components/SignInDialog.jsx` | Provider chooser + magic-link field — composes `Modal`, opened by `signIn()` |
+| `src/context/AuthContext.jsx` | `AuthProvider` + `useAuth()` — exposes `{ user, loading, signIn, signInWithProvider, signInWithEmail, verifyEmailCode, verifyEmailLink, signOut, linkProvider, unlinkProvider, refreshUser }`; also renders `SignInDialog` |
+| `src/components/SignInDialog.jsx` | Provider chooser + email code flow (email → code step) with last-used badge — composes `Modal`, opened by `signIn()` |
+| `src/pages/AuthConfirmPage.jsx` | `#/auth/confirm` — the backup link in a sign-in email; spends the token on a click |
+| `src/hooks/useTurnstile.js` | Cloudflare Turnstile widget for the email form (`VITE_TURNSTILE_SITE_KEY`) |
+| `src/utils/lastSignIn.js` | Remembers the last-used sign-in method per device |
+| `supabase/templates/` | Sign-in email templates — source of truth, pasted into the dashboard |
 | `src/data/authProviders.js` | `AUTH_PROVIDERS` — the one provider list shared by the dialog and the account page's linking UI |
 | `src/pages/AccountPage.jsx` | `#/account` — profile, linked accounts (link/unlink), sign out, delete account |
 | `supabase/functions/delete-account/index.ts` | Deletes the caller's rows then their auth user — see below |
@@ -198,7 +210,7 @@ Multi-provider auth via Supabase: GitHub and Google OAuth, plus passwordless ema
 
 **`Avatar` is a deliberate exception to settled decision #2** (module accents come from context). It used `useAccent()`, which recoloured the header badge on every navigation — teal on the dashboard, pink in anime vocab, red in the news reader. It now uses a fixed `AVATAR_COLOR`; the badge stands for the *user*, and that doesn't change with the route. Its `accent` prop survives as an explicit per-instance override. Don't "fix" it back to `useAccent` on the grounds that every other colour-bearing component reads the ambient accent.
 
-**The account page is one centred column of `DataList`s**, not bespoke rows: profile details and linked accounts are both lists. The linked-accounts list has a row for *every* provider whether connected or not — a connected row offers `Unlink` (`ghost-muted`, the documented remove affordance: quiet until hovered, then red), an unconnected one `Link` (`neutral`). That way the list is also where you add a provider, instead of a separate button cluster below it. A magic-link `email` identity only appears once it exists, since it has no OAuth button to offer.
+**The account page is one centred column of `DataList`s**, not bespoke rows: profile details and linked accounts are both lists. The linked-accounts list has a row for *every* provider whether connected or not — a connected row offers `Unlink` (`ghost-muted`, the documented remove affordance: quiet until hovered, then red), an unconnected one `Link` (`neutral`). That way the list is also where you add a provider, instead of a separate button cluster below it. An `email` identity only appears once it exists, since it has no OAuth button to offer.
 
 **Account deletion goes through the `delete-account` edge function**, because `auth.admin.deleteUser` needs the service role and must never reach the browser. The function takes **no user id** — it resolves the caller from their own token via `requireUser`, so a caller can only ever delete themselves. `progress.user_id` and `stories.user_id` both reference `auth.users` with no cascade, so those rows are deleted first or the foreign key rejects the user delete; consequently **deleting an account also removes that user's public stories from everyone's feed**. Adding another user-scoped table means adding it to that function.
 
@@ -241,4 +253,4 @@ Module- and area-specific guidance is in folder-level `CLAUDE.md` files, which l
 | `src/modules/immersion/CLAUDE.md` | Immersion reader and nightly article pipeline |
 | `src/modules/story/CLAUDE.md` | Story generator — formats, `stories` table, learnerContext |
 | `src/modules/grammar-map/CLAUDE.md` | Grammar Map (being removed) |
-| `supabase/CLAUDE.md` | `progress` / `dictionary` / `kanji` schemas, edge functions, AI quotas, bring-your-own key, rate limiting, app-wide AI ceiling |
+| `supabase/CLAUDE.md` | `progress` / `dictionary` / `kanji` schemas, auth dashboard configuration (SMTP, templates, CAPTCHA, rate limits), edge functions, AI quotas, bring-your-own key, rate limiting, app-wide AI ceiling |

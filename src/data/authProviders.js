@@ -8,19 +8,25 @@ export const AUTH_PROVIDERS = [
   { id: 'google', label: 'Google' },
 ]
 
-// Identities created by the magic-link flow report this provider. It has no
+// Identities created by email sign-in report this provider. It has no
 // OAuth button and can't be unlinked like the others, so it's named here
 // rather than being a bare string in three places.
 export const EMAIL_PROVIDER = 'email'
 
-// Magic-link sign-in is built and working, but hidden: Supabase's built-in SMTP
-// is rate-limited and on newer projects only delivers to members of the project's
-// own org, so a link sent to a real user would simply never arrive. Unlike the
-// OAuth buttons — which may ship ahead of their dashboard toggle because a
-// misconfigured one fails loudly and immediately — a magic link fails *silently*,
-// leaving the user staring at "check your email" forever. Flip this to true once
-// custom SMTP is configured and the Email provider is enabled.
+// Email sign-in (a one-time code, with a backup link in the same email) is
+// built but hidden until its infrastructure is live. Unlike the OAuth buttons —
+// which may ship ahead of their dashboard toggle because a misconfigured one
+// fails loudly and immediately — an email that never arrives fails *silently*,
+// leaving the user waiting on a code forever. Supabase's built-in SMTP sends a
+// couple of emails an hour and only to the project's own org, so flip this to
+// true only once every step in supabase/CLAUDE.md's "Auth configuration" is
+// done: Resend as custom SMTP, the email templates, and Turnstile.
 export const EMAIL_SIGN_IN_ENABLED = false
+
+// Must match "Email OTP Length" in the Supabase dashboard. The code field
+// submits itself once this many digits are in, which is what lets a phone's
+// one-time-code autofill sign straight in.
+export const EMAIL_CODE_LENGTH = 6
 
 export function providerLabel(id) {
   if (id === EMAIL_PROVIDER) return 'Email'
