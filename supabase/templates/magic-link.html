@@ -3,56 +3,86 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="dark">
-<meta name="supported-color-schemes" content="dark">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
 <title>Your Lantern sign-in code</title>
 <style>
-  :root { color-scheme: dark; supported-color-schemes: dark; }
+  :root { color-scheme: light dark; supported-color-schemes: light dark; }
   @font-face {
     font-family: 'DotGothic16';
     src: url('https://lantern.study/fonts/DotGothic16-Modified.woff2') format('woff2');
   }
   /* The app's primary-button states (global.css .btn-primary): BRAND_DEEP on
-     hover, darker still when pressed. !important beats the inline background
-     that clients without <style> support fall back to. */
+     hover, darker still when pressed. */
   .btn-primary:hover { background: #D80041 !important; }
   .btn-primary:active { background: #D80041 !important; filter: brightness(0.85); }
+
+  /* Light first, because Gmail's apps invert every email in dark mode and
+     only a light one inverts cleanly. Clients that honour the reader's
+     setting (Apple Mail, iOS Mail, Outlook for Mac) get the app's own dark
+     palette instead. */
+  @media (prefers-color-scheme: dark) {
+    .bg-page { background: #1E1E1E !important; }
+    .bg-card { background: #2A2A2A !important; border-color: #2E2E2E !important; }
+    .bg-code { background: #1E1E1E !important; border-color: #2E2E2E !important; }
+    .text-main { color: #E8E8E8 !important; }
+    .text-muted { color: #888888 !important; }
+  }
+  /* Outlook.com and the Outlook apps mark what they recolour in dark mode. */
+  [data-ogsc] .text-main { color: #E8E8E8 !important; }
+  [data-ogsc] .text-muted { color: #888888 !important; }
+  [data-ogsb] .bg-page { background: #1E1E1E !important; }
+  [data-ogsb] .bg-card { background: #2A2A2A !important; }
+  [data-ogsb] .bg-code { background: #1E1E1E !important; }
+
+  /* Gmail's apps also invert the button's white label to near-black. These
+     blend modes turn it back (u + .body only matches inside Gmail); where
+     they don't apply, nothing changes. */
+  u + .body .gmail-screen { background: #000; mix-blend-mode: screen; }
+  u + .body .gmail-difference { background: #000; mix-blend-mode: difference; }
 </style>
 </head>
-<body style="margin:0;padding:0;background:#1E1E1E;" bgcolor="#1E1E1E">
+<body class="body bg-page" style="margin:0;padding:0;background:#F4F4F4;" bgcolor="#F4F4F4">
 <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">Your Lantern sign-in code is {{ .Token }}. It expires in 10 minutes.</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#1E1E1E" style="background:#1E1E1E;">
+<table role="presentation" class="bg-page" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F4F4F4" style="background:#F4F4F4;">
   <tr>
     <td align="center" style="padding:32px 16px;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:440px;">
         <tr>
           <td style="padding:0 0 16px;">
-            <img src="https://lantern.study/brand/email-lockup.png" width="88" height="24" alt="Lantern" style="display:block;border:0;color:#E8E8E8;font-family:'DotGothic16',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td style="vertical-align:middle;padding:0 6px 0 0;">
+                  <img src="https://lantern.study/brand/email-lantern.png" width="24" height="24" alt="" style="display:block;border:0;image-rendering:pixelated;">
+                </td>
+                <td class="text-main" style="vertical-align:middle;font-family:'DotGothic16',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;letter-spacing:0.05em;color:#222222;">Lantern</td>
+              </tr>
+            </table>
           </td>
         </tr>
         <tr>
-          <td bgcolor="#2A2A2A" style="background:#2A2A2A;border:1px solid #2E2E2E;border-radius:8px;padding:32px;font-family:'DotGothic16',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;letter-spacing:0.05em;color:#E8E8E8;">
-            <h1 style="font-size:22px;font-weight:normal;line-height:1.3;margin:0;color:#E8E8E8;">Your sign-in code</h1>
-            <p style="font-size:15px;line-height:1.6;margin:12px 0 0;color:#E8E8E8;">Enter this code in the sign-in window to continue:</p>
+          <td class="bg-card" bgcolor="#FFFFFF" style="background:#FFFFFF;border:1px solid #E0E0E0;border-radius:8px;padding:32px;font-family:'DotGothic16',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;letter-spacing:0.05em;color:#222222;">
+            <h1 class="text-main" style="font-size:22px;font-weight:normal;line-height:1.3;margin:0;color:#222222;">Your sign-in code</h1>
+            <p class="text-main" style="font-size:15px;line-height:1.6;margin:12px 0 0;color:#222222;">Enter this code in the sign-in window to continue:</p>
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0 0;">
               <tr>
-                <td align="center" bgcolor="#1E1E1E" style="background:#1E1E1E;border:1px solid #2E2E2E;border-radius:6px;padding:16px 16px 16px 26px;font-family:'SFMono-Regular',Menlo,Consolas,monospace;font-size:32px;letter-spacing:0.3em;color:#E8E8E8;">{{ .Token }}</td>
+                <td class="bg-code text-main" align="center" bgcolor="#E8E4DE" style="background:#E8E4DE;border:1px solid #E8E4DE;border-radius:6px;padding:16px 16px 16px 26px;font-family:'SFMono-Regular',Menlo,Consolas,monospace;font-size:32px;letter-spacing:0.3em;color:#222222;">{{ .Token }}</td>
               </tr>
             </table>
-            <p style="font-size:15px;line-height:1.6;margin:24px 0 0;color:#E8E8E8;">Or sign in with this link instead:</p>
+            <p class="text-main" style="font-size:15px;line-height:1.6;margin:24px 0 0;color:#222222;">Or sign in with this link instead:</p>
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:12px 0 0;">
               <tr>
                 <td class="btn-primary" align="center" bgcolor="#FF004D" style="background:#FF004D;border-radius:6px;">
-                  <a href="{{ .RedirectTo }}#/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email" style="display:block;padding:10px 24px;font-size:15px;color:#ffffff;text-decoration:none;text-align:center;">Sign in to Lantern</a>
+                  <a href="{{ .RedirectTo }}#/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email" style="display:block;padding:10px 24px;font-size:15px;color:#ffffff;text-decoration:none;text-align:center;"><span class="gmail-screen" style="display:block;"><span class="gmail-difference" style="display:block;">Sign in to Lantern</span></span></a>
                 </td>
               </tr>
             </table>
-            <p style="font-size:13px;line-height:1.6;margin:24px 0 0;color:#888888;">This code and link expire in 10 minutes. If you didn&rsquo;t request them, you can ignore this email.</p>
+            <p class="text-muted" style="font-size:13px;line-height:1.6;margin:24px 0 0;color:#6B6B6B;">This code and link expire in 10 minutes. If you didn&rsquo;t request them, you can ignore this email.</p>
           </td>
         </tr>
         <tr>
-          <td style="padding:16px 0 0;font-family:'DotGothic16',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;letter-spacing:0.05em;font-size:13px;color:#888888;">
-            <a href="https://lantern.study" style="color:#888888;text-decoration:underline;">lantern.study</a>
+          <td style="padding:16px 0 0;font-family:'DotGothic16',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;letter-spacing:0.05em;font-size:13px;">
+            <a class="text-muted" href="https://lantern.study" style="color:#6B6B6B;text-decoration:underline;">lantern.study</a>
           </td>
         </tr>
       </table>
