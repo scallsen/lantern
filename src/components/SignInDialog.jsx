@@ -42,15 +42,6 @@ function MethodButton({ provider, label, lastUsed, disabled, onClick }) {
   )
 }
 
-function ClipboardIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true" style={{ flexShrink: 0 }}>
-      <rect x="3.2" y="2.7" width="9.6" height="11.6" rx="1.4" />
-      <path d="M6 2.7V2a.6.6 0 0 1 .6-.6h2.8a.6.6 0 0 1 .6.6v.7M5.6 7h4.8M5.6 9.8h3.2" strokeLinecap="round" />
-    </svg>
-  )
-}
-
 function StepTitle({ children, onBack }) {
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: SPACE_8, marginLeft: -6 }}>
@@ -59,10 +50,6 @@ function StepTitle({ children, onBack }) {
     </span>
   )
 }
-
-// Firefox only gained readText in 125, and an insecure origin has no
-// navigator.clipboard at all; without it the button would only ever fail.
-const CAN_READ_CLIPBOARD = typeof navigator !== 'undefined' && typeof navigator.clipboard?.readText === 'function'
 
 // The email step keeps the first step's title: an address that has no
 // account yet gets one from the same code, so this is still sign-up too.
@@ -89,14 +76,12 @@ export function SignInDialogView({
   resendIn = 0,
   autoFocus = true,
   captchaSlot = null,
-  canPaste = false,
   onProvider,
   onChooseEmail,
   onEmailChange,
   onSubmitEmail,
   onCodeChange,
   onSubmitCode,
-  onPaste,
   onResend,
   onBack,
 }) {
@@ -155,6 +140,17 @@ export function SignInDialogView({
     </form>
   )
 
+  // Pasting into the field needs no clipboard permission, unlike a "Paste"
+  // button (Safari always makes a page that reads the clipboard ask for a
+  // second tap). A paste of more than the code — the email's whole line —
+  // is narrowed to the code itself; anything without one pastes as normal.
+  function handleCodePaste(e) {
+    const found = codeFromText(e.clipboardData?.getData('text') ?? '')
+    if (!found) return
+    e.preventDefault()
+    onCodeChange(found)
+  }
+
   const codeStep = (
     <form
       onSubmit={e => { e.preventDefault(); onSubmitCode() }}
@@ -175,14 +171,10 @@ export function SignInDialogView({
         pattern="[0-9]*"
         maxLength={EMAIL_CODE_LENGTH}
         aria-label="Sign-in code"
+        onPaste={handleCodePaste}
         size="lg"
         style={{ fontSize: 22, letterSpacing: '0.3em', textAlign: 'center' }}
       />
-      {canPaste && (
-        <Button variant="neutral" size={BUTTON_SIZE} fullWidth disabled={busy} onClick={onPaste} icon={<ClipboardIcon />}>
-          Paste from clipboard
-        </Button>
-      )}
       <Button type="submit" size={BUTTON_SIZE} fullWidth disabled={busy || code.length !== EMAIL_CODE_LENGTH}>
         Sign in
       </Button>
@@ -351,26 +343,6 @@ export default function SignInDialog({
     if (digits.length === EMAIL_CODE_LENGTH) verify(digits)
   }
 
-  // Reading the clipboard prompts in some browsers (Safari's Paste bubble),
-  // and a refusal or an unrelated clipboard just means saying so — typing or
-  // pasting into the field still works.
-  async function handlePaste() {
-    setError(null)
-    let text
-    try {
-      text = await navigator.clipboard.readText()
-    } catch {
-      setError('Couldn’t read the clipboard. Paste the code into the field instead.')
-      return
-    }
-    const found = codeFromText(text)
-    if (!found) {
-      setError(`No ${EMAIL_CODE_LENGTH}-digit code on the clipboard. Copy it from the email and try again.`)
-      return
-    }
-    handleCodeChange(found)
-  }
-
   return (
     <SignInDialogView
       open={open}
@@ -395,8 +367,6 @@ export default function SignInDialog({
       onSubmitEmail={handleSubmitEmail}
       onCodeChange={handleCodeChange}
       onSubmitCode={() => verify(code)}
-      canPaste={CAN_READ_CLIPBOARD}
-      onPaste={handlePaste}
       onResend={handleResend}
       onBack={() => goTo(step === 'code' ? 'email' : 'choose')}
     />

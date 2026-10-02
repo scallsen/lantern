@@ -10,7 +10,6 @@ const handlers = {
   onSubmitEmail: fn(),
   onCodeChange: fn(),
   onSubmitCode: fn(),
-  onPaste: fn(),
   onResend: fn(),
   onBack: fn(),
 }
@@ -36,7 +35,7 @@ function TurnstileStandIn() {
 }
 
 const EMAIL = 'mika@example.com'
-const CODE = { step: 'code', email: EMAIL, sentTo: EMAIL, canPaste: true }
+const CODE = { step: 'code', email: EMAIL, sentTo: EMAIL }
 
 const ROWS = [
   {
@@ -63,13 +62,12 @@ const ROWS = [
   },
   {
     title: '3 · Enter code',
-    note: 'Submits on the sixth digit, so a pasted or autofilled code signs straight in. Paste from clipboard finds the code even in a copied sentence. The security check only runs again if Resend is pressed. Back returns to the email step.',
+    note: 'Submits on the sixth digit, so a pasted or autofilled code signs straight in. Pasting into the field finds the code even in a copied sentence. The security check only runs again if Resend is pressed. Back returns to the email step.',
     states: [
       { label: 'Just sent', props: { ...CODE, resendIn: 60 } },
       { label: 'Typing', props: { ...CODE, code: '482', resendIn: 41 } },
       { label: 'Checking the code', props: { ...CODE, code: '482917', busy: true, resendIn: 38 } },
       { label: 'Wrong or expired code', props: { ...CODE, error: 'That code is wrong or has expired.', resendIn: 30 } },
-      { label: 'Nothing to paste', props: { ...CODE, error: 'No 6-digit code on the clipboard. Copy it from the email and try again.', resendIn: 24 } },
       { label: 'Resend available', props: { ...CODE } },
       { label: 'Resend pressed — security check running', props: { ...CODE, resending: true, waitingOnCaptcha: true } },
     ],
