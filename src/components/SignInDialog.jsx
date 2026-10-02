@@ -8,7 +8,7 @@ import { useIsMobile } from '../hooks/useIsMobile.js'
 import { useTurnstile, TURNSTILE_SITE_KEY } from '../hooks/useTurnstile.js'
 import { codeFromText } from '../utils/signInCode.js'
 import { AUTH_PROVIDERS, EMAIL_PROVIDER, EMAIL_SIGN_IN_ENABLED, EMAIL_CODE_LENGTH } from '../data/authProviders.js'
-import { TEXT, TEXT_MUTED, FS_BASE, FS_SM, SPACE_8, SPACE_12, SPACE_16, DANGER } from '../data/theme.js'
+import { TRACKING, TEXT, TEXT_MUTED, FS_BASE, FS_SM, SPACE_8, SPACE_12, SPACE_16, DANGER } from '../data/theme.js'
 
 // Matches Supabase's own minimum gap between two emails to one address, so
 // the button can't offer a resend the server would refuse anyway.
@@ -130,6 +130,10 @@ export function SignInDialogView({
         placeholder="you@example.com"
         disabled={busy}
         autoComplete="email"
+        // TextInput drops the app's tracking because it cramps Japanese
+        // mid-composition; an address is never Japanese, and DotGothic16
+        // reads squashed without it.
+        style={{ letterSpacing: TRACKING }}
         required
         autoFocus={autoFocus}
         aria-label="Email address"

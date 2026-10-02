@@ -1,20 +1,26 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import PageHeader from '../components/PageHeader.jsx'
 import AuthSlot from '../components/AuthSlot.jsx'
 import Button from '../components/Button.jsx'
+import TopProgressBar from '../components/TopProgressBar.jsx'
 import { useAuth, signedInMessage } from '../context/AuthContext.jsx'
+import { useAccent } from '../context/ModuleThemeContext.jsx'
 import { setPendingToast } from '../utils/pendingToast.js'
 import { FONT, TRACKING, TEXT, TEXT_MUTED, DANGER, FS_BASE, FS_CONTENT_HEADING, SPACE_16, SPACE_24 } from '../data/theme.js'
 
 // The landing page for the backup link in a sign-in email
 // (`#/auth/confirm?token_hash=…&type=email`, built by the templates in
-// supabase/templates/).
+// supabase/templates/). It signs in as soon as it opens.
 //
-// It asks for a click instead of signing in on load because mail scanners
-// (Outlook's Safe Links and similar) fetch every link in an email before the
-// recipient sees it. A link that spent its token on load would be dead by the
-// time the person clicked it — and since the code in the same email is the
-// same token, so would the code.
+// It used to wait for a click, because mail scanners (Outlook's Safe Links
+// and similar) open links before the recipient does, and a link that spent
+// its token on load would be dead by the time the person clicked it — along
+// with the code, which is the same token. The token travels after the `#`,
+// which a browser never sends to a server, so a scanner that only fetches
+// the URL never sees it; only one that runs the page in a real browser can
+// spend it. That's rare enough outside some workplace and school Microsoft
+// 365 accounts to trade for one less tap, and if it happens the page says the
+// link was already used and offers a fresh code.
 function readParams() {
   const query = window.location.hash.split('?')[1] ?? ''
   const params = new URLSearchParams(query)
@@ -23,27 +29,36 @@ function readParams() {
 
 export default function AuthConfirmPage() {
   const { user, loading, verifyEmailLink, signIn } = useAuth()
+  const accent = useAccent()
   const [{ tokenHash, type }] = useState(readParams)
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState(null)
+  // pending → signing → (redirect) | failed; or alreadySignedIn / invalid.
+  // Decided once, when auth has resolved, so the session this page itself
+  // creates never reads as "already signed in" in the moment before the
+  // redirect.
+  const [status, setStatus] = useState('pending')
+  // StrictMode runs effects twice in development; a token works once, so a
+  // second attempt would fail and report "already used" over a sign-in that
+  // just succeeded.
+  const attempted = useRef(false)
 
-  // Only sign-in links are handled; anything else is a link this page was
-  // never meant to receive, not something to pass through to Supabase.
-  const valid = Boolean(tokenHash) && type === 'email'
-
-  async function confirm() {
-    setError(null)
-    setBusy(true)
-    const result = await verifyEmailLink(tokenHash)
-    if (!result || result.error) {
-      setError('This link has expired or has already been used. Request a new one to sign in.')
-      setBusy(false)
-      return
-    }
-    setPendingToast(signedInMessage(result.data?.user))
-    // replace(), so Back doesn't return to a spent link.
-    window.location.replace('#/')
-  }
+  useEffect(() => {
+    if (loading || attempted.current) return
+    attempted.current = true
+    if (user) { setStatus('alreadySignedIn'); return }
+    // Only sign-in links are handled; anything else is a link this page was
+    // never meant to receive, not something to pass through to Supabase.
+    if (!tokenHash || type !== 'email') { setStatus('invalid'); return }
+    setStatus('signing')
+    verifyEmailLink(tokenHash).then(result => {
+      if (!result || result.error) {
+        setStatus('failed')
+        return
+      }
+      setPendingToast(signedInMessage(result.data?.user))
+      // replace(), so Back doesn't return to a spent link.
+      window.location.replace('#/')
+    })
+  }, [loading, user, tokenHash, type, verifyEmailLink])
 
   const shell = {
     height: '100%',
@@ -67,37 +82,34 @@ export default function AuthConfirmPage() {
   }
 
   let body
-  if (loading) {
-    body = null
-  } else if (user && !busy) {
+  if (status === 'pending' || status === 'signing') {
+    body = <div style={{ fontSize: FS_BASE, color: TEXT_MUTED }}>Signing you in</div>
+  } else if (status === 'alreadySignedIn') {
     body = (
       <>
         <div style={{ fontSize: FS_CONTENT_HEADING }}>You&rsquo;re already signed in</div>
         <Button size="lg" onClick={() => window.location.replace('#/')}>Go to Lantern</Button>
       </>
     )
-  } else if (!valid || error) {
-    body = (
-      <>
-        <div style={{ fontSize: FS_CONTENT_HEADING }}>This sign-in link doesn&rsquo;t work</div>
-        <div style={{ fontSize: FS_BASE, color: error ? DANGER : TEXT_MUTED, lineHeight: 1.6, maxWidth: 380 }}>
-          {error ?? 'It may have been copied incompletely. Request a new one to sign in.'}
-        </div>
-        <Button size="lg" onClick={signIn}>Sign in</Button>
-      </>
-    )
   } else {
     body = (
       <>
-        <div style={{ fontSize: FS_CONTENT_HEADING }}>Finish signing in</div>
-        <Button size="lg" disabled={busy} onClick={confirm}>Sign in to Lantern</Button>
+        <div style={{ fontSize: FS_CONTENT_HEADING }}>This sign-in link doesn&rsquo;t work</div>
+        <div style={{ fontSize: FS_BASE, color: status === 'failed' ? DANGER : TEXT_MUTED, lineHeight: 1.6, maxWidth: 380 }}>
+          {status === 'failed'
+            ? 'This link has expired or has already been used. Sign in again to get a new code.'
+            : 'It may have been copied incompletely. Sign in again to get a new code.'}
+        </div>
+        <Button size="lg" onClick={signIn}>Sign in</Button>
       </>
     )
   }
 
   return (
     <div style={shell}>
-      <PageHeader crumbs={[{ label: 'Lantern', href: '#/' }, { label: 'Sign in' }]} rightSlot={<AuthSlot />} />
+      <PageHeader crumbs={[{ label: 'Lantern', href: '#/' }, { label: 'Sign in' }]} rightSlot={<AuthSlot />}>
+        {status === 'signing' && <TopProgressBar loading color={accent} />}
+      </PageHeader>
       <div style={scroll}>{body}</div>
     </div>
   )
