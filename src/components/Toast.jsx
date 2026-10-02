@@ -107,7 +107,10 @@ export default function Toast({ open, message, actionLabel, onAction, onDismiss,
   // hover, so they didn't read as interactive.
   const content = (
     <>
-      <span>{message}</span>
+      {/* Takes the spare width, so on a phone — where .toast-card stretches
+          the card edge to edge — the dismiss button sits at the far edge
+          instead of right after the text. */}
+      <span style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>{message}</span>
       {actionLabel && (
         <Button variant="ghost" size="sm" onClick={handleAction}>
           {actionLabel}
