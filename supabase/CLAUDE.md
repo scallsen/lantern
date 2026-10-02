@@ -1,4 +1,4 @@
-# Supabase — schemas, edge functions, quotas, rate limits
+# Supabase — schemas, auth configuration, edge functions, quotas, rate limits
 
 Loaded when working under `supabase/`. Most tables were created in the SQL editor, not by a migration, so the SQL below is the only record of them in the repo.
 
@@ -86,6 +86,35 @@ grant all on kanji to service_role;
 ```
 
 Populated by `scripts/import-kanjidic2.mjs` (accepts raw XML zip or pre-converted JSON).
+
+### Auth configuration (dashboard only)
+
+Like `rls_auto_enable`, these settings live in the Supabase dashboard and nowhere in this repo, so this is their record. Change one there, change it here. Email sign-in (`EMAIL_SIGN_IN_ENABLED` in `src/data/authProviders.js`) must stay off until all of it is in place: an email that never arrives fails silently.
+
+**Sign-in methods.** GitHub and Google OAuth, and email one-time codes. No passwords anywhere. **Manual linking** is on (the account page's Link buttons). Supabase links identities that share a verified email automatically, so an email sign-in with the address a Google account already uses lands in that same account.
+
+**URL configuration.** Site URL `https://lantern.study`. Redirect allowlist: exactly `https://lantern.study/**` and `http://localhost:*/**` (any local port, so every worktree's dev server works). **Never a wildcard on a host anyone can register** — a `japanese-study-*-*.vercel.app/**` entry was removed for this: `{{ .RedirectTo }}` becomes the sign-in email's link, so a stranger could deploy a matching Vercel project, request a code for someone else's address with that redirect, and the victim's genuine Lantern email would carry their token to the stranger's site. PKCE protects OAuth, not that link. A Vercel preview that needs sign-in gets its one exact URL, temporarily. The client uses the PKCE flow (`src/lib/supabase.js`), so OAuth returns a `?code=` that supabase-js exchanges and strips.
+
+**Email provider** (Authentication → Sign In / Providers → Email): enabled; Secure email change on; Email OTP Expiration `600` seconds; Email OTP Length `6` (mirrored by `EMAIL_CODE_LENGTH`). **Confirm email** is on, but lives in the same page's **User Signups** section, not the Email panel — beside **Allow new users to sign up** (on; the dialog says a new address creates an account) and **Allow manual linking** (on).
+
+**SMTP** (Authentication → Emails → SMTP Settings): Resend. Host `smtp.resend.com`, port `465`, username `resend`, password a Resend API key with *sending access only, restricted to the domain*. Sender `auth@mail.lantern.study`, name `Lantern`. Minimum interval per user `60` seconds (mirrored by `RESEND_COOLDOWN_S` in `SignInDialog`). Sending from the `mail.` subdomain keeps any deliverability trouble off the root domain. In Resend, **open and click tracking are off** for the domain: click tracking rewrites the sign-in link through Resend's servers, and open tracking is a tracking pixel the privacy policy says doesn't exist. DNS: Resend's SPF/DKIM/MX records for `mail.lantern.study`, plus DMARC at `_dmarc.lantern.study` (start `p=none`, move to `p=quarantine` once reports are clean).
+
+**Templates** (Authentication → Emails → Templates): `supabase/templates/` is the source of truth; paste each file into the dashboard after editing it.
+
+| Template | File | Subject |
+|---|---|---|
+| Magic Link (returning users) | `magic-link.html` | `Your Lantern sign-in code` |
+| Confirm signup (first sign-in) | `confirm-signup.html` | `Your Lantern sign-in code` |
+
+One subject for both, deliberately: an inbox row or a notification shows the first few words, and "sign-in code" is what the person is looking for — "Welcome to Lantern — your sign-in code" put it last, where it truncates. The welcome lives in the new user's email body instead. A hidden preheader (`Your Lantern sign-in code is {{ .Token }}…`) puts the code itself in most inboxes' preview line.
+
+The templates are **light first, with a dark version where the client allows it** — not dark-only. The Gmail apps (iOS and Android) invert *every* email in dark mode and ignore `color-scheme`, so a dark template came out as muddy grey with a dark-on-red button; only a light one inverts cleanly. Light uses the paper palette (`#F4F4F4` page, white card, `#222` ink, `#E8E4DE` code box — CardDetails' PAPER_PALETTE); `@media (prefers-color-scheme: dark)` swaps in the app's dark palette for Apple Mail, iOS Mail and Outlook for Mac, and `[data-ogsc]`/`[data-ogsb]` rules do the same for Outlook.com. The button label is wrapped in Gmail's blend-mode fix (`u + .body .gmail-screen` / `.gmail-difference`) so its white text survives the inversion — best effort; where it doesn't apply nothing changes. Recolouring only works on elements carrying the `bg-*` / `text-*` classes, so new content needs them. The header is the lamp-on sprite as an image (`public/brand/email-lantern.png`, transparent, rendered at 4× so each sprite pixel is a whole block — a 3× render warped it) beside "Lantern" as **real text**, not one lockup image: an image is never recoloured, so a wordmark baked into it can't read on both a light and an inverted background, whereas red and yellow do. The image loads from `https://lantern.study/brand/email-lantern.png`, so it only shows once deployed. DotGothic16 is offered via `@font-face` and shows in Apple Mail; Gmail and Outlook fall back to the system font. Preview a template in a browser by serving it next to a local copy of the PNG — browsers refuse a `file://` image — and use DevTools' `prefers-color-scheme` emulation for the dark version.
+
+Both carry the code (`{{ .Token }}`) and a backup link to `{{ .RedirectTo }}#/auth/confirm?token_hash={{ .TokenHash }}&type=email`. The link deliberately bypasses Supabase's own `/verify` redirect: that endpoint spends the token on a plain GET, so a mail scanner prefetching it would kill both the link and the code, and under PKCE it only works in the browser that asked. `AuthConfirmPage` spends it in the browser instead, from the URL fragment that a scanner fetching the link never sends. `{{ .RedirectTo }}` is the client's `emailRedirectTo` (`redirectTarget()` in `AuthContext`), checked against the allowlist above, which is why a localhost sign-in gets a localhost link. Both templates use `type=email`; it covers new and existing users alike. The "expire in 10 minutes" line in the templates follows the OTP expiry above.
+
+**CAPTCHA** (Authentication → Attack Protection): on, Cloudflare Turnstile, with the widget's secret key (kept only there and in a password manager — never in `.env`, which the client never needs it from). The widget (Cloudflare dashboard → Turnstile) is Managed mode, hostnames `lantern.study` and `localhost`; its public site key is `VITE_TURNSTILE_SITE_KEY` in the hosting build environment and in local `.env`. Supabase checks the token on the email-code request (`signInWithOtp`), not on code verification or OAuth — so the dialog only runs the widget where a token is about to be spent: the email step, and the code step only once Resend is pressed. This is what stops the form being used to email strangers: every request otherwise costs Resend quota (100 a day on the free tier, after which nobody can sign in by email) and sender reputation.
+
+**Rate limits** (Authentication → Rate Limits): emails sent per hour `30`; sign-ups and sign-ins, and token verifications, per 5 minutes per IP at their defaults (`30`). With a 6-digit code, the per-IP verification limit plus the 10-minute expiry is what makes guessing a code impractical. The hourly email cap is global, so it bounds both abuse and legitimate peaks; raise it if real sign-ins ever hit it.
 
 ### Edge functions
 

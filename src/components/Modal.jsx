@@ -1,4 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
+import TopProgressBar from './TopProgressBar.jsx'
+import { useDelayedLoading } from '../hooks/useDelayedLoading.js'
+import { useAccent } from '../context/ModuleThemeContext.jsx'
 import { FONT, TRACKING, TEXT, TEXT_MUTED, FS_HEADING, SPACE_8, SPACE_16 } from '../data/theme.js'
 
 const SURFACE = '#2A2A2A'
@@ -37,8 +40,14 @@ export default function Modal({
   // Full-bleed content (a list whose rows should touch the panel edges)
   // passes 0; prose content keeps the default inset.
   bodyPadding = SPACE_16,
+  // Work in progress the dialog is waiting on (sending, verifying, a security
+  // check): the page-load bar along the header's bottom edge. Delayed like
+  // every other loading indicator so a quick wait never flashes it.
+  loading = false,
   children,
 }) {
+  const accent = useAccent()
+  const showLoading = useDelayedLoading(loading)
   // Closing has to be a rendered state, not just an unmount: React removes
   // the node immediately, so without holding it on screen for the exit
   // animation's duration the panel simply vanishes. Same pattern Toast uses.
@@ -110,6 +119,7 @@ export default function Modal({
       >
         {title && (
           <div style={{
+            position: 'relative',
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: `14px ${SPACE_16}px`, borderBottom: `1px solid ${HAIRLINE}`, flexShrink: 0,
           }}>
@@ -129,6 +139,13 @@ export default function Modal({
               >
                 ×
               </button>
+            )}
+            {/* Absolutely placed just above the border, like PageHeader's
+                bar, so it coming and going never shifts the dialog. */}
+            {showLoading && (
+              <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0 }}>
+                <TopProgressBar loading color={accent} />
+              </div>
             )}
           </div>
         )}

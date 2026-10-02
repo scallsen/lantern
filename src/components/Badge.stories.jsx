@@ -5,15 +5,17 @@ export default {
   component: Badge,
   tags: ['autodocs'],
   parameters: {
-    docs: { description: { component: "A small label that classifies an item — JLPT level, part of speech, review status.\n\n**Use when** an item carries a short category or status that people scan for.\n\n**Don't use** for anything clickable (Chip Selector) or for numbers and stats.\n\n*Build note:* `tone` carries the meaning (accent, success, warning, danger, neutral); `dimmed` marks an approximate value, like an estimated JLPT level." } },
+    docs: { description: { component: "A small label that classifies an item — JLPT level, part of speech, review status.\n\n**Use when** an item carries a short category or status that people scan for.\n\n**Don't use** for anything clickable (Chip Selector) or for numbers and stats.\n\n*Build note:* `tone` carries the meaning (accent, success, warning, danger, neutral); `dimmed` marks an approximate value, like an estimated JLPT level; `size=\"md\"` is for a badge beside full-size button text, like the sign-in dialog's \"Last used\"." } },
   },
   argTypes: {
     tone: { control: 'select', options: ['accent', 'success', 'warning', 'danger', 'neutral'] },
     variant: { control: 'select', options: ['fill', 'text'] },
+    size: { control: 'select', options: ['sm', 'md'] },
   },
   args: {
     tone: 'accent',
     variant: 'fill',
+    size: 'sm',
     dimmed: false,
     children: 'common',
   },
@@ -33,4 +35,13 @@ export const AllTones = {
 
 export const Dimmed = {
   args: { dimmed: true, children: '~N3' },
+}
+
+export const Sizes = {
+  render: args => (
+    <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+      <Badge {...args} size="sm">Last used</Badge>
+      <Badge {...args} size="md">Last used</Badge>
+    </div>
+  ),
 }

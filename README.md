@@ -38,7 +38,7 @@ Explore supporting tools to find new vocabulary from anime or the news, or gener
 ## Tech stack
 
 - [Vite](https://vitejs.dev/) + [React](https://react.dev/) — no TypeScript, no CSS framework (inline styles throughout)
-- [Supabase](https://supabase.com/) — auth (GitHub OAuth), Postgres (progress, dictionary, kanji, articles, stories), Storage (audio), and Edge Functions (story generation/grading, word import)
+- [Supabase](https://supabase.com/) — auth (GitHub and Google OAuth, email one-time codes), Postgres (progress, dictionary, kanji, articles, stories), Storage (audio), and Edge Functions (story generation/grading, word import)
 - [ts-fsrs](https://github.com/open-spaced-repetition/ts-fsrs) — spaced repetition scheduling
 - [Voicevox](https://voicevox.hiroshiba.jp/) — pre-generated Japanese TTS audio for vocab/SRS decks
 - Claude (via Supabase Edge Functions) — news rewriting, story generation/grading, OCR-based word import

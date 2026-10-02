@@ -13,6 +13,7 @@ import { useAccent } from '../context/ModuleThemeContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { supabase } from '../lib/supabase.js'
 import { setPendingToast } from '../utils/pendingToast.js'
+import { forgetLastSignIn } from '../utils/lastSignIn.js'
 import { AUTH_PROVIDERS, EMAIL_PROVIDER, providerLabel } from '../data/authProviders.js'
 import { AI_DAILY_LIMITS } from '../data/aiLimits.js'
 import { useAiUsage } from '../hooks/useAiUsage.js'
@@ -88,6 +89,12 @@ export default function AccountPage() {
   }
 
   const crumbs = [{ label: 'Lantern', href: '#/' }, { label: 'Account' }]
+
+  const legalLinkStyle = {
+    color: TEXT_MUTED,
+    fontFamily: FONT, fontSize: FS_SM, letterSpacing: TRACKING,
+    textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.3)',
+  }
 
   if (loading) {
     return <div style={shell}><PageHeader crumbs={crumbs} rightSlot={<AuthSlot />} /></div>
@@ -175,7 +182,8 @@ export default function AccountPage() {
     // Handed to the destination rather than shown here: this page unmounts a
     // moment later, which would eat most of the toast's duration.
     setPendingToast('Account deleted')
-    await signOut()
+    forgetLastSignIn()
+    await signOut({ quiet: true })
     window.location.hash = '#/'
   }
 
@@ -230,7 +238,7 @@ export default function AccountPage() {
 
   // Every provider gets a row whether linked or not, so the list doubles as
   // the place to add one — a linked row offers Unlink, an unlinked row Link.
-  // A magic-link identity has no OAuth button of its own, so it only appears
+  // An email identity has no OAuth button of its own, so it only appears
   // once it exists.
   const emailIdentity = byProvider.get(EMAIL_PROVIDER)
   const accountRows = [
@@ -484,17 +492,9 @@ export default function AccountPage() {
             textAlign: 'center', paddingTop: SPACE_8,
             fontSize: FS_SM, color: TEXT_MUTED, opacity: 0.55, lineHeight: 1.6,
           }}>
-            <a
-              href="#/privacy"
-              className="attribution-link"
-              style={{
-                color: TEXT_MUTED,
-                fontFamily: FONT, fontSize: FS_SM, letterSpacing: TRACKING,
-                textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.3)',
-              }}
-            >
-              Privacy policy
-            </a>
+            <a href="#/privacy" className="attribution-link" style={legalLinkStyle}>Privacy policy</a>
+            <span style={{ margin: `0 ${SPACE_8}px` }}>·</span>
+            <a href="#/terms" className="attribution-link" style={legalLinkStyle}>Terms of service</a>
           </div>
         </div>
       </div>

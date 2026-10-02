@@ -1,4 +1,4 @@
-import { FONT, TRACKING, FS_BADGE, TEXT_MUTED, SUCCESS, WARNING, DANGER, BRAND, BRAND_TEXT } from '../data/theme.js'
+import { FONT, TRACKING, FS_BADGE, FS_SM, TEXT_MUTED, SUCCESS, WARNING, DANGER, BRAND, BRAND_TEXT } from '../data/theme.js'
 import { useAccent } from '../context/ModuleThemeContext.jsx'
 
 // Small classification pill — JLPT level, part-of-speech, difficulty, SRS
@@ -18,7 +18,16 @@ import { useAccent } from '../context/ModuleThemeContext.jsx'
 // `~`-prefixed inferred JLPT level is the first; Dictionary's own inferred
 // levels are a likely second). The `~` prefix and any tooltip stay
 // call-site content, not a Badge concern.
-export default function Badge({ tone = 'neutral', variant = 'fill', accent, dimmed = false, children }) {
+// `size="md"` is one step up the type scale (FS_SM) for a badge that sits
+// beside full-size button text rather than in dense metadata — the sign-in
+// dialog's "Last used" is the first.
+const SIZES = {
+  sm: { fontSize: FS_BADGE, padding: '1px 7px' },
+  md: { fontSize: FS_SM, padding: '2px 8px' },
+}
+
+export default function Badge({ tone = 'neutral', variant = 'fill', size = 'sm', accent, dimmed = false, children }) {
+  const { fontSize, padding } = SIZES[size] ?? SIZES.sm
   const moduleAccent = useAccent(accent)
   const TONE_COLORS = {
     accent: moduleAccent,
@@ -39,7 +48,7 @@ export default function Badge({ tone = 'neutral', variant = 'fill', accent, dimm
   // full width. A badge must always be exactly as wide as its label.
   if (variant === 'text') {
     return (
-      <span style={{ fontFamily: FONT, letterSpacing: TRACKING, fontSize: FS_BADGE, color: textColor, opacity, flexShrink: 0, width: 'fit-content' }}>
+      <span style={{ fontFamily: FONT, letterSpacing: TRACKING, fontSize, color: textColor, opacity, flexShrink: 0, width: 'fit-content' }}>
         {children}
       </span>
     )
@@ -52,12 +61,12 @@ export default function Badge({ tone = 'neutral', variant = 'fill', accent, dimm
         alignItems: 'center',
         fontFamily: FONT,
         letterSpacing: TRACKING,
-        fontSize: FS_BADGE,
+        fontSize,
         color: textColor,
         background: `${color}22`,
         border: `1px solid ${color}55`,
         borderRadius: 4,
-        padding: '1px 7px',
+        padding,
         flexShrink: 0,
         width: 'fit-content',
         whiteSpace: 'nowrap',

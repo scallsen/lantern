@@ -358,12 +358,12 @@ function StatRow({ label, value }) {
 
 // ── Footer ────────────────────────────────────────────────────────────────────
 
-// Below the mobile breakpoint, all three links no longer fit one line, and a
+// Below the mobile breakpoint, the links no longer fit one line, and a
 // naive flex-wrap would strand a lone divider dot at the start of the second
 // line. Splitting into two explicit rows keeps every dot between two links
 // that are actually sharing a line — "Developed by..." never breaks onto its
-// own line with GitHub, so it gets a row to itself; GitHub and Privacy Policy
-// share a line and keep their dot.
+// own line with GitHub, so it gets a row to itself; GitHub, Privacy and Terms
+// share a line and keep their dots.
 function Footer({ isMobile }) {
   const linkStyle = { color: 'rgba(232,232,232,0.55)', fontSize: 13, textDecoration: 'none' }
   const dot = <span style={{ color: 'rgba(232,232,232,0.55)', fontSize: 13 }}>·</span>
@@ -383,13 +383,18 @@ function Footer({ isMobile }) {
       Privacy Policy
     </a>
   )
+  const terms = (
+    <a href="#/terms" className="footer-link" style={linkStyle}>
+      Terms
+    </a>
+  )
 
   if (isMobile) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: SPACE_12, paddingTop: SPACE_24 }}>
         {developed}
         <div style={{ display: 'flex', alignItems: 'center', gap: SPACE_16 }}>
-          {github}{dot}{privacy}
+          {github}{dot}{privacy}{dot}{terms}
         </div>
       </div>
     )
@@ -397,7 +402,7 @@ function Footer({ isMobile }) {
 
   return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: SPACE_16, paddingTop: SPACE_24 }}>
-      {developed}{dot}{github}{dot}{privacy}
+      {developed}{dot}{github}{dot}{privacy}{dot}{terms}
     </div>
   )
 }
