@@ -156,9 +156,9 @@ export const TEXTBOOKS = [
   //
   // `personal: true` says so outright, for anything that can't ask about word
   // counts. The empty card's cover carousel is the case: it has no viewer to
-  // count words for, so without the flag it advertised all five to everybody —
+  // count words for, so without the flag it advertised all six to everybody —
   // and since they reuse the two So-Matome covers between them, as four
-  // identical N3 spines and two identical N2 ones.
+  // identical N3 spines and three identical N2 ones.
   {
     id: 'nsm-n3',
     personal: true,
@@ -213,6 +213,17 @@ export const TEXTBOOKS = [
     purchase: [],
     icon: `${ICONS}/nihongo-so-matome-kanji-n2.svg`,
     chapters: weekDays('n2-a2', 4),
+  },
+  {
+    id: 'nsm-n2-a3',
+    personal: true,
+    title: 'Coto Advanced 3',
+    subtitle: 'N2',
+    publisher: 'Coto Academy',
+    description: 'The third term of the same N2 material.',
+    purchase: [],
+    icon: `${ICONS}/nihongo-so-matome-kanji-n2.svg`,
+    chapters: weekDays('n2-a3', 4),
   },
 ]
 

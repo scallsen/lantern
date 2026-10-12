@@ -13,7 +13,13 @@
  * by which word asked for one, so a list leaving the repo orphans nothing that
  * another list still speaks.
  *
- * Run: node --env-file=.env scripts/upload-custom-words.mjs <user-id> [--verify]
+ * A new list never enters the repo at all — it is the publisher's content and
+ * the repo is public — so pass its file instead, from wherever it lives. A file
+ * may be a flat array of words or an object of arrays keyed by listKey:
+ *
+ *   node --env-file=.env scripts/upload-custom-words.mjs <user-id> ~/advanced3_vocab.json
+ *
+ * Run: node --env-file=.env scripts/upload-custom-words.mjs <user-id> [file…] [--verify]
  */
 
 import { createClient } from '@supabase/supabase-js'
@@ -29,11 +35,11 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 
 const userId = process.argv[2]
 if (!userId || !/^[0-9a-f-]{36}$/.test(userId)) {
-  console.error('Usage: node --env-file=.env scripts/upload-custom-words.mjs <user-id> [--verify]')
+  console.error('Usage: node --env-file=.env scripts/upload-custom-words.mjs <user-id> [file…] [--verify]')
   process.exit(1)
 }
 
-const FILES = [
+const REPO_FILES = [
   'src/data/words/nsm_n3_vocab.json',
   'src/data/words/nsm_n3_i4_vocab.json',
   'src/data/words/nsm_n3_i5_vocab.json',
@@ -41,20 +47,29 @@ const FILES = [
   'src/data/words/nsm_n2_a2_vocab.json',
   'src/data/words/sentence-vocab.json',
 ]
+const named = process.argv.slice(3).filter(a => !a.startsWith('--'))
+const FILES = named.length ? named : REPO_FILES
 const BATCH = 500
 
+function wordsIn(file) {
+  const data = JSON.parse(readFileSync(file, 'utf8'))
+  return Array.isArray(data) ? data : Object.values(data).flat()
+}
+
 if (process.argv.includes('--verify')) {
+  const words = FILES.flatMap(wordsIn)
+  const listKeys = [...new Set(words.map(w => w.listKey))]
   const { count, error } = await supabase.from('custom_words')
-    .select('id', { count: 'exact', head: true }).eq('user_id', userId)
+    .select('id', { count: 'exact', head: true }).eq('user_id', userId).in('list_key', listKeys)
   if (error) throw error
-  const expected = FILES.reduce((n, f) => n + JSON.parse(readFileSync(f, 'utf8')).length, 0)
-  console.log(`${count} rows stored for ${userId}; ${expected} words in the repo files`)
-  process.exit(count === expected ? 0 : 1)
+  console.log(`${count} rows stored for ${userId} in ${listKeys.length} lists; ${words.length} words in the files`)
+  process.exit(count === words.length ? 0 : 1)
 }
 
 const rows = []
 for (const file of FILES) {
-  for (const w of JSON.parse(readFileSync(file, 'utf8'))) {
+  for (const w of wordsIn(file)) {
+    if (!w.id || !w.listKey) { console.error(`${file}: a word has no id or listKey`); process.exit(1) }
     // `id` and `listKey` are columns so a chapter can be fetched without
     // reading every payload; the word itself stays whole in `payload`, so a
     // new field on a word needs no migration here.
